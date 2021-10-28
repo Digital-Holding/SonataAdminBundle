@@ -18,7 +18,7 @@ jQuery.fn.confirmExit = function confirmExit() {
 };
 
 // eslint-disable-next-line consistent-return
-jQuery(window).on('beforeunload', (event) => {
+jQuery(window).on('beforeunload', event => {
   const e = event || window.event;
   const message = window.Admin.get_translations('CONFIRM_EXIT');
   let changes = false;

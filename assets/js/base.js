@@ -12,8 +12,8 @@ const SonataCore = {
     jQuery('.read-more-state').iCheck('destroy');
   },
   addFlashmessageListener() {
-    document.querySelectorAll('.read-more-state').forEach((element) => {
-      element.addEventListener('change', (event) => {
+    document.querySelectorAll('.read-more-state').forEach(element => {
+      element.addEventListener('change', event => {
         const label = document.querySelector(`label[for="${element.id}"]`);
         const labelMore = label.querySelector('.more');
         const labelLess = label.querySelector('.less');
