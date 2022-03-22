@@ -17,7 +17,11 @@ use Twig\Loader\FilesystemLoader;
 
 final class StubFilesystemLoader extends FilesystemLoader
 {
-    protected function findTemplate($name, $throw = true)
+    /**
+     * @param string $name
+     * @param bool   $throw
+     */
+    protected function findTemplate($name, $throw = true): ?string
     {
         // strip away bundle name
         $parts = explode(':', $name);

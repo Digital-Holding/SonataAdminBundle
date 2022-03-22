@@ -13,122 +13,85 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Datagrid;
 
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
-use Sonata\AdminBundle\Admin\FieldDescriptionCollection;
-use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
 use Sonata\AdminBundle\Datagrid\Datagrid;
+use Sonata\AdminBundle\Datagrid\DatagridInterface;
 use Sonata\AdminBundle\Datagrid\PagerInterface;
 use Sonata\AdminBundle\Datagrid\ProxyQueryInterface;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionCollection;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface;
 use Sonata\AdminBundle\Filter\FilterInterface;
-use Sonata\AdminBundle\Tests\Fixtures\Entity\Form\TestEntity;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Sonata\AdminBundle\Form\Type\Filter\DefaultType;
+use Symfony\Component\Form\Exception\UnexpectedTypeException;
 use Symfony\Component\Form\Form;
 use Symfony\Component\Form\FormBuilder;
-use Symfony\Component\Form\FormFactoryInterface;
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\Forms;
 
 /**
  * @author Andrej Hudec <pulzarraider@gmail.com>
  */
-class DatagridTest extends TestCase
+final class DatagridTest extends TestCase
 {
     /**
-     * @var Datagrid
+     * @var Datagrid<ProxyQueryInterface&Stub>
      */
     private $datagrid;
 
     /**
-     * @var PagerInterface
+     * @var PagerInterface<ProxyQueryInterface&Stub>&MockObject
      */
     private $pager;
 
     /**
-     * @var ProxyQueryInterface
+     * @var ProxyQueryInterface&Stub
      */
     private $query;
 
     /**
-     * @var FieldDescriptionCollection
+     * @var FieldDescriptionCollection<FieldDescriptionInterface>
      */
     private $columns;
 
     /**
-     * @var FormBuilder
+     * @var FormBuilderInterface
      */
     private $formBuilder;
 
-    /**
-     * @var array
-     */
-    private $formTypes;
-
     protected function setUp(): void
     {
-        $this->query = $this->createMock(ProxyQueryInterface::class);
+        $this->query = $this->createStub(ProxyQueryInterface::class);
         $this->columns = new FieldDescriptionCollection();
         $this->pager = $this->createMock(PagerInterface::class);
-
-        $this->formTypes = [];
-
-        $this->formBuilder = $this->getMockBuilder(FormBuilder::class)
-            ->disableOriginalConstructor()
-            ->getMock();
-
-        $this->formBuilder
-            ->method('get')
-            ->willReturnCallback(function (string $name): FormBuilder {
-                if (isset($this->formTypes[$name])) {
-                    return $this->formTypes[$name];
-                }
-            });
-
-        $this->formBuilder
-            ->method('add')
-            ->willReturnCallback(function (?string $name, string $type, array $options): void {
-                $this->formTypes[$name] = new FormBuilder(
-                    $name,
-                    TestEntity::class,
-                    $this->createMock(EventDispatcherInterface::class),
-                    $this->createMock(FormFactoryInterface::class),
-                    $options
-                );
-            });
-
-        $this->formBuilder
-            ->method('getForm')
-            ->willReturnCallback(function () {
-                return $this->getMockBuilder(Form::class)
-                    ->disableOriginalConstructor()
-                    ->getMock();
-            });
-
-        $values = [];
-
-        $this->datagrid = new Datagrid($this->query, $this->columns, $this->pager, $this->formBuilder, $values);
+        $this->formBuilder = Forms::createFormFactoryBuilder()->getFormFactory()->createBuilder();
+        $this->datagrid = new Datagrid($this->query, $this->columns, $this->pager, $this->formBuilder, []);
     }
 
     public function testGetPager(): void
     {
-        $this->assertSame($this->pager, $this->datagrid->getPager());
+        static::assertSame($this->pager, $this->datagrid->getPager());
     }
 
     public function testFilter(): void
     {
-        $this->assertFalse($this->datagrid->hasFilter('foo'));
+        static::assertFalse($this->datagrid->hasFilter('foo'));
 
         $filter = $this->createMock(FilterInterface::class);
-        $filter->expects($this->once())
+        $filter->expects(static::once())
             ->method('getName')
             ->willReturn('foo');
 
         $this->datagrid->addFilter($filter);
 
-        $this->assertTrue($this->datagrid->hasFilter('foo'));
-        $this->assertFalse($this->datagrid->hasFilter('nonexistent'));
-        $this->assertSame($filter, $this->datagrid->getFilter('foo'));
+        static::assertTrue($this->datagrid->hasFilter('foo'));
+        static::assertFalse($this->datagrid->hasFilter('nonexistent'));
+        static::assertSame($filter, $this->datagrid->getFilter('foo'));
 
         $this->datagrid->removeFilter('foo');
 
-        $this->assertFalse($this->datagrid->hasFilter('foo'));
+        static::assertFalse($this->datagrid->hasFilter('foo'));
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Filter named "foo" doesn\'t exist.');
@@ -138,20 +101,20 @@ class DatagridTest extends TestCase
 
     public function testGetFilters(): void
     {
-        $this->assertSame([], $this->datagrid->getFilters());
+        static::assertSame([], $this->datagrid->getFilters());
 
         $filter1 = $this->createMock(FilterInterface::class);
-        $filter1->expects($this->once())
+        $filter1->expects(static::once())
             ->method('getName')
             ->willReturn('foo');
 
         $filter2 = $this->createMock(FilterInterface::class);
-        $filter2->expects($this->once())
+        $filter2->expects(static::once())
             ->method('getName')
             ->willReturn('bar');
 
         $filter3 = $this->createMock(FilterInterface::class);
-        $filter3->expects($this->once())
+        $filter3->expects(static::once())
             ->method('getName')
             ->willReturn('baz');
 
@@ -159,29 +122,29 @@ class DatagridTest extends TestCase
         $this->datagrid->addFilter($filter2);
         $this->datagrid->addFilter($filter3);
 
-        $this->assertSame(['foo' => $filter1, 'bar' => $filter2, 'baz' => $filter3], $this->datagrid->getFilters());
+        static::assertSame(['foo' => $filter1, 'bar' => $filter2, 'baz' => $filter3], $this->datagrid->getFilters());
 
         $this->datagrid->removeFilter('bar');
 
-        $this->assertSame(['foo' => $filter1, 'baz' => $filter3], $this->datagrid->getFilters());
+        static::assertSame(['foo' => $filter1, 'baz' => $filter3], $this->datagrid->getFilters());
     }
 
     public function testReorderFilters(): void
     {
-        $this->assertSame([], $this->datagrid->getFilters());
+        static::assertSame([], $this->datagrid->getFilters());
 
         $filter1 = $this->createMock(FilterInterface::class);
-        $filter1->expects($this->once())
+        $filter1->expects(static::once())
             ->method('getName')
             ->willReturn('foo');
 
         $filter2 = $this->createMock(FilterInterface::class);
-        $filter2->expects($this->once())
+        $filter2->expects(static::once())
             ->method('getName')
             ->willReturn('bar');
 
         $filter3 = $this->createMock(FilterInterface::class);
-        $filter3->expects($this->once())
+        $filter3->expects(static::once())
             ->method('getName')
             ->willReturn('baz');
 
@@ -189,40 +152,57 @@ class DatagridTest extends TestCase
         $this->datagrid->addFilter($filter2);
         $this->datagrid->addFilter($filter3);
 
-        $this->assertSame(['foo' => $filter1, 'bar' => $filter2, 'baz' => $filter3], $this->datagrid->getFilters());
-        $this->assertSame(['foo', 'bar', 'baz'], array_keys($this->datagrid->getFilters()));
+        static::assertSame(['foo' => $filter1, 'bar' => $filter2, 'baz' => $filter3], $this->datagrid->getFilters());
+        static::assertSame(['foo', 'bar', 'baz'], array_keys($this->datagrid->getFilters()));
 
         $this->datagrid->reorderFilters(['bar', 'baz', 'foo']);
 
-        $this->assertSame(['bar' => $filter2, 'baz' => $filter3, 'foo' => $filter1], $this->datagrid->getFilters());
-        $this->assertSame(['bar', 'baz', 'foo'], array_keys($this->datagrid->getFilters()));
+        static::assertSame(['bar' => $filter2, 'baz' => $filter3, 'foo' => $filter1], $this->datagrid->getFilters());
+        static::assertSame(['bar', 'baz', 'foo'], array_keys($this->datagrid->getFilters()));
+    }
+
+    public function testReorderWithInvalidFilter(): void
+    {
+        $filter1 = $this->createMock(FilterInterface::class);
+        $filter1->method('getName')->willReturn('foo');
+
+        $filter2 = $this->createMock(FilterInterface::class);
+        $filter2->method('getName')->willReturn('bar');
+
+        $this->datagrid->addFilter($filter1);
+        $this->datagrid->addFilter($filter2);
+
+        self::expectException(\InvalidArgumentException::class);
+        self::expectExceptionMessage('Filter "baz" does not exist.');
+
+        $this->datagrid->reorderFilters(['bar', 'baz', 'foo']);
     }
 
     public function testGetValues(): void
     {
-        $this->assertSame([], $this->datagrid->getValues());
+        static::assertSame([], $this->datagrid->getValues());
 
         $this->datagrid->setValue('foo', 'bar', 'baz');
 
-        $this->assertSame(['foo' => ['type' => 'bar', 'value' => 'baz']], $this->datagrid->getValues());
+        static::assertSame(['foo' => ['type' => 'bar', 'value' => 'baz']], $this->datagrid->getValues());
     }
 
     public function testGetColumns(): void
     {
-        $this->assertSame($this->columns, $this->datagrid->getColumns());
+        static::assertSame($this->columns, $this->datagrid->getColumns());
     }
 
     public function testGetQuery(): void
     {
-        $this->assertSame($this->query, $this->datagrid->getQuery());
+        static::assertSame($this->query, $this->datagrid->getQuery());
     }
 
     public function testHasActiveFilters(): void
     {
-        $this->assertFalse($this->datagrid->hasActiveFilters());
+        static::assertFalse($this->datagrid->hasActiveFilters());
 
         $filter1 = $this->createMock(FilterInterface::class);
-        $filter1->expects($this->once())
+        $filter1->expects(static::once())
             ->method('getName')
             ->willReturn('foo');
         $filter1
@@ -231,10 +211,10 @@ class DatagridTest extends TestCase
 
         $this->datagrid->addFilter($filter1);
 
-        $this->assertFalse($this->datagrid->hasActiveFilters());
+        static::assertFalse($this->datagrid->hasActiveFilters());
 
         $filter2 = $this->createMock(FilterInterface::class);
-        $filter2->expects($this->once())
+        $filter2->expects(static::once())
             ->method('getName')
             ->willReturn('bar');
         $filter2
@@ -243,18 +223,18 @@ class DatagridTest extends TestCase
 
         $this->datagrid->addFilter($filter2);
 
-        $this->assertTrue($this->datagrid->hasActiveFilters());
+        static::assertTrue($this->datagrid->hasActiveFilters());
     }
 
     public function testHasDisplayableFilters(): void
     {
-        $this->assertFalse($this->datagrid->hasDisplayableFilters());
+        static::assertFalse($this->datagrid->hasDisplayableFilters());
     }
 
     public function testHasDisplayableFiltersNotActive(): void
     {
         $filter = $this->createMock(FilterInterface::class);
-        $filter->expects($this->once())
+        $filter->expects(static::once())
             ->method('getName')
             ->willReturn('foo');
         $filter
@@ -266,13 +246,13 @@ class DatagridTest extends TestCase
 
         $this->datagrid->addFilter($filter);
 
-        $this->assertFalse($this->datagrid->hasDisplayableFilters());
+        static::assertFalse($this->datagrid->hasDisplayableFilters());
     }
 
     public function testHasDisplayableFiltersActive(): void
     {
         $filter = $this->createMock(FilterInterface::class);
-        $filter->expects($this->once())
+        $filter->expects(static::once())
             ->method('getName')
             ->willReturn('bar');
         $filter
@@ -284,18 +264,18 @@ class DatagridTest extends TestCase
 
         $this->datagrid->addFilter($filter);
 
-        $this->assertTrue($this->datagrid->hasDisplayableFilters());
+        static::assertTrue($this->datagrid->hasDisplayableFilters());
     }
 
     public function testHasDisplayableFiltersAlwaysShow(): void
     {
         $filter = $this->createMock(FilterInterface::class);
-        $filter->expects($this->once())
+        $filter->expects(static::once())
             ->method('getName')
             ->willReturn('bar');
         $filter
             ->method('getOption')
-            ->with($this->equalTo('show_filter'))
+            ->with(static::equalTo('show_filter'))
             ->willReturn(true);
         $filter
             ->method('isActive')
@@ -303,39 +283,40 @@ class DatagridTest extends TestCase
 
         $this->datagrid->addFilter($filter);
 
-        $this->assertTrue($this->datagrid->hasDisplayableFilters());
+        static::assertTrue($this->datagrid->hasDisplayableFilters());
     }
 
     public function testGetForm(): void
     {
-        $this->assertInstanceOf(Form::class, $this->datagrid->getForm());
+        static::assertInstanceOf(Form::class, $this->datagrid->getForm());
     }
 
     public function testGetResults(): void
     {
-        $this->assertNull($this->datagrid->getResults());
+        $foo = new \stdClass();
+        $bar = new \stdClass();
 
-        $this->pager->expects($this->once())
-            ->method('getResults')
-            ->willReturn(['foo', 'bar']);
+        $this->pager->expects(static::once())
+            ->method('getCurrentPageResults')
+            ->willReturn([$foo, $bar]);
 
-        $this->assertSame(['foo', 'bar'], $this->datagrid->getResults());
+        static::assertSame([$foo, $bar], $this->datagrid->getResults());
     }
 
     public function testEmptyResults(): void
     {
-        $this->pager->expects($this->once())
-            ->method('getResults')
+        $this->pager->expects(static::once())
+            ->method('getCurrentPageResults')
             ->willReturn([]);
 
-        $this->assertSame([], $this->datagrid->getResults());
-        $this->assertSame([], $this->datagrid->getResults());
+        static::assertSame([], $this->datagrid->getResults());
+        static::assertSame([], $this->datagrid->getResults());
     }
 
     public function testBuildPager(): void
     {
         $filter1 = $this->createMock(FilterInterface::class);
-        $filter1->expects($this->once())
+        $filter1->expects(static::once())
             ->method('getName')
             ->willReturn('foo');
         $filter1
@@ -346,12 +327,12 @@ class DatagridTest extends TestCase
             ->willReturn(false);
         $filter1
             ->method('getRenderSettings')
-            ->willReturn(['foo1', ['bar1' => 'baz1']]);
+            ->willReturn([DefaultType::class, ['operator_options' => ['help' => 'baz1']]]);
 
         $this->datagrid->addFilter($filter1);
 
         $filter2 = $this->createMock(FilterInterface::class);
-        $filter2->expects($this->once())
+        $filter2->expects(static::once())
             ->method('getName')
             ->willReturn('bar');
         $filter2
@@ -362,42 +343,83 @@ class DatagridTest extends TestCase
             ->willReturn(true);
         $filter2
             ->method('getRenderSettings')
-            ->willReturn(['foo2', ['bar2' => 'baz2']]);
+            ->willReturn([DefaultType::class, ['operator_options' => ['help' => 'baz2']]]);
 
         $this->datagrid->addFilter($filter2);
 
         $this->datagrid->buildPager();
 
-        $this->assertSame(['foo' => null, 'bar' => null], $this->datagrid->getValues());
-        $this->assertInstanceOf(FormBuilder::class, $this->formBuilder->get('fooFormName'));
-        $this->assertSame(['bar1' => 'baz1'], $this->formBuilder->get('fooFormName')->getOptions());
-        $this->assertInstanceOf(FormBuilder::class, $this->formBuilder->get('barFormName'));
-        $this->assertSame(['bar2' => 'baz2'], $this->formBuilder->get('barFormName')->getOptions());
-        $this->assertInstanceOf(FormBuilder::class, $this->formBuilder->get('_sort_by'));
-        $this->assertInstanceOf(FormBuilder::class, $this->formBuilder->get('_sort_order'));
-        $this->assertInstanceOf(FormBuilder::class, $this->formBuilder->get('_page'));
-        $this->assertInstanceOf(FormBuilder::class, $this->formBuilder->get('_per_page'));
+        static::assertSame(['foo' => null, 'bar' => null], $this->datagrid->getValues());
+        static::assertInstanceOf(FormBuilder::class, $this->formBuilder->get('fooFormName'));
+        static::assertSame(['help' => 'baz1'], $this->formBuilder->get('fooFormName')->getOptions()['operator_options']);
+        static::assertInstanceOf(FormBuilder::class, $this->formBuilder->get('barFormName'));
+        static::assertSame(['help' => 'baz2'], $this->formBuilder->get('barFormName')->getOptions()['operator_options']);
+        static::assertInstanceOf(FormBuilder::class, $this->formBuilder->get(DatagridInterface::SORT_BY));
+        static::assertInstanceOf(FormBuilder::class, $this->formBuilder->get(DatagridInterface::SORT_ORDER));
+        static::assertInstanceOf(FormBuilder::class, $this->formBuilder->get(DatagridInterface::PAGE));
+        static::assertInstanceOf(FormBuilder::class, $this->formBuilder->get(DatagridInterface::PER_PAGE));
+    }
+
+    /**
+     * @dataProvider applyFilterDataProvider
+     */
+    public function testApplyFilter(?string $type, ?string $value, int $applyCallNumber): void
+    {
+        $this->datagrid->setValue('fooFormName', $type, $value);
+
+        $filter = $this->createMock(FilterInterface::class);
+        $filter->expects(static::once())->method('getName')->willReturn('foo');
+        $filter->method('getFormName')->willReturn('fooFormName');
+        $filter->method('isActive')->willReturn(false);
+        $filter->method('getRenderSettings')
+            ->willReturn([DefaultType::class, ['operator_options' => ['help' => 'baz2']]]);
+        $filter->expects(static::exactly($applyCallNumber))->method('apply');
+
+        $this->datagrid->addFilter($filter);
+
+        $this->datagrid->buildPager();
+    }
+
+    /**
+     * @phpstan-return iterable<array-key, array{string|null, string|null, int}>
+     */
+    public function applyFilterDataProvider(): iterable
+    {
+        yield ['3', 'fakeValue', 1];
+        yield [null, 'fakeValue', 1];
+        yield [null, 'fakeValue', 1];
+        yield ['3', '', 1];
+        yield ['3', null, 1];
+        yield [null, '', 0];
+        yield [null, null, 0];
+        yield [null, '', 0];
+        yield [null, null, 0];
     }
 
     public function testBuildPagerWithException(): void
     {
-        $this->expectException(\Symfony\Component\Form\Exception\UnexpectedTypeException::class);
-        $this->expectExceptionMessage('Expected argument of type "Sonata\\AdminBundle\\Admin\\FieldDescriptionInterface", "array" given');
-
         $filter = $this->createMock(FilterInterface::class);
-        $filter->expects($this->once())
+        $filter->expects(static::once())
             ->method('getName')
             ->willReturn('foo');
+
+        $filter
+            ->method('getFormName')
+            ->willReturn('fooFormName');
+
         $filter
             ->method('isActive')
             ->willReturn(false);
         $filter
             ->method('getRenderSettings')
-            ->willReturn(['foo', ['bar' => 'baz']]);
+            ->willReturn([DefaultType::class, ['operator_options' => ['help' => 'baz']]]);
 
         $this->datagrid->addFilter($filter);
 
-        $this->datagrid->setValue('_sort_by', 'foo', 'baz');
+        $this->datagrid->setValue(DatagridInterface::SORT_BY, 'foo', 'baz');
+
+        $this->expectException(UnexpectedTypeException::class);
+        $this->expectExceptionMessage('Expected argument of type "Sonata\\AdminBundle\\FieldDescription\\FieldDescriptionInterface", "array" given');
 
         $this->datagrid->buildPager();
     }
@@ -405,24 +427,22 @@ class DatagridTest extends TestCase
     public function testBuildPagerWithSortBy(): void
     {
         $sortBy = $this->createMock(FieldDescriptionInterface::class);
-        $sortBy->expects($this->once())
+        $sortBy->expects(static::once())
             ->method('isSortable')
             ->willReturn(true);
 
-        $this->pager->expects($this->once())
+        $this->pager->expects(static::once())
             ->method('setMaxPerPage')
-            ->with($this->equalTo('25'))
-            ->willReturn(null);
+            ->with(static::equalTo('25'));
 
-        $this->pager->expects($this->once())
+        $this->pager->expects(static::once())
             ->method('setPage')
-            ->with($this->equalTo('1'))
-            ->willReturn(null);
+            ->with(static::equalTo('1'));
 
-        $this->datagrid = new Datagrid($this->query, $this->columns, $this->pager, $this->formBuilder, ['_sort_by' => $sortBy]);
+        $this->datagrid = new Datagrid($this->query, $this->columns, $this->pager, $this->formBuilder, [DatagridInterface::SORT_BY => $sortBy]);
 
         $filter = $this->createMock(FilterInterface::class);
-        $filter->expects($this->once())
+        $filter->expects(static::once())
             ->method('getName')
             ->willReturn('foo');
         $filter
@@ -433,45 +453,46 @@ class DatagridTest extends TestCase
             ->willReturn(false);
         $filter
             ->method('getRenderSettings')
-            ->willReturn(['foo', ['bar' => 'baz']]);
+            ->willReturn([DefaultType::class, ['operator_options' => ['help' => 'baz']]]);
 
         $this->datagrid->addFilter($filter);
 
         $this->datagrid->buildPager();
 
-        $this->assertSame(['_sort_by' => $sortBy, 'foo' => null, '_sort_order' => 'ASC'], $this->datagrid->getValues());
-        $this->assertInstanceOf(FormBuilder::class, $this->formBuilder->get('fooFormName'));
-        $this->assertSame(['bar' => 'baz'], $this->formBuilder->get('fooFormName')->getOptions());
-        $this->assertInstanceOf(FormBuilder::class, $this->formBuilder->get('_sort_by'));
-        $this->assertInstanceOf(FormBuilder::class, $this->formBuilder->get('_sort_order'));
-        $this->assertInstanceOf(FormBuilder::class, $this->formBuilder->get('_page'));
-        $this->assertInstanceOf(FormBuilder::class, $this->formBuilder->get('_per_page'));
+        static::assertSame([DatagridInterface::SORT_BY => $sortBy, 'foo' => null, DatagridInterface::SORT_ORDER => 'ASC'], $this->datagrid->getValues());
+        static::assertInstanceOf(FormBuilder::class, $this->formBuilder->get('fooFormName'));
+        static::assertSame(['help' => 'baz'], $this->formBuilder->get('fooFormName')->getOptions()['operator_options']);
+        static::assertInstanceOf(FormBuilder::class, $this->formBuilder->get(DatagridInterface::SORT_BY));
+        static::assertInstanceOf(FormBuilder::class, $this->formBuilder->get(DatagridInterface::SORT_ORDER));
+        static::assertInstanceOf(FormBuilder::class, $this->formBuilder->get(DatagridInterface::PAGE));
+        static::assertInstanceOf(FormBuilder::class, $this->formBuilder->get(DatagridInterface::PER_PAGE));
     }
 
     /**
+     * @param int|array $perPage
+     * @phpstan-param int|array{value: int} $perPage
+     *
      * @dataProvider getBuildPagerWithPageTests
      */
-    public function testBuildPagerWithPage($page, $perPage): void
+    public function testBuildPagerWithPage(int $page, $perPage): void
     {
         $sortBy = $this->createMock(FieldDescriptionInterface::class);
-        $sortBy->expects($this->once())
+        $sortBy->expects(static::once())
             ->method('isSortable')
             ->willReturn(true);
 
-        $this->pager->expects($this->once())
+        $this->pager->expects(static::once())
             ->method('setMaxPerPage')
-            ->with($this->equalTo('50'))
-            ->willReturn(null);
+            ->with(static::equalTo(50));
 
-        $this->pager->expects($this->once())
+        $this->pager->expects(static::once())
             ->method('setPage')
-            ->with($this->equalTo('3'))
-            ->willReturn(null);
+            ->with(static::equalTo(3));
 
-        $this->datagrid = new Datagrid($this->query, $this->columns, $this->pager, $this->formBuilder, ['_sort_by' => $sortBy, '_page' => $page, '_per_page' => $perPage]);
+        $this->datagrid = new Datagrid($this->query, $this->columns, $this->pager, $this->formBuilder, [DatagridInterface::SORT_BY => $sortBy, DatagridInterface::PAGE => $page, DatagridInterface::PER_PAGE => $perPage]);
 
         $filter = $this->createMock(FilterInterface::class);
-        $filter->expects($this->once())
+        $filter->expects(static::once())
             ->method('getName')
             ->willReturn('foo');
         $filter
@@ -482,79 +503,74 @@ class DatagridTest extends TestCase
             ->willReturn(false);
         $filter
             ->method('getRenderSettings')
-            ->willReturn(['foo', ['bar' => 'baz']]);
+            ->willReturn([DefaultType::class, ['operator_options' => ['help' => 'baz']]]);
 
         $this->datagrid->addFilter($filter);
 
         $this->datagrid->buildPager();
 
-        $this->assertSame([
-            '_sort_by' => $sortBy,
-            '_page' => $page,
-            '_per_page' => $perPage,
+        static::assertSame([
+            DatagridInterface::SORT_BY => $sortBy,
+            DatagridInterface::PAGE => $page,
+            DatagridInterface::PER_PAGE => $perPage,
             'foo' => null,
-            '_sort_order' => 'ASC',
+            DatagridInterface::SORT_ORDER => 'ASC',
         ], $this->datagrid->getValues());
-        $this->assertInstanceOf(FormBuilder::class, $this->formBuilder->get('fooFormName'));
-        $this->assertSame(['bar' => 'baz'], $this->formBuilder->get('fooFormName')->getOptions());
-        $this->assertInstanceOf(FormBuilder::class, $this->formBuilder->get('_sort_by'));
-        $this->assertInstanceOf(FormBuilder::class, $this->formBuilder->get('_sort_order'));
-        $this->assertInstanceOf(FormBuilder::class, $this->formBuilder->get('_page'));
-        $this->assertInstanceOf(FormBuilder::class, $this->formBuilder->get('_per_page'));
+        static::assertInstanceOf(FormBuilder::class, $this->formBuilder->get('fooFormName'));
+        static::assertSame(['help' => 'baz'], $this->formBuilder->get('fooFormName')->getOptions()['operator_options']);
+        static::assertInstanceOf(FormBuilder::class, $this->formBuilder->get(DatagridInterface::SORT_BY));
+        static::assertInstanceOf(FormBuilder::class, $this->formBuilder->get(DatagridInterface::SORT_ORDER));
+        static::assertInstanceOf(FormBuilder::class, $this->formBuilder->get(DatagridInterface::PAGE));
+        static::assertInstanceOf(FormBuilder::class, $this->formBuilder->get(DatagridInterface::PER_PAGE));
     }
 
-    public function getBuildPagerWithPageTests(): array
+    /**
+     * @phpstan-return iterable<array-key, array{int, int|array{value: int}}>
+     */
+    public function getBuildPagerWithPageTests(): iterable
     {
-        // tests for php 5.3, because isset functionality was changed since php 5.4
         return [
             [3, 50],
-            ['3', '50'],
-            [3, '50'],
-            ['3', 50],
             [3, ['type' => null, 'value' => 50]],
-            [3, ['type' => null, 'value' => '50']],
         ];
     }
 
     /**
      * @dataProvider getBuildPagerWithPage2Tests
      */
-    public function testBuildPagerWithPage2($page, $perPage): void
+    public function testBuildPagerWithPage2(int $page, int $perPage): void
     {
-        $this->pager->expects($this->once())
+        $this->pager->expects(static::once())
             ->method('setMaxPerPage')
-            ->with($this->equalTo('50'))
-            ->willReturn(null);
+            ->with(static::equalTo(50));
 
-        $this->pager->expects($this->once())
+        $this->pager->expects(static::once())
             ->method('setPage')
-            ->with($this->equalTo('3'))
-            ->willReturn(null);
+            ->with(static::equalTo(3));
 
         $this->datagrid = new Datagrid($this->query, $this->columns, $this->pager, $this->formBuilder, []);
-        $this->datagrid->setValue('_per_page', null, $perPage);
-        $this->datagrid->setValue('_page', null, $page);
+        $this->datagrid->setValue(DatagridInterface::PER_PAGE, null, $perPage);
+        $this->datagrid->setValue(DatagridInterface::PAGE, null, $page);
 
         $this->datagrid->buildPager();
 
-        $this->assertSame([
-            '_per_page' => ['type' => null, 'value' => $perPage],
-            '_page' => ['type' => null, 'value' => $page],
+        static::assertSame([
+            DatagridInterface::PER_PAGE => ['type' => null, 'value' => $perPage],
+            DatagridInterface::PAGE => ['type' => null, 'value' => $page],
         ], $this->datagrid->getValues());
-        $this->assertInstanceOf(FormBuilder::class, $this->formBuilder->get('_sort_by'));
-        $this->assertInstanceOf(FormBuilder::class, $this->formBuilder->get('_sort_order'));
-        $this->assertInstanceOf(FormBuilder::class, $this->formBuilder->get('_page'));
-        $this->assertInstanceOf(FormBuilder::class, $this->formBuilder->get('_per_page'));
+        static::assertInstanceOf(FormBuilder::class, $this->formBuilder->get(DatagridInterface::SORT_BY));
+        static::assertInstanceOf(FormBuilder::class, $this->formBuilder->get(DatagridInterface::SORT_ORDER));
+        static::assertInstanceOf(FormBuilder::class, $this->formBuilder->get(DatagridInterface::PAGE));
+        static::assertInstanceOf(FormBuilder::class, $this->formBuilder->get(DatagridInterface::PER_PAGE));
     }
 
-    public function getBuildPagerWithPage2Tests(): array
+    /**
+     * @phpstan-return iterable<array-key, array{int, int}>
+     */
+    public function getBuildPagerWithPage2Tests(): iterable
     {
-        // tests for php 5.3, because isset functionality was changed since php 5.4
         return [
             [3, 50],
-            ['3', '50'],
-            [3, '50'],
-            ['3', 50],
         ];
     }
 
@@ -575,36 +591,36 @@ class DatagridTest extends TestCase
             $this->columns,
             $this->pager,
             $this->formBuilder,
-            ['_sort_by' => $field1, '_sort_order' => 'ASC']
+            [DatagridInterface::SORT_BY => $field1, DatagridInterface::SORT_ORDER => 'ASC']
         );
 
         $parameters = $this->datagrid->getSortParameters($field1);
 
-        $this->assertSame('DESC', $parameters['filter']['_sort_order']);
-        $this->assertSame('field1', $parameters['filter']['_sort_by']);
+        static::assertSame('DESC', $parameters['filter'][DatagridInterface::SORT_ORDER]);
+        static::assertSame('field1', $parameters['filter'][DatagridInterface::SORT_BY]);
 
         $parameters = $this->datagrid->getSortParameters($field2);
 
-        $this->assertSame('ASC', $parameters['filter']['_sort_order']);
-        $this->assertSame('field2', $parameters['filter']['_sort_by']);
+        static::assertSame('ASC', $parameters['filter'][DatagridInterface::SORT_ORDER]);
+        static::assertSame('field2', $parameters['filter'][DatagridInterface::SORT_BY]);
 
         $parameters = $this->datagrid->getSortParameters($field3);
 
-        $this->assertSame('ASC', $parameters['filter']['_sort_order']);
-        $this->assertSame('field3sortBy', $parameters['filter']['_sort_by']);
+        static::assertSame('ASC', $parameters['filter'][DatagridInterface::SORT_ORDER]);
+        static::assertSame('field3sortBy', $parameters['filter'][DatagridInterface::SORT_BY]);
 
         $this->datagrid = new Datagrid(
             $this->query,
             $this->columns,
             $this->pager,
             $this->formBuilder,
-            ['_sort_by' => $field3, '_sort_order' => 'ASC']
+            [DatagridInterface::SORT_BY => $field3, DatagridInterface::SORT_ORDER => 'ASC']
         );
 
         $parameters = $this->datagrid->getSortParameters($field3);
 
-        $this->assertSame('DESC', $parameters['filter']['_sort_order']);
-        $this->assertSame('field3sortBy', $parameters['filter']['_sort_by']);
+        static::assertSame('DESC', $parameters['filter'][DatagridInterface::SORT_ORDER]);
+        static::assertSame('field3sortBy', $parameters['filter'][DatagridInterface::SORT_BY]);
     }
 
     public function testGetPaginationParameters(): void
@@ -616,14 +632,14 @@ class DatagridTest extends TestCase
             $this->columns,
             $this->pager,
             $this->formBuilder,
-            ['_sort_by' => $field, '_sort_order' => 'ASC']
+            [DatagridInterface::SORT_BY => $field, DatagridInterface::SORT_ORDER => 'ASC']
         );
 
-        $field->expects($this->once())->method('getName')->willReturn($name = 'test');
+        $field->expects(static::once())->method('getName')->willReturn($name = 'test');
 
         $result = $this->datagrid->getPaginationParameters($page = 5);
 
-        $this->assertSame($page, $result['filter']['_page']);
-        $this->assertSame($name, $result['filter']['_sort_by']);
+        static::assertSame($page, $result['filter'][DatagridInterface::PAGE]);
+        static::assertSame($name, $result['filter'][DatagridInterface::SORT_BY]);
     }
 }

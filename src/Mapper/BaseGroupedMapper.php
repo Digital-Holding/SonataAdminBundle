@@ -17,8 +17,11 @@ namespace Sonata\AdminBundle\Mapper;
  * This class is used to simulate the Form API.
  *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ *
+ * @phpstan-template T of object
+ * @phpstan-implements MapperInterface<T>
  */
-abstract class BaseGroupedMapper extends BaseMapper
+abstract class BaseGroupedMapper implements MapperInterface
 {
     /**
      * @var string|null
@@ -38,9 +41,13 @@ abstract class BaseGroupedMapper extends BaseMapper
     /**
      * Add new group or tab (if parameter "tab=true" is available in options).
      *
+     * @param array<string, mixed> $options
+     *
      * @throws \LogicException
+     *
+     * @return static
      */
-    public function with(string $name, array $options = []): self
+    final public function with(string $name, array $options = []): self
     {
         if (!$this->shouldApply()) {
             return $this;
@@ -70,7 +77,7 @@ abstract class BaseGroupedMapper extends BaseMapper
             'collapsed' => false,
             'class' => false,
             'description' => false,
-            'label' => $this->admin->getLabelTranslatorStrategy()->getLabel($name, $this->getName(), 'group'),
+            'label' => $this->getAdmin()->getLabelTranslatorStrategy()->getLabel($name, $this->getName(), 'group'),
             'translation_domain' => null,
             'name' => $name,
             'box_class' => 'box box-primary',
@@ -81,10 +88,10 @@ abstract class BaseGroupedMapper extends BaseMapper
         $code = $name;
 
         // Open
-        if (\array_key_exists('tab', $options) && $options['tab']) {
+        if (true === ($options['tab'] ?? false)) {
             $tabs = $this->getTabs();
 
-            if ($this->currentTab) {
+            if (null !== $this->currentTab) {
                 if (isset($tabs[$this->currentTab]['auto_created']) && true === $tabs[$this->currentTab]['auto_created']) {
                     throw new \LogicException('New tab was added automatically when you have added field or group. You should close current tab before adding new one OR add tabs before adding groups and fields.');
                 }
@@ -96,7 +103,7 @@ abstract class BaseGroupedMapper extends BaseMapper
                 ));
             }
 
-            if ($this->currentGroup) {
+            if (null !== $this->currentGroup) {
                 throw new \LogicException(sprintf('You should open tab before adding new group "%s".', $name));
             }
 
@@ -111,7 +118,7 @@ abstract class BaseGroupedMapper extends BaseMapper
 
             $this->currentTab = $code;
         } else {
-            if ($this->currentGroup) {
+            if (null !== $this->currentGroup) {
                 throw new \LogicException(sprintf(
                     'You should close previous group "%s" with end() before adding new tab "%s".',
                     $this->currentGroup,
@@ -119,7 +126,7 @@ abstract class BaseGroupedMapper extends BaseMapper
                 ));
             }
 
-            if (!$this->currentTab) {
+            if (null === $this->currentTab) {
                 // no tab define
                 $this->with('default', [
                     'tab' => true,
@@ -127,6 +134,7 @@ abstract class BaseGroupedMapper extends BaseMapper
                     'translation_domain' => $options['translation_domain'] ?? null,
                 ]); // add new tab automatically
             }
+            \assert(null !== $this->currentTab);
 
             // if no tab is selected, we go the the main one named '_' ..
             if ('default' !== $this->currentTab) {
@@ -148,7 +156,7 @@ abstract class BaseGroupedMapper extends BaseMapper
             $tabs = $this->getTabs();
         }
 
-        if ($this->currentGroup && isset($tabs[$this->currentTab]) && !\in_array($this->currentGroup, $tabs[$this->currentTab]['groups'], true)) {
+        if (null !== $this->currentGroup && isset($tabs[$this->currentTab]) && !\in_array($this->currentGroup, $tabs[$this->currentTab]['groups'], true)) {
             $tabs[$this->currentTab]['groups'][] = $this->currentGroup;
         }
 
@@ -159,8 +167,10 @@ abstract class BaseGroupedMapper extends BaseMapper
 
     /**
      * Only nested add if the condition match true.
+     *
+     * @return static
      */
-    public function ifTrue(bool $bool): self
+    final public function ifTrue(bool $bool): self
     {
         $this->apply[] = true === $bool;
 
@@ -169,8 +179,10 @@ abstract class BaseGroupedMapper extends BaseMapper
 
     /**
      * Only nested add if the condition match false.
+     *
+     * @return static
      */
-    public function ifFalse(bool $bool): self
+    final public function ifFalse(bool $bool): self
     {
         $this->apply[] = false === $bool;
 
@@ -179,10 +191,12 @@ abstract class BaseGroupedMapper extends BaseMapper
 
     /**
      * @throws \LogicException
+     *
+     * @return static
      */
-    public function ifEnd(): self
+    final public function ifEnd(): self
     {
-        if (empty($this->apply)) {
+        if ([] === $this->apply) {
             throw new \LogicException('No open ifTrue() or ifFalse(), you cannot use ifEnd()');
         }
 
@@ -193,8 +207,12 @@ abstract class BaseGroupedMapper extends BaseMapper
 
     /**
      * Add new tab.
+     *
+     * @param array<string, mixed> $options
+     *
+     * @return static
      */
-    public function tab(string $name, array $options = []): self
+    final public function tab(string $name, array $options = []): self
     {
         return $this->with($name, array_merge($options, ['tab' => true]));
     }
@@ -203,8 +221,10 @@ abstract class BaseGroupedMapper extends BaseMapper
      * Close the current group or tab.
      *
      * @throws \LogicException
+     *
+     * @return static
      */
-    public function end(): self
+    final public function end(): self
     {
         if (!$this->shouldApply()) {
             return $this;
@@ -224,31 +244,112 @@ abstract class BaseGroupedMapper extends BaseMapper
     /**
      * Returns a boolean indicating if there is an open tab at the moment.
      */
-    public function hasOpenTab(): bool
+    final public function hasOpenTab(): bool
     {
         return null !== $this->currentTab;
     }
 
+    /**
+     * Removes a group.
+     *
+     * @param string $group          The group to delete
+     * @param string $tab            The tab the group belongs to, defaults to 'default'
+     * @param bool   $deleteEmptyTab Whether or not the Tab should be deleted, when the deleted group leaves the tab empty after deletion
+     *
+     * @return static
+     */
+    final public function removeGroup(string $group, string $tab = 'default', bool $deleteEmptyTab = false)
+    {
+        $groups = $this->getGroups();
+
+        // When the default tab is used, the tabname is not prepended to the index in the group array
+        if ('default' !== $tab) {
+            $group = sprintf('%s.%s', $tab, $group);
+        }
+
+        if (isset($groups[$group])) {
+            foreach ($groups[$group]['fields'] as $field) {
+                $this->remove($field);
+            }
+        }
+        unset($groups[$group]);
+
+        $tabs = $this->getTabs();
+        $key = array_search($group, $tabs[$tab]['groups'], true);
+
+        if (false !== $key) {
+            unset($tabs[$tab]['groups'][$key]);
+        }
+        if ($deleteEmptyTab && 0 === \count($tabs[$tab]['groups'])) {
+            unset($tabs[$tab]);
+        }
+
+        $this->setTabs($tabs);
+        $this->setGroups($groups);
+
+        return $this;
+    }
+
+    /**
+     * Removes a tab.
+     *
+     * @return static
+     */
+    final public function removeTab(string $tab): self
+    {
+        $groups = $this->getGroups();
+        $tabs = $this->getTabs();
+
+        foreach ($tabs[$tab]['groups'] as $group) {
+            if (isset($groups[$group])) {
+                foreach ($groups[$group]['fields'] as $field) {
+                    $this->remove($field);
+                }
+            }
+
+            unset($groups[$group]);
+        }
+
+        unset($tabs[$tab]);
+
+        $this->setTabs($tabs);
+        $this->setGroups($groups);
+
+        return $this;
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
     abstract protected function getGroups(): array;
 
+    /**
+     * @return array<string, array<string, mixed>>
+     */
     abstract protected function getTabs(): array;
 
+    /**
+     * @param array<string, array<string, mixed>> $groups
+     */
     abstract protected function setGroups(array $groups): void;
 
+    /**
+     * @param array<string, array<string, mixed>> $tabs
+     */
     abstract protected function setTabs(array $tabs): void;
 
     abstract protected function getName(): string;
 
     /**
-     * Add the field name to the current group.
+     * @return array<string, mixed>
      */
-    protected function addFieldToCurrentGroup(string $fieldName): array
+    final protected function addFieldToCurrentGroup(string $fieldName, ?string $name = null): array
     {
         // Note this line must happen before the next line.
         // See https://github.com/sonata-project/SonataAdminBundle/pull/1351
         $currentGroup = $this->getCurrentGroupName();
         $groups = $this->getGroups();
-        $groups[$currentGroup]['fields'][$fieldName] = $fieldName;
+        $groups[$currentGroup]['fields'][$fieldName] = $name ?? $fieldName;
         $this->setGroups($groups);
 
         return $groups[$currentGroup];
@@ -261,11 +362,24 @@ abstract class BaseGroupedMapper extends BaseMapper
      * Note that this can have the side effect to change the 'group' value
      * returned by the getGroup function
      */
-    protected function getCurrentGroupName(): string
+    final protected function getCurrentGroupName(): string
     {
-        if (!$this->currentGroup) {
-            $this->with($this->admin->getLabel() ?: 'default', ['auto_created' => true]);
+        if (null === $this->currentGroup) {
+            $label = $this->getAdmin()->getLabel();
+
+            if (null === $label) {
+                $this->with('default', [
+                    'auto_created' => true,
+                    'translation_domain' => null,
+                ]);
+            } else {
+                $this->with($label, [
+                    'auto_created' => true,
+                    'translation_domain' => $this->getAdmin()->getTranslationDomain(),
+                ]);
+            }
         }
+        \assert(null !== $this->currentGroup);
 
         return $this->currentGroup;
     }

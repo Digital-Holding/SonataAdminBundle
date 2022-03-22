@@ -59,22 +59,18 @@ You can use the provided extension to take care of your entity admin.
    services:
        app.admin.blog_post:
            class: App\Admin\BlogPostAdmin
-           arguments:
-               - ~
-               - App\Entity\BlogPost
-               - Yokai\SonataWorkflow\Controller\WorkflowController
            tags:
-               - { name: sonata.admin, manager_type: orm }
+               - { name: sonata.admin, model_class: App\Entity\BlogPost, controller: Yokai\SonataWorkflow\Controller\WorkflowController, manager_type: orm }
 
        app.admin.extension.workflow.blog_post:
            class: Yokai\SonataWorkflow\Admin\Extension\WorkflowExtension
            arguments:
                - '@workflow.registry'
                - transitions_icons:
-                     start_review: fa fa-question
-                     interrupt_review: fa fa-edit
-                     restart_review: fa fa-question
-                     publish: fa fa-check
+                     start_review: fas fa-question
+                     interrupt_review: fas fa-edit
+                     restart_review: fas fa-question
+                     publish: fas fa-check
 
 .. code-block:: yaml
 
@@ -94,4 +90,4 @@ you will see something like this:
    :alt: Sonata Admin with Workflow
    :width: 700px
 
-.. _`Workflow Component`: https://symfony.com/doc/4.4/components/workflow.html
+.. _`Workflow Component`: https://symfony.com/doc/5.4/components/workflow.html

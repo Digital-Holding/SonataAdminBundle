@@ -14,59 +14,64 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Search;
 
 use Sonata\AdminBundle\Admin\AdminInterface;
-use Sonata\AdminBundle\Admin\Pool;
 use Sonata\AdminBundle\Datagrid\PagerInterface;
+use Sonata\AdminBundle\Datagrid\ProxyQueryInterface;
 use Sonata\AdminBundle\Filter\FilterInterface;
 
 /**
- * @final since sonata-project/admin-bundle 3.52
- *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
-class SearchHandler
+final class SearchHandler
 {
     /**
-     * @var Pool
+     * @var array<string, bool>
      */
-    protected $pool;
+    private $adminsSearchConfig = [];
 
     /**
-     * @var bool
-     */
-    private $caseSensitive;
-
-    public function __construct(Pool $pool, bool $caseSensitive)
-    {
-        $this->pool = $pool;
-        $this->caseSensitive = $caseSensitive;
-    }
-
-    /**
-     * @param string $term
-     * @param int    $page
-     * @param int    $offset
+     * @param AdminInterface<object> $admin
      *
      * @throws \RuntimeException
      *
-     * @return PagerInterface|false
+     * @return PagerInterface<ProxyQueryInterface>
+     *
+     * @phpstan-template T of object
+     * @phpstan-param AdminInterface<T> $admin
      */
-    public function search(AdminInterface $admin, $term, $page = 0, $offset = 20)
+    public function search(AdminInterface $admin, string $term, int $page = 0, int $offset = 20): ?PagerInterface
     {
+        // If the search is disabled for the whole admin, skip any further processing.
+        if (false === ($this->adminsSearchConfig[$admin->getCode()] ?? true)) {
+            return null;
+        }
+
         $datagrid = $admin->getDatagrid();
 
+        $datagridValues = $datagrid->getValues();
+
         $found = false;
+        $previousFilter = null;
         foreach ($datagrid->getFilters() as $filter) {
-            /** @var $filter FilterInterface */
-            if ($filter->getOption('global_search', false)) {
-                $filter->setOption('case_sensitive', $this->caseSensitive);
+            $formName = $filter->getFormName();
+
+            if ($filter instanceof SearchableFilterInterface && $filter->isSearchEnabled()) {
+                if (null !== $previousFilter) {
+                    $filter->setPreviousFilter($previousFilter);
+                }
+
                 $filter->setCondition(FilterInterface::CONDITION_OR);
-                $datagrid->setValue($filter->getFormName(), null, $term);
+                $datagrid->setValue($formName, null, $term);
                 $found = true;
+
+                $previousFilter = $filter;
+            } elseif (isset($datagridValues[$formName])) {
+                // Remove any previously set filter that is not configured for the global search.
+                $datagrid->removeFilter($formName);
             }
         }
 
         if (!$found) {
-            return false;
+            return null;
         }
 
         $datagrid->buildPager();
@@ -77,5 +82,16 @@ class SearchHandler
         $pager->init();
 
         return $pager;
+    }
+
+    /**
+     * Sets whether the search must be enabled or not for the passed admin codes.
+     * Receives an array with the admin code as key and a boolean as value.
+     *
+     * @param array<string, bool> $adminsSearchConfig
+     */
+    public function configureAdminSearch(array $adminsSearchConfig): void
+    {
+        $this->adminsSearchConfig = $adminsSearchConfig;
     }
 }

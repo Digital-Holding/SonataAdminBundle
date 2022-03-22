@@ -13,18 +13,18 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Admin;
 
-use Doctrine\Common\Collections\Collection;
-use Doctrine\ODM\MongoDB\PersistentCollection;
-use Doctrine\ORM\PersistentCollection as DoctrinePersistentCollection;
 use Sonata\AdminBundle\Exception\NoValueException;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface;
 use Sonata\AdminBundle\Manipulator\ObjectManipulator;
 use Sonata\AdminBundle\Util\FormBuilderIterator;
 use Sonata\AdminBundle\Util\FormViewIterator;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormView;
+use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
 
 /**
- * @final since sonata-project/admin-bundle 3.52
+ * @internal
  *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
@@ -36,23 +36,25 @@ class AdminHelper
     private const FORM_FIELD_DELETE = '_delete';
 
     /**
-     * @var Pool
+     * @var PropertyAccessorInterface
      */
-    protected $pool;
+    private $propertyAccessor;
 
-    public function __construct(Pool $pool)
+    public function __construct(PropertyAccessorInterface $propertyAccessor)
     {
-        $this->pool = $pool;
+        $this->propertyAccessor = $propertyAccessor;
     }
 
-    /**
-     * @throws \RuntimeException
-     */
     public function getChildFormBuilder(FormBuilderInterface $formBuilder, string $elementId): ?FormBuilderInterface
     {
-        foreach (new FormBuilderIterator($formBuilder) as $name => $formBuilder) {
+        $iterator = new \RecursiveIteratorIterator(
+            new FormBuilderIterator($formBuilder),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $name => $currentFormBuilder) {
             if ($name === $elementId) {
-                return $formBuilder;
+                return $currentFormBuilder;
             }
         }
 
@@ -61,9 +63,14 @@ class AdminHelper
 
     public function getChildFormView(FormView $formView, string $elementId): ?FormView
     {
-        foreach (new \RecursiveIteratorIterator(new FormViewIterator($formView), \RecursiveIteratorIterator::SELF_FIRST) as $name => $formView) {
+        $iterator = new \RecursiveIteratorIterator(
+            new FormViewIterator($formView),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $name => $currentFormView) {
             if ($name === $elementId) {
-                return $formView;
+                return $currentFormView;
             }
         }
 
@@ -76,6 +83,11 @@ class AdminHelper
      *
      * @throws \RuntimeException
      * @throws \Exception
+     *
+     * @return array{FieldDescriptionInterface|null, FormInterface}
+     *
+     * @phpstan-template T of object
+     * @phpstan-param AdminInterface<T> $admin
      */
     public function appendFormFieldElement(AdminInterface $admin, object $subject, string $elementId): array
     {
@@ -87,12 +99,16 @@ class AdminHelper
         // get the field element
         $childFormBuilder = $this->getChildFormBuilder($formBuilder, $elementId);
 
-        if ($childFormBuilder) {
+        if (null !== $childFormBuilder) {
             $formData = $admin->getRequest()->get($formBuilder->getName(), []);
+            \assert(\is_array($formData));
+
             if (\array_key_exists($childFormBuilder->getName(), $formData)) {
                 $formData = $admin->getRequest()->get($formBuilder->getName(), []);
+                \assert(\is_array($formData));
+
                 $i = 0;
-                foreach ($formData[$childFormBuilder->getName()] as $name => &$field) {
+                foreach ($formData[$childFormBuilder->getName()] as &$field) {
                     $toDelete[$i] = false;
                     if (\array_key_exists(self::FORM_FIELD_DELETE, $field)) {
                         $toDelete[$i] = true;
@@ -108,31 +124,15 @@ class AdminHelper
         $form->setData($subject);
         $form->handleRequest($admin->getRequest());
 
-        //Child form not found (probably nested one)
-        //if childFormBuilder was not found resulted in fatal error getName() method call on non object
-        if (!$childFormBuilder) {
-            $propertyAccessor = $this->pool->getPropertyAccessor();
-
-            $path = $this->getElementAccessPath($elementId, $subject);
-
-            $collection = $propertyAccessor->getValue($subject, $path);
-
-            if ($collection instanceof DoctrinePersistentCollection || $collection instanceof PersistentCollection) {
-                //since doctrine 2.4
-                $modelClassName = $collection->getTypeClass()->getName();
-            } elseif ($collection instanceof Collection) {
-                $modelClassName = $this->getModelClassName($admin, explode('.', preg_replace('#\[\d*?\]#', '', $path)));
-            } else {
-                throw new \Exception('unknown collection class');
-            }
-
-            $collection->add(new $modelClassName());
-            $propertyAccessor->setValue($subject, $path, $collection);
-
-            $fieldDescription = null;
-        } else {
+        if (
+            null !== $childFormBuilder
+            && $childFormBuilder->getOption('sonata_field_description') instanceof FieldDescriptionInterface
+            && $admin->hasFormFieldDescription($childFormBuilder->getOption('sonata_field_description')->getName())
+        ) {
             // retrieve the FieldDescription
-            $fieldDescription = $admin->getFormFieldDescription($childFormBuilder->getName());
+            $fieldDescription = $admin->getFormFieldDescription(
+                $childFormBuilder->getOption('sonata_field_description')->getName()
+            );
 
             try {
                 $value = $fieldDescription->getValue($form->getData());
@@ -162,6 +162,33 @@ class AdminHelper
             $newInstance = ObjectManipulator::addInstance($form->getData(), $associationAdmin->getNewInstance(), $fieldDescription);
 
             $associationAdmin->setSubject($newInstance);
+        } else {
+            // The `else` branch is executed when child form was not found (probably nested one).
+            // If `$childFormBuilder` was not found resulted in fatal error `getName()` method call on non object
+            // or if `$childFormBuilder` was found, but the admin object does not have a formFieldDescription with
+            // same name as `$childFormBuilder`.
+
+            $path = $this->getElementAccessPath($elementId, $subject);
+
+            $collection = $this->propertyAccessor->getValue($subject, $path);
+
+            if (!$collection instanceof \ArrayAccess && !\is_array($collection)) {
+                throw new \TypeError(sprintf(
+                    'Collection must be an instance of %s or array, %s given.',
+                    \ArrayAccess::class,
+                    \is_object($collection) ? 'instance of "'.\get_class($collection).'"' : '"'.\gettype($collection).'"'
+                ));
+            }
+
+            $modelClassName = $this->getModelClassName(
+                $admin,
+                explode('.', preg_replace('#\[\d*?]#', '', $path) ?? '')
+            );
+
+            $collection[] = new $modelClassName();
+            $this->propertyAccessor->setValue($subject, $path, $collection);
+
+            $fieldDescription = null;
         }
 
         $finalForm = $admin->getFormBuilder()->getForm();
@@ -171,7 +198,7 @@ class AdminHelper
         $finalForm->setData($form->getData());
 
         // back up delete field
-        if (\count($toDelete) > 0) {
+        if (null !== $childFormBuilder && \count($toDelete) > 0) {
             $i = 0;
             foreach ($finalForm->get($childFormBuilder->getName()) as $childField) {
                 if ($childField->has(self::FORM_FIELD_DELETE)) {
@@ -185,36 +212,59 @@ class AdminHelper
     }
 
     /**
+     * Recursively find the class name of the admin responsible for the element at the end of an association chain.
+     *
+     * @param string[] $elements
+     *
+     * @phpstan-template T of object
+     * @phpstan-param AdminInterface<T> $admin
+     * @phpstan-param non-empty-array<string> $elements
+     * @phpstan-return class-string
+     */
+    private function getModelClassName(AdminInterface $admin, array $elements): string
+    {
+        $element = array_shift($elements);
+        $associationAdmin = $admin->getFormFieldDescription($element)->getAssociationAdmin();
+        if ([] === $elements) {
+            return $associationAdmin->getClass();
+        }
+
+        if (!$associationAdmin->hasSubject()) {
+            $associationAdmin->setSubject($associationAdmin->getNewInstance());
+        }
+
+        return $this->getModelClassName($associationAdmin, $elements);
+    }
+
+    /**
      * Get access path to element which works with PropertyAccessor.
      *
-     * @param string $elementId expects string in format used in form id field.
-     *                          (uniqueIdentifier_model_sub_model or uniqueIdentifier_model_1_sub_model etc.)
-     * @param mixed  $model
+     * @param string                      $elementId expects string in format used in form id field.
+     *                                               uniqId_model_sub_model or uniqId_model_1_sub_model etc.
+     * @param object|array<string, mixed> $model
      *
      * @throws \Exception
      */
-    public function getElementAccessPath(string $elementId, $model): string
+    private function getElementAccessPath(string $elementId, $model): string
     {
-        $propertyAccessor = $this->pool->getPropertyAccessor();
-
-        $idWithoutIdentifier = preg_replace('/^[^_]*_/', '', $elementId);
-        $initialPath = preg_replace('#(_(\d+)_)#', '[$2]_', $idWithoutIdentifier);
+        $idWithoutIdentifier = preg_replace('/^[^_]*_/', '', $elementId) ?? '';
+        $initialPath = preg_replace('#(_(\d+)_)#', '[$2]_', $idWithoutIdentifier) ?? '';
 
         $parts = explode('_', $initialPath);
         $totalPath = '';
         $currentPath = '';
 
         foreach ($parts as $part) {
-            $currentPath .= empty($currentPath) ? $part : '_'.$part;
-            $separator = empty($totalPath) ? '' : '.';
+            $currentPath .= '' === $currentPath ? $part : '_'.$part;
+            $separator = '' === $totalPath ? '' : '.';
 
-            if ($propertyAccessor->isReadable($model, $totalPath.$separator.$currentPath)) {
+            if ($this->propertyAccessor->isReadable($model, $totalPath.$separator.$currentPath)) {
                 $totalPath .= $separator.$currentPath;
                 $currentPath = '';
             }
         }
 
-        if (!empty($currentPath)) {
+        if ('' !== $currentPath) {
             throw new \Exception(sprintf(
                 'Could not get element id from %s Failing part: %s',
                 $elementId,
@@ -223,19 +273,5 @@ class AdminHelper
         }
 
         return $totalPath;
-    }
-
-    /**
-     * Recursively find the class name of the admin responsible for the element at the end of an association chain.
-     */
-    protected function getModelClassName(AdminInterface $admin, array $elements): string
-    {
-        $element = array_shift($elements);
-        $associationAdmin = $admin->getFormFieldDescription($element)->getAssociationAdmin();
-        if (0 === \count($elements)) {
-            return $associationAdmin->getClass();
-        }
-
-        return $this->getModelClassName($associationAdmin, $elements);
     }
 }

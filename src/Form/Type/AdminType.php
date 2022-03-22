@@ -14,7 +14,8 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Form\Type;
 
 use Sonata\AdminBundle\Admin\AdminInterface;
-use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
+use Sonata\AdminBundle\BCLayer\BCDeprecation;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface;
 use Sonata\AdminBundle\Form\DataTransformer\ArrayToModelTransformer;
 use Sonata\AdminBundle\Manipulator\ObjectManipulator;
 use Symfony\Component\Form\AbstractType;
@@ -25,13 +26,16 @@ use Symfony\Component\Form\FormView;
 use Symfony\Component\OptionsResolver\Options;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\PropertyAccess\Exception\NoSuchIndexException;
-use Symfony\Component\PropertyAccess\PropertyAccessor;
+use Symfony\Component\PropertyAccess\PropertyAccess;
 
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
 final class AdminType extends AbstractType
 {
+    /**
+     * @param array<string, mixed> $options
+     */
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $admin = clone $this->getAdmin($options);
@@ -40,7 +44,7 @@ final class AdminType extends AbstractType
             $admin->getParentFieldDescription()->setAssociationAdmin($admin);
         }
 
-        if ($options['delete'] && $admin->hasAccess('delete')) {
+        if (true === $options['delete'] && $admin->hasAccess('delete')) {
             if (!\array_key_exists('translation_domain', $options['delete_options']['type_options'])) {
                 $options['delete_options']['type_options']['translation_domain'] = $admin->getTranslationDomain();
             }
@@ -51,7 +55,10 @@ final class AdminType extends AbstractType
         // hack to make sure the subject is correctly set
         // https://github.com/sonata-project/SonataAdminBundle/pull/2076
         if (null === $builder->getData()) {
-            $p = new PropertyAccessor(false, true);
+            $propertyAccessor = PropertyAccess::createPropertyAccessorBuilder()
+                ->disableMagicCall()
+                ->enableExceptionOnInvalidIndex()
+                ->getPropertyAccessor();
 
             if ($admin->hasParentFieldDescription()) {
                 $parentFieldDescription = $admin->getParentFieldDescription();
@@ -78,10 +85,16 @@ final class AdminType extends AbstractType
                     $parentSubject = $parentAdmin->getSubject();
 
                     try {
-                        $subject = $p->getValue($parentSubject, $parentPath.$path);
+                        $subject = $propertyAccessor->getValue($parentSubject, $parentPath.$path);
                     } catch (NoSuchIndexException $e) {
                         // no object here, we create a new one
-                        $subject = ObjectManipulator::setObject($admin->getNewInstance(), $parentSubject, $parentFieldDescription);
+                        $subject = $admin->getNewInstance();
+
+                        if (true === $options['collection_by_reference']) {
+                            $subject = ObjectManipulator::addInstance($parentSubject, $subject, $parentFieldDescription);
+                        } else {
+                            $subject = ObjectManipulator::setObject($subject, $parentSubject, $parentFieldDescription);
+                        }
                     }
                 }
             }
@@ -96,18 +109,27 @@ final class AdminType extends AbstractType
         $builder->addModelTransformer(new ArrayToModelTransformer($admin->getModelManager(), $admin->getClass()));
     }
 
+    /**
+     * @param array<string, mixed> $options
+     */
     public function buildView(FormView $view, FormInterface $form, array $options): void
     {
         $view->vars['btn_add'] = $options['btn_add'];
         $view->vars['btn_list'] = $options['btn_list'];
         $view->vars['btn_delete'] = $options['btn_delete'];
+
+        // NEXT_MAJOR: Remove the btn_catalogue usage.
+        $view->vars['btn_translation_domain'] =
+            'SonataAdminBundle' !== $options['btn_translation_domain']
+                ? $options['btn_translation_domain']
+                : $options['btn_catalogue'];
         $view->vars['btn_catalogue'] = $options['btn_catalogue'];
     }
 
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
-            'delete' => static function (Options $options) {
+            'delete' => static function (Options $options): bool {
                 return false !== $options['btn_delete'];
             },
             'delete_options' => [
@@ -121,16 +143,34 @@ final class AdminType extends AbstractType
             'btn_add' => 'link_add',
             'btn_list' => 'link_list',
             'btn_delete' => 'link_delete',
-            'btn_catalogue' => 'SonataAdminBundle',
+            'btn_catalogue' => 'SonataAdminBundle', // NEXT_MAJOR: Remove this option.
+            'btn_translation_domain' => 'SonataAdminBundle',
+            'collection_by_reference' => true,
         ]);
+
+        $resolver->setDeprecated(
+            'btn_catalogue',
+            ...BCDeprecation::forOptionResolver(
+                static function (Options $options, $value): string {
+                    if ('SonataAdminBundle' !== $value) {
+                        return 'Passing a value to option "btn_catalogue" is deprecated! Use "btn_translation_domain" instead!';
+                    }
+
+                    return '';
+                },
+                '4.9',
+            )
+        ); // NEXT_MAJOR: Remove this deprecation notice.
     }
 
-    public function getBlockPrefix()
+    public function getBlockPrefix(): string
     {
         return 'sonata_type_admin';
     }
 
     /**
+     * @param array<string, mixed> $options
+     *
      * @throws \RuntimeException
      */
     private function getFieldDescription(array $options): FieldDescriptionInterface
@@ -142,6 +182,11 @@ final class AdminType extends AbstractType
         return $options['sonata_field_description'];
     }
 
+    /**
+     * @param array<string, mixed> $options
+     *
+     * @return AdminInterface<object>
+     */
     private function getAdmin(array $options): AdminInterface
     {
         return $this->getFieldDescription($options)->getAssociationAdmin();

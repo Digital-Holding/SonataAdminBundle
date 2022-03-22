@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Form\EventListener;
 
-use Sonata\AdminBundle\Model\ModelManagerInterface;
+use Doctrine\Common\Collections\Collection;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Form\FormEvent;
 use Symfony\Component\Form\FormEvents;
@@ -23,17 +23,7 @@ use Symfony\Component\Form\FormEvents;
  */
 final class MergeCollectionListener implements EventSubscriberInterface
 {
-    /**
-     * @var ModelManagerInterface
-     */
-    private $modelManager;
-
-    public function __construct(ModelManagerInterface $modelManager)
-    {
-        $this->modelManager = $modelManager;
-    }
-
-    public static function getSubscribedEvents()
+    public static function getSubscribedEvents(): array
     {
         return [
             FormEvents::SUBMIT => ['onBind', 10],
@@ -43,27 +33,30 @@ final class MergeCollectionListener implements EventSubscriberInterface
     public function onBind(FormEvent $event): void
     {
         $collection = $event->getForm()->getData();
+        \assert(null === $collection || $collection instanceof Collection);
+
         $data = $event->getData();
+        \assert($data instanceof Collection);
 
         // looks like there is no way to remove other listeners
         $event->stopPropagation();
 
-        if (!$collection) {
+        if (null === $collection) {
             $collection = $data;
         } elseif (0 === \count($data)) {
-            $this->modelManager->collectionClear($collection);
+            $collection->clear();
         } else {
             // merge $data into $collection
             foreach ($collection as $model) {
-                if (!$this->modelManager->collectionHasElement($data, $model)) {
-                    $this->modelManager->collectionRemoveElement($collection, $model);
+                if (!$data->contains($model)) {
+                    $collection->removeElement($model);
                 } else {
-                    $this->modelManager->collectionRemoveElement($data, $model);
+                    $data->removeElement($model);
                 }
             }
 
             foreach ($data as $model) {
-                $this->modelManager->collectionAddElement($collection, $model);
+                $collection->add($model);
             }
         }
 

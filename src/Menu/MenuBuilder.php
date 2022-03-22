@@ -18,8 +18,7 @@ use Knp\Menu\ItemInterface;
 use Knp\Menu\Provider\MenuProviderInterface;
 use Sonata\AdminBundle\Admin\Pool;
 use Sonata\AdminBundle\Event\ConfigureMenuEvent;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\EventDispatcher\LegacyEventDispatcherProxy;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Sonata menu builder.
@@ -58,22 +57,21 @@ final class MenuBuilder
         $this->pool = $pool;
         $this->factory = $factory;
         $this->provider = $provider;
-        $this->eventDispatcher = LegacyEventDispatcherProxy::decorate($eventDispatcher);
+        $this->eventDispatcher = $eventDispatcher;
     }
 
     /**
      * Builds sidebar menu.
-     *
-     * @return ItemInterface
      */
-    public function createSidebarMenu()
+    public function createSidebarMenu(): ItemInterface
     {
         $menu = $this->factory->createItem('root');
 
         foreach ($this->pool->getAdminGroups() as $name => $group) {
             $extras = [
                 'icon' => $group['icon'],
-                'label_catalogue' => $group['label_catalogue'],
+                'translation_domain' => $group['translation_domain'],
+                'label_catalogue' => $group['label_catalogue'] ?? '', // NEXT_MAJOR: Remove this line.
                 'roles' => $group['roles'],
                 'sonata_admin' => true,
             ];

@@ -30,11 +30,11 @@ All we need to do now is add a reference for this field in our ``PageAdmin`` cla
 
     final class PageAdmin extends AbstractAdmin
     {
-        protected function configureFormFields(FormMapper $formMapper)
+        protected function configureFormFields(FormMapper $form): void
         {
             $imageFieldOptions = []; // see available options below
 
-            $formMapper
+            $form
                 ->add('image1', ModelType::class, $imageFieldOptions)
             ;
         }
@@ -61,7 +61,7 @@ The available options are:
   string to designate which field to use for the choice values.
 
 ``query``
-  defaults to ``null``. You can set this to a QueryBuilder instance in order to
+  defaults to ``null``. You can set this to a ProxyQueryInterface instance in order to
   define a custom query for retrieving the available options.
 
 ``template``
@@ -91,10 +91,10 @@ The available options are:
   calculated from the linked admin class. You usually should not need to set
   this manually.
 
-``btn_add``, ``btn_list``, ``btn_delete`` and ``btn_catalogue``:
+``btn_add``, ``btn_list``, ``btn_delete`` and ``btn_translation_domain``:
   The labels on the ``add``, ``list`` and ``delete`` buttons can be customized
   with these parameters. Setting any of them to ``false`` will hide the
-  corresponding button. You can also specify a custom translation catalogue
+  corresponding button. You can also specify a custom translation domain
   for these labels, which defaults to ``SonataAdminBundle``.
 
 .. note::
@@ -129,9 +129,9 @@ All we need to do now is add a reference for this field in our ``PageAdmin`` cla
 
     final class PageAdmin extends AbstractAdmin
     {
-        protected function configureFormFields(FormMapper $formMapper)
+        protected function configureFormFields(FormMapper $form): void
         {
-            $formMapper
+            $form
                 ->add('image1', ModelListType::class)
             ;
         }
@@ -148,15 +148,15 @@ The available options are:
   calculated from the linked admin class. You usually should not need to set
   this manually.
 
-``btn_add``, ``btn_edit``, ``btn_list``, ``btn_delete`` and ``btn_catalogue``:
+``btn_add``, ``btn_edit``, ``btn_list``, ``btn_delete`` and ``btn_translation_domain``:
   The labels on the ``add``, ``edit``, ``list`` and ``delete`` buttons can be customized
   with these parameters. Setting any of them to ``false`` will hide the
-  corresponding button. You can also specify a custom translation catalogue
+  corresponding button. You can also specify a custom translation domain
   for these labels, which defaults to ``SonataAdminBundle``.
 
 .. note::
 
-    For more info, see the storage-engine-specific form field definitions: `ORM`_, `PHPCR`_, `MongoDB`_
+    For more info, see the storage-engine-specific form field definitions: `ORM`_ or `MongoDB`_
 
 Sonata\\AdminBundle\\Form\\Type\\ModelHiddenType
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -170,10 +170,10 @@ The value of hidden field is identifier of related entity::
 
     final class PageAdmin extends AbstractAdmin
     {
-        protected function configureFormFields(FormMapper $formMapper)
+        protected function configureFormFields(FormMapper $form): void
         {
             // generates hidden form field with id of related Category entity
-            $formMapper
+            $form
                 ->add('categoryId', ModelHiddenType::class)
             ;
         }
@@ -215,11 +215,11 @@ datagrid filter for the property ``title``::
 
     final class ArticleAdmin extends AbstractAdmin
     {
-        protected function configureFormFields(FormMapper $formMapper)
+        protected function configureFormFields(FormMapper $form): void
         {
             // the dropdown autocomplete list will show only Category
             // entities that contain specified text in "title" attribute
-            $formMapper
+            $form
                 ->add('category', ModelAutocompleteType::class, [
                     'property' => 'title'
                 ])
@@ -236,10 +236,10 @@ datagrid filter for the property ``title``::
 
     final class CategoryAdmin extends AbstractAdmin
     {
-        protected function configureDatagridFilters(DatagridMapper $datagridMapper)
+        protected function configureDatagridFilters(DatagridMapper $datagrid)
         {
             // this text filter will be used to retrieve autocomplete fields
-            $datagridMapper
+            $datagrid
                 ->add('title')
             ;
         }
@@ -267,29 +267,64 @@ The available options are:
 
   From the ``$admin`` parameter it is possible to get the ``Datagrid`` and the ``Request``::
 
-    $formMapper
-        ->add('category', ModelAutocompleteType::class, [
-            'property' => 'title',
-            'callback' => function ($admin, $property, $value) {
-                $datagrid = $admin->getDatagrid();
-                $queryBuilder = $datagrid->getQuery();
-                $queryBuilder
-                    ->andWhere($queryBuilder->getRootAlias() . '.foo=:barValue')
-                    ->setParameter('barValue', $admin->getRequest()->get('bar'))
-                ;
-                $datagrid->setValue($property, null, $value);
-            },
-        ])
-    ;
+      $form
+          ->add('category', ModelAutocompleteType::class, [
+              'property' => 'title',
+              'callback' => static function (AdminInterface $admin, string $property, $value): void {
+                  $datagrid = $admin->getDatagrid();
+                  $query = $datagrid->getQuery();
+                  $query
+                      ->andWhere($query->getRootAlias() . '.foo=:barValue')
+                      ->setParameter('barValue', $admin->getRequest()->get('bar'))
+                  ;
+                  $datagrid->setValue($property, null, $value);
+              },
+          ])
+      ;
+
+  If you want to dynamically change the ``property`` being filtered on to something else,
+  you can use a prefix system, as follows.
+  When the user types **id: 20** the property used for filtering is "id".
+  When they type **username: awesome_user_name**, it will be "username"::
+
+      $form
+          ->add('category', ModelAutocompleteType::class, [
+              'property' => 'title',
+              'callback' => static function (AdminInterface $admin, string $property, string $value): void {
+                  $datagrid = $admin->getDatagrid();
+
+                  $valueParts = explode(':', $value);
+                  if (count($valueParts) === 2 && in_array($valueParts[0], ['id', 'email', 'username'])) {
+                      [$property, $value] = $valueParts;
+                  }
+
+                  $datagrid->setValue($datagrid->getFilter($property)->getFormName(), null, $value);
+              },
+          ])
+      ;
 
 ``to_string_callback``
   defaults to ``null``. Callable function that can be used to change the default toString behavior of entity::
 
-    $formMapper
+    $form
         ->add('category', ModelAutocompleteType::class, [
             'property' => 'title',
             'to_string_callback' => function($entity, $property) {
                 return $entity->getTitle();
+            },
+        ])
+    ;
+
+``response_item_callback``
+  defaults to ``null``. Callable function that can be used to customize each item individually returned in JSON::
+
+    $form
+        ->add('category', ModelAutocompleteType::class, [
+            'property' => 'title',
+            'response_item_callback' => function (AdminInterface $admin, object $entity, array $item): array {
+                $item['type'] = $entity->getType();
+
+                return $item;
             },
         ])
     ;
@@ -324,7 +359,7 @@ The available options are:
   defaults to "". Controls the width style attribute of the Select2 container div.
 
 ``dropdown_auto_width``
-  defaults to ``false``. Set to ``true`` to enable the `dropdownAutoWidth` Select2 option,
+  defaults to ``false``. Set to ``true`` to enable the ``dropdownAutoWidth`` Select2 option,
   which allows the drop downs to be wider than the parent input, sized according to their content.
 
 ``container_css_class``
@@ -354,10 +389,10 @@ The available options are:
   defaults to ``@SonataAdmin/Form/Type/sonata_type_model_autocomplete.html.twig``.
   Use this option if you want to override the default template of this form type.
 
-``btn_add`` and ``btn_catalogue``:
+``btn_add`` and ``btn_translation_domain``:
   The labels on the ``add`` button can be customized with these parameters.
   Setting any of them to ``false`` will hide the corresponding button. You can also specify
-  a custom translation catalogue for these labels, which defaults to ``SonataAdminBundle``::
+  a custom translation domain for these labels, which defaults to ``SonataAdminBundle``::
 
     // src/Admin/ArticleAdmin.php
 
@@ -367,9 +402,9 @@ The available options are:
 
     final class ArticleAdmin extends AbstractAdmin
     {
-        protected function configureFormFields(FormMapper $formMapper)
+        protected function configureFormFields(FormMapper $form): void
         {
-            $formMapper
+            $form
                 ->add('category', ModelAutocompleteType::class, [
                     'property' => 'title',
                     'template' => '@App/Form/Type/sonata_type_model_autocomplete.html.twig',
@@ -386,6 +421,12 @@ The available options are:
 
     {# change the default selection format #}
     {% block sonata_type_model_autocomplete_selection_format %}'<b>'+item.label+'</b>'{% endblock %}
+
+    {# customize select2 options #}
+    {% block sonata_type_model_autocomplete_select2_options_js %}
+    options.multiple = false;
+    options.dropdownAutoWidth = false;
+    {% endblock %}
 
 ``target_admin_access_action``
   defaults to ``list``.
@@ -406,11 +447,11 @@ The available options are:
 
       final class ArticleAdmin extends AbstractAdmin
       {
-          protected function configureFormFields(FormMapper $formMapper)
+          protected function configureFormFields(FormMapper $form): void
           {
               // the dropdown autocomplete list will show only Category
               // entities that contain specified text in "title" attribute
-              $formMapper
+              $form
                   ->add('category', ModelAutocompleteType::class, [
                       'property' => 'title',
                       'target_admin_access_action' => 'autocomplete',
@@ -432,11 +473,11 @@ The available options are:
               'autocomplete' => 'AUTOCOMPLETE',
           ];
 
-          protected function configureDatagridFilters(DatagridMapper $datagridMapper)
+          protected function configureDatagridFilters(DatagridMapper $datagrid): void
           {
               // this text filter will be used to retrieve autocomplete fields
               // only the users with role AUTOCOMPLETE will be able to get the items
-              $datagridMapper
+              $datagrid
                   ->add('title')
               ;
           }
@@ -456,9 +497,9 @@ According the choice made only associated fields are displayed. The others field
 
     final class AppMenuAdmin extends AbstractAdmin
     {
-        protected function configureFormFields(FormMapper $formMapper)
+        protected function configureFormFields(FormMapper $form): void
         {
-            $formMapper
+            $form
                 ->add('linkType', ChoiceFieldMaskType::class, [
                     'choices' => [
                         'uri' => 'uri',
@@ -480,6 +521,9 @@ According the choice made only associated fields are displayed. The others field
 
 ``map``
   Associative array. Describes the fields that are displayed for each choice.
+
+.. figure:: ../images/choice_field_mask_type.gif
+   :alt: Form type choice field mask type
 
 Sonata\\AdminBundle\\Form\\Type\\AdminType
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -510,14 +554,10 @@ that looks like this:
         services:
             app.admin.image:
                 class: App\Admin\ImageAdmin
-                arguments:
-                    - ~
-                    - App\Entity\Image
-                    - 'Sonata\AdminBundle\Controller\CRUDController'
                 calls:
                     - [setTranslationDomain, ['App']]
                 tags:
-                    - { name: sonata.admin, manager_type: orm, label: 'Image' }
+                    - { name: sonata.admin, model_class: App\Entity\Image, controller: 'Sonata\AdminBundle\Controller\CRUDController', manager_type: orm, label: 'Image' }
 
 To embed ``ImageAdmin`` within ``PageAdmin`` we need to change the reference
 for the ``image1`` field to ``AdminType`` in our ``PageAdmin`` class::
@@ -530,9 +570,9 @@ for the ``image1`` field to ``AdminType`` in our ``PageAdmin`` class::
 
     final class PageAdmin extends AbstractAdmin
     {
-        protected function configureFormFields(FormMapper $formMapper)
+        protected function configureFormFields(FormMapper $form): void
         {
-            $formMapper
+            $form
                 ->add('image1', AdminType::class)
             ;
         }
@@ -548,10 +588,10 @@ The available options (which can be passed as a third parameter to ``FormMapper:
   defaults to ``true`` and indicates that a 'delete' checkbox should be shown allowing
   the user to delete the linked object.
 
-``btn_add``, ``btn_list``, ``btn_delete`` and ``btn_catalogue``:
+``btn_add``, ``btn_list``, ``btn_delete`` and ``btn_translation_domain``:
   The labels on the ``add``, ``list`` and ``delete`` buttons can be customized
   with these parameters. Setting any of them to ``false`` will hide the
-  corresponding button. You can also specify a custom translation catalogue
+  corresponding button. You can also specify a custom translation domain
   for these labels, which defaults to ``SonataAdminBundle``.
 
 Sonata\\Form\\Type\\CollectionType
@@ -571,9 +611,9 @@ to the underlying forms::
 
     final class ProductAdmin extends AbstractAdmin
     {
-        protected function configureFormFields(FormMapper $formMapper)
+        protected function configureFormFields(FormMapper $form): void
         {
-            $formMapper
+            $form
                 ->add('sales', CollectionType::class, [
                     'type_options' => [
                         // Prevents the "Delete" option from being displayed
@@ -599,22 +639,32 @@ to the underlying forms::
 
 The available options (which can be passed as a third parameter to ``FormMapper::add()``) are:
 
-``btn_add`` and ``btn_catalogue``:
+``btn_add`` and ``btn_translation_domain``:
   The label on the ``add`` button can be customized
   with this parameters. Setting it to ``false`` will hide the
-  corresponding button. You can also specify a custom translation catalogue
+  corresponding button. You can also specify a custom translation domain
   for this label, which defaults to ``SonataAdminBundle``.
 
-**TIP**: A jQuery event is fired after a row has been added (``sonata-admin-append-form-element``).
-You can listen to this event to trigger custom JavaScript (eg: add a calendar widget to a newly added date field)
+.. tip::
 
-**TIP**: Setting the 'required' option to ``true`` does not cause a requirement of 'at least one' child entity.
-Setting the 'required' option to ``false`` causes all nested form fields to become not required as well.
+    A jQuery event is fired after a row has been added (``sonata-admin-append-form-element``).
+    You can listen to this event to trigger custom JavaScript (eg: add a calendar widget to a newly added date field)
+
+.. tip::
+
+    Setting the 'required' option to ``true`` does not cause a requirement of 'at least one' child entity.
+    Setting the 'required' option to ``false`` causes all nested form fields to become not required as well.
 
 .. tip::
 
     You can check / uncheck a range of checkboxes by clicking a first one,
     then a second one with shift + click.
+
+.. warning::
+
+    If you are using the ``sonata.admin.security.handler.role``, you must set, at least, the CREATE permission to the Admin of the relation, to be able to add more rows to the collection.
+    In order to delete rows, you must set the DELETE permission.
+    For more infos about permissions, check the :doc:`security` page.
 
 Sonata\\AdminBundle\\Form\\Type\\CollectionType
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -636,10 +686,16 @@ This bundle handle the native Symfony ``collection`` form type by adding:
     A jQuery event is fired after a row has been deleted successfully (``sonata-collection-item-deleted-successful``)
     You can listen to these events to trigger custom JavaScript.
 
+.. warning::
+
+    If you are using the ``sonata.admin.security.handler.role``, you must set, at least, the CREATE permission to the Admin of the relation, to be able to add more rows to the collection.
+    In order to delete rows, you must set the DELETE permission.
+    For more infos about permissions, check the :doc:`security` page.
+
 .. _form_types_fielddescription_options:
 
 FieldDescription options
-^^^^^^^^^^^^^^^^^^^^^^^^
+------------------------
 
 The fourth parameter to FormMapper::add() allows you to pass in ``FieldDescription``
 options as an array. The most useful of these is ``admin_code``, which allows you to
@@ -662,9 +718,9 @@ example above::
 
     final class PageAdmin extends AbstractAdmin
     {
-        protected function configureFormFields(FormMapper $formMapper)
+        protected function configureFormFields(FormMapper $form): void
         {
-            $formMapper
+            $form
                 ->add('image1', AdminType::class, [], [
                     'admin_code' => 'sonata.admin.imageSpecial'
                 ])
@@ -675,68 +731,15 @@ example above::
 Other specific field configuration options are detailed in the related
 abstraction layer documentation.
 
-Adding a FormBuilderInterface
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-You can add Symfony ``FormBuilderInterface`` instances to the ``FormMapper``. This allows you to
-re-use a model form type. When adding a field using a ``FormBuilderInterface``, the type is guessed.
-
-Given you have a ``PostType`` like this::
-
-    // src/Form/PostType.php
-
-    use Symfony\Component\Form\FormBuilderInterface;
-    use Symfony\Bridge\Doctrine\Form\Type\EntityType;
-    use Symfony\Component\Form\Extension\Core\Type\TextType;
-    use Symfony\Component\Form\Extension\Core\Type\TextareaType;
-    use Symfony\Component\Form\AbstractType;
-
-    class PostType extends AbstractType
-    {
-        public function buildForm(FormBuilderInterface $builder, array $options)
-        {
-            $builder
-                ->add('author', EntityType::class, [
-                    'class' => User::class
-                ])
-                ->add('title', TextType::class)
-                ->add('body', TextareaType::class)
-            ;
-        }
-    }
-
-you can reuse it like this::
-
-    // src/Admin/Post.php
-
-    use Sonata\AdminBundle\Form\FormMapper;
-    use Sonata\AdminBundle\Admin\AbstractAdmin;
-    use App\Form\PostType;
-
-    final class Post extend AbstractAdmin
-    {
-        protected function configureFormFields(FormMapper $formMapper)
-        {
-            $builder = $formMapper->getFormBuilder()->getFormFactory()->createBuilder(PostType::class);
-
-            $formMapper
-                ->with('Post')
-                    ->add($builder->get('title'))
-                    ->add($builder->get('body'))
-                ->end()
-                ->with('Author')
-                    ->add($builder->get('author'))
-                ->end()
-            ;
-        }
-    }
-
 Types options
 -------------
 
 General
 ^^^^^^^
 
-- ``label``: You can set the ``label`` option to ``false`` if you don't want to show it::
+You can use any of the `Symfony form options`_ to customize the form fields. For instance
+
+- You can set the ``label`` option to ``false`` if you don't want to show it::
 
     // src/Admin/PageAdmin.php
 
@@ -745,15 +748,40 @@ General
 
     final class PageAdmin extends AbstractAdmin
     {
-        protected function configureFormFields(FormMapper $formMapper)
+        protected function configureFormFields(FormMapper $form): void
         {
-            $formMapper
+            $form
                 ->add('status', null, [
                     'label' => false
                 ])
             ;
         }
     }
+
+- You can use the ``help`` option to add messages that are rendered together with form fields::
+
+    // src/Admin/PostAdmin.php
+
+    final class PostAdmin extends AbstractAdmin
+    {
+        protected function configureFormFields(FormMapper $form): void
+        {
+            $form
+                ->with('General')
+                    ->add('title', null, [
+                        'help' => 'Set the title of a web page'
+                    ])
+                    ->add('keywords', null, [
+                        'help' => 'Set the keywords of a web page'
+                    ])
+                ->end()
+            ;
+        }
+    }
+
+.. figure:: ../images/help_message.png
+   :align: center
+   :alt: Example of the two form fields with help messages.
 
 Symfony\\Component\\Form\\Extension\\Core\\Type\\ChoiceType
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -768,9 +796,9 @@ Symfony\\Component\\Form\\Extension\\Core\\Type\\ChoiceType
 
     final class PageAdmin extends AbstractAdmin
     {
-        protected function configureFormFields(FormMapper $formMapper)
+        protected function configureFormFields(FormMapper $form): void
         {
-            $formMapper
+            $form
                 ->add('multiChoices', ChoiceType::class, [
                     'multiple' => true,
                     'sortable' => true,
@@ -779,9 +807,9 @@ Symfony\\Component\\Form\\Extension\\Core\\Type\\ChoiceType
         }
     }
 
-.. _`Symfony field types`: https://symfony.com/doc/4.4/reference/forms/types.html
-.. _`Symfony choice Field Type docs`: https://symfony.com/doc/4.4/reference/forms/types.html#choice-fields
-.. _`Symfony PropertyPath`: https://github.com/symfony/property-access/blob/4.4/PropertyPath.php
-.. _`ORM`: https://sonata-project.org/bundles/doctrine-orm-admin/master/doc/reference/form_field_definition.html
-.. _`PHPCR`: https://sonata-project.org/bundles/doctrine-phpcr-admin/master/doc/reference/form_field_definition.html
-.. _`MongoDB`: https://sonata-project.org/bundles/mongo-admin/master/doc/reference/form_field_definition.html
+.. _`Symfony field types`: https://symfony.com/doc/5.4/reference/forms/types.html
+.. _`Symfony choice Field Type docs`: https://symfony.com/doc/5.4/reference/forms/types.html#choice-fields
+.. _`Symfony PropertyPath`: https://github.com/symfony/property-access/blob/5.4/PropertyPath.php
+.. _`ORM`: https://docs.sonata-project.org/projects/SonataDoctrineORMAdminBundle/en/4.x/reference/form_field_definition/
+.. _`MongoDB`: https://docs.sonata-project.org/projects/SonataDoctrineMongoDBAdminBundle/en/4.x/reference/form_field_definition/
+.. _`Symfony form options`: https://symfony.com/doc/5.4/reference/forms/types/form.html

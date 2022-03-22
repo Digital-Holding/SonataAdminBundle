@@ -17,85 +17,45 @@ use PHPUnit\Framework\TestCase;
 use Sonata\AdminBundle\Filter\FilterFactory;
 use Sonata\AdminBundle\Filter\FilterInterface;
 use Sonata\AdminBundle\Form\Type\Filter\DefaultType;
-use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\DependencyInjection\Container;
 
-class FilterFactoryTest extends TestCase
+final class FilterFactoryTest extends TestCase
 {
-    public function testEmptyType(): void
-    {
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('The type must be defined');
-
-        $container = $this->getMockForAbstractClass(ContainerInterface::class);
-
-        $filter = new FilterFactory($container, []);
-        $filter->create('test', null);
-    }
-
-    public function testUnknownType(): void
-    {
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('No attached service to type named `mytype`');
-
-        $container = $this->getMockForAbstractClass(ContainerInterface::class);
-
-        $filter = new FilterFactory($container, []);
-        $filter->create('test', 'mytype');
-    }
-
     public function testUnknownClassType(): void
     {
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('No attached service to type named `Sonata\AdminBundle\Form\Type\Filter\FooType`');
+        $this->expectExceptionMessage('No attached service to type named `stdClass`');
 
-        $container = $this->getMockForAbstractClass(ContainerInterface::class);
-
-        $filter = new FilterFactory($container, []);
-        $filter->create('test', 'Sonata\AdminBundle\Form\Type\Filter\FooType');
+        $filter = new FilterFactory(new Container());
+        $filter->create('test', \stdClass::class);
     }
 
     public function testClassType(): void
     {
+        $container = new Container();
+        $container
+            ->set(DefaultType::class, new DefaultType());
+        $filter = new FilterFactory($container);
+
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage(
             'The service `Sonata\AdminBundle\Form\Type\Filter\DefaultType` must implement `FilterInterface`'
         );
 
-        $container = $this->getMockForAbstractClass(ContainerInterface::class);
-
-        $filter = new FilterFactory($container, []);
         $filter->create('test', DefaultType::class);
-    }
-
-    public function testInvalidTypeInstance(): void
-    {
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('The service `mytype` must implement `FilterInterface`');
-
-        $container = $this->getMockForAbstractClass(ContainerInterface::class);
-        $container->expects($this->once())
-            ->method('get')
-            ->willReturn(false);
-
-        $filter = new FilterFactory($container, ['mytype' => 'mytype']);
-        $filter->create('test', 'mytype');
     }
 
     public function testCreateFilter(): void
     {
-        $filter = $this->getMockForAbstractClass(FilterInterface::class);
-        $filter->expects($this->once())
+        $filter = $this->createMock(FilterInterface::class);
+        $filter->expects(static::once())
             ->method('initialize');
 
-        $container = $this->getMockForAbstractClass(ContainerInterface::class);
-        $container->expects($this->once())
-            ->method('get')
-            ->with('my.filter.id')
-            ->willReturn($filter);
-
+        $container = new Container();
         $fqcn = \get_class($filter);
+        $container->set($fqcn, $filter);
 
-        $filter = new FilterFactory($container, [$fqcn => 'my.filter.id']);
+        $filter = new FilterFactory($container);
         $filter->create('test', $fqcn);
     }
 }

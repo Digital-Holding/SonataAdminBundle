@@ -17,113 +17,116 @@ use Doctrine\Common\Util\ClassUtils;
 use Sonata\AdminBundle\Model\ModelManagerInterface;
 use Sonata\Doctrine\Adapter\AdapterInterface;
 use Symfony\Component\Form\ChoiceList\ArrayChoiceList;
+use Symfony\Component\Form\ChoiceList\ChoiceListInterface;
 use Symfony\Component\Form\ChoiceList\Loader\ChoiceLoaderInterface;
-use Symfony\Component\Form\Exception\RuntimeException;
-use Symfony\Component\PropertyAccess\PropertyAccess;
 use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
-use Symfony\Component\PropertyAccess\PropertyPath;
 
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
 final class ModelChoiceLoader implements ChoiceLoaderInterface
 {
-    public $identifier;
-
     /**
-     * @var \Sonata\AdminBundle\Model\ModelManagerInterface
+     * @var ModelManagerInterface<object>
      */
     private $modelManager;
-
-    /**
-     * @var string
-     */
-    private $class;
-
-    private $property;
-
-    private $query;
-
-    private $choices;
-
-    /**
-     * @var PropertyPath
-     */
-    private $propertyPath;
 
     /**
      * @var PropertyAccessorInterface
      */
     private $propertyAccessor;
 
+    /**
+     * @var string
+     *
+     * @phpstan-var class-string
+     */
+    private $class;
+
+    /**
+     * @var string|null
+     */
+    private $property;
+
+    /**
+     * @var object|null
+     */
+    private $query;
+
+    /**
+     * @var object[]|null
+     */
+    private $choices;
+
+    /**
+     * @var ChoiceListInterface|null
+     */
     private $choiceList;
 
     /**
-     * @param string      $class
-     * @param string|null $property
-     * @param mixed|null  $query
-     * @param array       $choices
+     * @param ModelManagerInterface<object> $modelManager
+     * @param object[]|null                 $choices
+     *
+     * @phpstan-param class-string $class
      */
     public function __construct(
         ModelManagerInterface $modelManager,
-        $class,
-        $property = null,
-        $query = null,
-        $choices = [],
-        ?PropertyAccessorInterface $propertyAccessor = null
+        PropertyAccessorInterface $propertyAccessor,
+        string $class,
+        ?string $property = null,
+        ?object $query = null,
+        ?array $choices = null
     ) {
         $this->modelManager = $modelManager;
+        $this->propertyAccessor = $propertyAccessor;
         $this->class = $class;
         $this->property = $property;
-        $this->query = $query;
         $this->choices = $choices;
 
-        $this->identifier = $this->modelManager->getIdentifierFieldNames($this->class);
+        if (null !== $query) {
+            if (!$this->modelManager->supportsQuery($query)) {
+                throw new \InvalidArgumentException('The model manager does not support the query.');
+            }
 
-        // The property option defines, which property (path) is used for
-        // displaying entities as strings
-        if ($property) {
-            $this->propertyPath = new PropertyPath($property);
-            $this->propertyAccessor = $propertyAccessor ?: PropertyAccess::createPropertyAccessor();
+            $this->query = $query;
         }
     }
 
-    public function loadChoiceList($value = null)
+    public function loadChoiceList($value = null): ChoiceListInterface
     {
-        if (!$this->choiceList) {
-            if ($this->query) {
+        if (null === $this->choiceList) {
+            if (null !== $this->query) {
                 $entities = $this->modelManager->executeQuery($this->query);
-            } elseif (\is_array($this->choices) && \count($this->choices) > 0) {
+            } elseif (\is_array($this->choices)) {
                 $entities = $this->choices;
             } else {
                 $entities = $this->modelManager->findBy($this->class);
             }
 
             $choices = [];
-            foreach ($entities as $key => $model) {
-                if ($this->propertyPath) {
+            foreach ($entities as $model) {
+                if (null !== $this->property) {
                     // If the property option was given, use it
-                    $valueObject = $this->propertyAccessor->getValue($model, $this->propertyPath);
-                } else {
+                    $valueObject = $this->propertyAccessor->getValue($model, $this->property);
+                } elseif (method_exists($model, '__toString')) {
                     // Otherwise expect a __toString() method in the entity
-                    try {
-                        $valueObject = (string) $model;
-                    } catch (\Exception $e) {
-                        throw new RuntimeException(sprintf(
-                            'Unable to convert the entity "%s" to string, provide "property" option'
-                            .' or implement "__toString()" method in your entity.',
-                            ClassUtils::getClass($model)
-                        ), 0, $e);
-                    }
+                    $valueObject = (string) $model;
+                } else {
+                    throw new \LogicException(sprintf(
+                        'Unable to convert the model "%s" to string, provide "property" option'
+                        .' or implement "__toString()" method in your model.',
+                        ClassUtils::getClass($model)
+                    ));
                 }
-
-                $id = implode(AdapterInterface::ID_SEPARATOR, $this->getIdentifierValues($model));
 
                 if (!\array_key_exists($valueObject, $choices)) {
                     $choices[$valueObject] = [];
                 }
 
-                $choices[$valueObject][] = $id;
+                $choices[$valueObject][] = implode(
+                    AdapterInterface::ID_SEPARATOR,
+                    $this->getIdentifierValues($model)
+                );
             }
 
             $finalChoices = [];
@@ -143,20 +146,20 @@ final class ModelChoiceLoader implements ChoiceLoaderInterface
         return $this->choiceList;
     }
 
-    public function loadChoicesForValues(array $values, $value = null)
+    public function loadChoicesForValues(array $values, $value = null): array
     {
         return $this->loadChoiceList($value)->getChoicesForValues($values);
     }
 
-    public function loadValuesForChoices(array $choices, $value = null)
+    public function loadValuesForChoices(array $choices, $value = null): array
     {
         return $this->loadChoiceList($value)->getValuesForChoices($choices);
     }
 
     /**
-     * @param object $model
+     * @return mixed[]
      */
-    private function getIdentifierValues($model): array
+    private function getIdentifierValues(object $model): array
     {
         try {
             return $this->modelManager->getIdentifierValues($model);

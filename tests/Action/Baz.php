@@ -13,8 +13,11 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Action;
 
-class Baz
+final class Baz
 {
+    /**
+     * @var Bar|null
+     */
     private $bar;
 
     public function setBar(Bar $bar): void
@@ -22,7 +25,7 @@ class Baz
         $this->bar = $bar;
     }
 
-    public function getBar()
+    public function getBar(): ?Bar
     {
         return $this->bar;
     }

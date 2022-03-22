@@ -1,9 +1,31 @@
 UPGRADE FROM 3.x to 4.0
 =======================
 
+## Upgrade to Font Awesome 5
+
+Some icons have been renamed by Font Awesome, and the correct class is now `fas` or `fab` instead of
+`fa`, for example before you would have used `fa fa-edit`, and after `fas fa-edit`.
+
+Sonata includes the compatibility layer of Font Awesome 5 that ensure the old icons names from version 4
+still works. So we encourage to upgrade the names of all your custom icons, but the old code should
+still work.
+
 ## Removed `famfamfam` icon set
 
 If you still need it, please set it up on your own!
+
+## Migration to NPM
+
+Frontend dependencies are handled with NPM. Bower is not used anymore.
+
+A lot of assets that were previously public are handled with NPM and placed in a private `node_modules/` directory.
+From these dependencies, only the necessary files are exposed publicly through Webpack Encore.
+
+The jQuery UI dependency was fully included before, but now we only include the sortable widget (JavaScript and CSS), the rest of this dependency is not exposed. If you are adding more JavaScript or CSS using another widget of jQuery UI please include it yourself.
+
+Please check the `src/Resources/public` and the documentation to see the used CSS, JavaScript, images and fonts.
+
+If you are customising (specially removing standard JavaScript or CSS) assets, this will affect you.
 
 ## Deprecations
 
@@ -128,11 +150,20 @@ If you have implemented a custom admin extension, you must adapt the signature o
  * `configureBatchActions`
  * `getAccessMapping`
 
+## AdminListBlockService
+The third argument of the `AdminListBlockService::__construct` method is now mandatory.
+
+## AdminSearchBlockService
+The fourth argument of the `AdminListBlockService::__construct` method is now mandatory.
+
+## AdminHelper
+The `AdminHelper::__construct` method changes its `Pool` param to a `PropertyAccessorInterface` one.
+
 ## BreadcrumbsBuilder
-The `buildBreacrumbs` method may no longer be called from outside the class.
+The `buildBreadcrumbs` method may no longer be called from outside the class.
 
 ## BreadcrumbsBuilderInterface
-The `buildBreacrumbs` method has been removed from the interface.
+The `buildBreadcrumbs` method has been removed from the interface.
 
 ## SonataAdminExtension
 The Twig filters that come with the bundle will no longer load a default template when used with a missing template.
@@ -146,3 +177,91 @@ Method `SimplePager::getResults` is always returning an array
 
 ## RouteCollectionInterface
 `RouteCollection` implements `RouteCollectionInterface`.
+
+## SearchHandler
+When there is no searchable filters, `SearchHandler::search()` returns `null`. Previously, it was returning `false`.
+
+## Sonata\AdminBundle\Controller\CRUDController
+When the service `security.csrf.token_manager` is not available, `getCsrfToken()` returns `null`. Previously, it was returning `false`.
+
+The `isXmlHttpRequest()`, `redirectTo()`, `isPreviewApproved()`, `isInPreviewMode()`, `isPreviewDeclined()`,
+`validateCsrfToken()` signatures were changed. They now require to pass the request as first argument.
+The `CRUDController::getRequest()` method was removed.
+
+## FilterInterface
+
+The type for argument 4 in `apply()` method has been changed from `array` to `Sonata\AdminBundle\Filter\Model\FilterData`.
+
+Before:
+```php
+public function apply(ProxyQueryInterface $query, array $filterData): void;
+```
+After:
+```php
+public function apply(ProxyQueryInterface $query, FilterData $filterData): void;
+```
+
+## FormMapper labels
+The form label are now correctly using the label translator strategy for field with `.`
+(which won't be replaced by `__`). For instance, with the underscore label strategy, the
+label `foo.barBaz` was previously `form.label_foo__bar_baz` and now is `form.label_foo_bar_baz`
+to be consistent with others labels like `show.label_foo_bar_baz`.
+
+## MutableTemplateRegistry::setTemplates and AbstractAdmin::setTemplates
+They don't reset the existing templates anymore.
+
+## BaseFieldDescription, FieldDescriptionCollection, FieldDescriptionInterface and FieldDescriptionRegistryInterface
+Moved from the `Sonata\AdminBundle\Admin` to the `Sonata\AdminBundle\FieldDescription` namespace.
+
+## BuilderInterface
+
+Remove `AdminInterface $admin` argument from
+- `BuilderInterface::fixFieldDescription()`
+- `DatagridBuilderInterface::addFilter()`
+- `ListBuilderInterface::buildField()`
+- `ListBuilderInterface::addField()`
+- `ShowBuilderInterface::addField()`
+
+Use `$fieldDescription->getAdmin()` to access to the admin value.
+
+## ListMapper constants
+
+`ListMapper::NAME_ACTIONS` change to `_actions`.
+`ListMapper::NAME_BATCH` change to `_batch`.
+`ListMapper::NAME_SELECT` change to `_select`.
+
+Be aware it implies that the following code
+```php
+protected function configureListFields(ListMapper $listMapper)
+{
+    $listMapper
+        ->add('_action', null, [
+            'actions' => [
+                'show' => [],
+                'edit' => [],
+                'delete' => [],
+            ]
+        ]);
+}
+```
+should be updated to
+```php
+protected function configureListFields(ListMapper $listMapper)
+{
+    $listMapper
+        ->add('_actions', null, [
+            'actions' => [
+                'show' => [],
+                'edit' => [],
+                'delete' => [],
+            ]
+        ]);
+}
+```
+but the best is to use the constant `ListMapper::NAME_ACTIONS`.
+
+## History actions
+
+Instead of relying on the `ROLE_MYADMIN_EDIT` role, a new `ROLE_MYADMIN_HISTORY`
+role was introduced to get access to the history actions. If you use the
+revisions be sure to add this role to your users.

@@ -24,27 +24,25 @@ interface ParentAdminInterface
 {
     /**
      * add an Admin child to the current one.
+     *
+     * @param AdminInterface<object> $child
      */
-    public function addChild(AdminInterface $child, string $field);
+    public function addChild(AdminInterface $child, string $field): void;
 
     /**
      * Returns true or false if an Admin child exists for the given $code.
-     *
-     * @param string $code Admin code
-     *
-     * @return bool True if child exist, false otherwise
      */
     public function hasChild(string $code): bool;
 
     /**
-     * Returns an collection of admin children.
-     *
-     * @return array list of Admin children
+     * @return array<AdminInterface<object>>
      */
     public function getChildren(): array;
 
     /**
      * Returns an admin child with the given $code.
+     *
+     * @return AdminInterface<object>
      */
     public function getChild(string $code): AdminInterface;
 }

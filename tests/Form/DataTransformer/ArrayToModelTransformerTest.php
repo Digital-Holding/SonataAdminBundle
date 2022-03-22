@@ -13,76 +13,79 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Form\DataTransformer;
 
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Sonata\AdminBundle\Form\DataTransformer\ArrayToModelTransformer;
 use Sonata\AdminBundle\Model\ModelManagerInterface;
-use Sonata\AdminBundle\Tests\Fixtures\Entity\Form\FooEntity;
 
 /**
  * @author Andrej Hudec <pulzarraider@gmail.com>
  */
-class ArrayToModelTransformerTest extends TestCase
+final class ArrayToModelTransformerTest extends TestCase
 {
+    /**
+     * @var MockObject&ModelManagerInterface<object>
+     */
     private $modelManager;
 
     protected function setUp(): void
     {
-        $this->modelManager = $this->getMockForAbstractClass(ModelManagerInterface::class);
+        $this->modelManager = $this->createMock(ModelManagerInterface::class);
     }
 
     public function testReverseTransformEntity(): void
     {
-        $transformer = new ArrayToModelTransformer($this->modelManager, FooEntity::class);
+        $transformer = new ArrayToModelTransformer($this->modelManager, \stdClass::class);
 
-        $model = new FooEntity();
-        $this->assertSame($model, $transformer->reverseTransform($model));
+        $model = new \stdClass();
+        static::assertSame($model, $transformer->reverseTransform($model));
     }
 
     /**
+     * @param \stdClass|array<string, mixed>|null $value
+     *
      * @dataProvider getReverseTransformTests
      */
     public function testReverseTransform($value): void
     {
-        $transformer = new ArrayToModelTransformer($this->modelManager, FooEntity::class);
+        $transformer = new ArrayToModelTransformer($this->modelManager, \stdClass::class);
 
-        $this->modelManager
-            ->method('modelReverseTransform')
-            ->willReturn(new FooEntity());
-
-        $this->assertInstanceOf(FooEntity::class, $transformer->reverseTransform($value));
+        static::assertInstanceOf(\stdClass::class, $transformer->reverseTransform($value));
     }
 
-    public function getReverseTransformTests()
+    /**
+     * @phpstan-return iterable<array-key, array{\stdClass|array<string, mixed>|null}>
+     */
+    public function getReverseTransformTests(): iterable
     {
         return [
-            [FooEntity::class],
+            [new \stdClass()],
             [[]],
             [['foo' => 'bar']],
-            ['foo'],
-            [123],
             [null],
-            [false],
         ];
     }
 
     /**
      * @dataProvider getTransformTests
      */
-    public function testTransform($expected, $value): void
+    public function testTransform(?\stdClass $expected, ?\stdClass $value): void
     {
-        $transformer = new ArrayToModelTransformer($this->modelManager, FooEntity::class);
+        $transformer = new ArrayToModelTransformer($this->modelManager, \stdClass::class);
 
-        $this->assertSame($expected, $transformer->transform($value));
+        static::assertSame($expected, $transformer->transform($value));
     }
 
-    public function getTransformTests()
+    /**
+     * @phpstan-return iterable<array-key, array{\stdClass|null, \stdClass|null}>
+     */
+    public function getTransformTests(): iterable
     {
+        $foo = new \stdClass();
+
         return [
-            [123, 123],
-            ['foo', 'foo'],
-            [false, false],
+            [$foo, $foo],
             [null, null],
-            [0, 0],
         ];
     }
 }

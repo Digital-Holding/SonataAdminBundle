@@ -18,8 +18,8 @@ use Sonata\AdminBundle\Security\Handler\AclSecurityHandlerInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Security\Acl\Domain\ObjectIdentity;
 use Symfony\Component\Security\Acl\Domain\RoleSecurityIdentity;
-use Symfony\Component\Security\Acl\Model\AclInterface;
 use Symfony\Component\Security\Acl\Model\MutableAclInterface;
+use Symfony\Component\Security\Acl\Permission\MaskBuilderInterface;
 
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
@@ -28,13 +28,15 @@ final class AdminAclManipulator implements AdminAclManipulatorInterface
 {
     /**
      * @var string
+     *
+     * @phpstan-var class-string<MaskBuilderInterface>
      */
     private $maskBuilderClass;
 
     /**
-     * @param string $maskBuilderClass
+     * @phpstan-param class-string<MaskBuilderInterface> $maskBuilderClass
      */
-    public function __construct($maskBuilderClass)
+    public function __construct(string $maskBuilderClass)
     {
         $this->maskBuilderClass = $maskBuilderClass;
     }
@@ -57,7 +59,7 @@ final class AdminAclManipulator implements AdminAclManipulatorInterface
 
         // create admin ACL
         $output->writeln(sprintf(' > install ACL for %s', $admin->getCode()));
-        $configResult = $this->addAdminClassAces($output, $acl, $securityHandler, $securityHandler->buildSecurityInformation($admin));
+        $configResult = $this->addAdminClassAces($output, $acl, $securityHandler, $admin);
 
         if ($configResult) {
             $securityHandler->updateAcl($acl);
@@ -69,21 +71,14 @@ final class AdminAclManipulator implements AdminAclManipulatorInterface
 
     public function addAdminClassAces(
         OutputInterface $output,
-        AclInterface $acl,
+        MutableAclInterface $acl,
         AclSecurityHandlerInterface $securityHandler,
-        array $roleInformation = []
-    ) {
-        if (!$acl instanceof MutableAclInterface) {
-            throw new \TypeError(sprintf(
-                'Argument 2 passed to "%s()" must implement "%s".',
-                __METHOD__,
-                MutableAclInterface::class
-            ));
-        }
+        AdminInterface $admin
+    ): bool {
         if (\count($securityHandler->getAdminPermissions()) > 0) {
             $builder = new $this->maskBuilderClass();
 
-            foreach ($roleInformation as $role => $permissions) {
+            foreach ($securityHandler->buildSecurityInformation($admin) as $role => $permissions) {
                 $aceIndex = $securityHandler->findClassAceIndexByRole($acl, $role);
                 $roleAdminPermissions = [];
 
@@ -104,17 +99,13 @@ final class AdminAclManipulator implements AdminAclManipulatorInterface
                         $action = 'update';
                     }
 
-                    if (null !== $output) {
-                        $output->writeln(sprintf('   - %s role: %s, permissions: %s', $action, $role, json_encode($roleAdminPermissions)));
-                    }
+                    $output->writeln(sprintf('   - %s role: %s, permissions: %s', $action, $role, json_encode($roleAdminPermissions)));
 
                     $builder->reset();
                 } elseif (false !== $aceIndex) {
                     $acl->deleteClassAce($aceIndex);
 
-                    if (null !== $output) {
-                        $output->writeln(sprintf('   - remove role: %s', $role));
-                    }
+                    $output->writeln(sprintf('   - remove role: %s', $role));
                 }
             }
 

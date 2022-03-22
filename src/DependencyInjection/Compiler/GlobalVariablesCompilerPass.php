@@ -18,6 +18,8 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Reference;
 
 /**
+ * @internal
+ *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
 final class GlobalVariablesCompilerPass implements CompilerPassInterface
@@ -25,6 +27,6 @@ final class GlobalVariablesCompilerPass implements CompilerPassInterface
     public function process(ContainerBuilder $container): void
     {
         $container->getDefinition('twig')
-            ->addMethodCall('addGlobal', ['sonata_admin', new Reference('sonata.admin.twig.global')]);
+            ->addMethodCall('addGlobal', ['sonata_config', new Reference('sonata.admin.configuration')]);
     }
 }

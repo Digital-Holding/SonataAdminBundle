@@ -13,18 +13,40 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Form\ChoiceList;
 
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Sonata\AdminBundle\Form\ChoiceList\ModelChoiceLoader;
 use Sonata\AdminBundle\Model\ModelManagerInterface;
 use Sonata\AdminBundle\Tests\Fixtures\Bundle\Entity\Foo;
+use Symfony\Component\PropertyAccess\PropertyAccess;
+use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
 
-class ModelChoiceLoaderTest extends TestCase
+final class ModelChoiceLoaderTest extends TestCase
 {
+    /**
+     * @var MockObject&ModelManagerInterface<object>
+     */
     private $modelManager;
+
+    /**
+     * @var PropertyAccessorInterface
+     */
+    private $propertyAccessor;
 
     protected function setUp(): void
     {
-        $this->modelManager = $this->getMockForAbstractClass(ModelManagerInterface::class);
+        $this->modelManager = $this->createMock(ModelManagerInterface::class);
+        $this->propertyAccessor = PropertyAccess::createPropertyAccessor();
+    }
+
+    public function testConstructWithUnsupportedQuery(): void
+    {
+        $this->modelManager->method('supportsQuery')->willReturn(false);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('The model manager does not support the query.');
+
+        new ModelChoiceLoader($this->modelManager, $this->propertyAccessor, \stdClass::class, null, new \stdClass());
     }
 
     public function testLoadFromEntityWithSamePropertyValues(): void
@@ -37,18 +59,19 @@ class ModelChoiceLoaderTest extends TestCase
         $fooB->setBar(2);
         $fooB->setBaz('baz');
 
-        $this->modelManager->expects($this->once())
+        $this->modelManager->expects(static::once())
             ->method('findBy')
             ->willReturn([$fooA, $fooB]);
 
         $this->modelManager
             ->method('getIdentifierValues')
-            ->willReturnCallback(static function (Foo $foo) {
+            ->willReturnCallback(static function (Foo $foo): array {
                 return [$foo->getBar()];
             });
 
         $modelChoiceLoader = new ModelChoiceLoader(
             $this->modelManager,
+            $this->propertyAccessor,
             \Sonata\AdminBundle\Tests\Fixtures\Entity\Foo::class,
             'baz'
         );
@@ -58,6 +81,6 @@ class ModelChoiceLoaderTest extends TestCase
             2 => 'baz (id: 2)',
         ];
 
-        $this->assertSame($expectedChoices, $modelChoiceLoader->loadChoiceList()->getOriginalKeys());
+        static::assertSame($expectedChoices, $modelChoiceLoader->loadChoiceList()->getOriginalKeys());
     }
 }

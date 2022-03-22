@@ -1,10 +1,6 @@
 Customizing a mosaic list
 =========================
 
-.. versionadded:: 3.0
-
-   Since 3.0, the AdminBundle includes a mosaic list mode in order to have a more visual representation.
-
 .. figure:: ../images/list_mosaic_default.png
    :align: center
    :alt: Default view
@@ -34,9 +30,6 @@ First, configure the ``outer_list_rows_mosaic`` template key:
       <!-- config/services.xml -->
 
        <service id="sonata.media.admin.media" class="%sonata.media.admin.media.class%">
-            <argument/>
-            <argument>%sonata.media.admin.media.entity%</argument>
-            <argument>%sonata.media.admin.media.controller%</argument>
             <call method="setTemplates">
                 <argument type="collection">
                     <argument key="outer_list_rows_mosaic">@SonataMedia/MediaAdmin/list_outer_rows_mosaic.html.twig</argument>
@@ -44,9 +37,11 @@ First, configure the ``outer_list_rows_mosaic`` template key:
             </call>
             <tag
                 name="sonata.admin"
+                model_class="%sonata.media.admin.media.entity%"
+                controller="%sonata.media.admin.media.controller%"
                 manager_type="orm"
                 group="sonata_media"
-                label_catalogue="%sonata.media.admin.media.translation_domain%"
+                translation_domain="%sonata.media.admin.media.translation_domain%"
                 label="media"
                 label_translator_strategy="sonata.admin.label.strategy.underscore"
                 />
@@ -89,9 +84,9 @@ The ``list_outer_rows_mosaic.html.twig`` is the name of one mosaic's tile. You s
 
     {% block sonata_mosaic_description %}
         {% if admin.hasAccess('edit', object) and admin.hasRoute('edit') %}
-            <a href="{{ admin.generateUrl('edit', {'id' : object|sonata_urlsafeid(admin) }) }}">{{ meta.title|u.truncate(40) }}</a>
+            <a href="{{ admin.generateObjectUrl('edit', object) }}">{{ meta.title|u.truncate(40) }}</a>
         {% elseif admin.hasAccess('show', object) and admin.hasRoute('show') %}
-            <a href="{{ admin.generateUrl('show', {'id' : object|sonata_urlsafeid(admin) }) }}">{{ meta.title|u.truncate(40) }}</a>
+            <a href="{{ admin.generateObjectUrl('show', object }) }}">{{ meta.title|u.truncate(40) }}</a>
         {% else %}
             {{ meta.title|u.truncate(40) }}
         {% endif %}
@@ -109,9 +104,11 @@ The ``ObjectMetadata`` object is returned by the related admin class, and can be
 used to define which image field from the entity will be displayed if available.
 For instance, the SonataMediaBundle defines the method as::
 
+    use Sonata\AdminBundle\Object\MetadataInterface;
+
     final class MediaAdmin extends AbstractAdmin
     {
-        public function getObjectMetadata($object)
+        public function getObjectMetadata(object $object): MetadataInterface
         {
             $provider = $this->pool->getProvider($object->getProviderName());
 
@@ -126,7 +123,9 @@ For instance, the SonataMediaBundle defines the method as::
     In your own admin, ``media`` is a field and not the ``$object``. Therefore,
     the code above must be updated this way::
 
-        public function getObjectMetadata($object): Metadata
+        use Sonata\AdminBundle\Object\MetadataInterface;
+
+        public function getObjectMetadata(object $object): MetadataInterface
         {
             $media = $object->getMediaField();
 
@@ -144,11 +143,9 @@ the ``$pool`` variable and override the constructor::
 
     private $pool;
 
-    public function __construct(string $code, string $class, string $baseControllerName, Pool $pool)
+    public function __construct(Pool $pool)
     {
        $this->pool = $pool;
-
-       parent::__construct($code, $class, $baseControllerName);
     }
 
 Then add ``'@sonata.media.pool'`` to your service definition arguments:
@@ -161,13 +158,11 @@ Then add ``'@sonata.media.pool'`` to your service definition arguments:
         app.admin.post:
             class: App\Admin\PostAdmin
             arguments:
-                - ~
-                - App\Entity\Post
-                - ~
                 - '@sonata.media.pool'
             tags:
                 -
                     name: sonata.admin
+                    model_class: App\Entity\Post
                     manager_type: orm
                     group: 'Content'
                     label: 'Post'

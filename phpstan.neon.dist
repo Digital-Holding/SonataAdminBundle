@@ -2,10 +2,19 @@ includes:
     - phpstan-baseline.neon
 
 parameters:
-    level: 2
-
+    level: 8
+    symfony:
+        console_application_loader: ./phpstan-console-application.php
     paths:
         - src
-    excludes_analyse:
-        # temporarily ignore template files
-        - src/Resources/**.tpl.php
+        - tests
+    excludePaths:
+        analyseAndScan:
+            - src/Resources/**.tpl.php
+    treatPhpDocTypesAsCertain: false
+    checkGenericClassInNonGenericObjectType: true
+    checkInternalClassCaseSensitivity: true
+    checkMissingIterableValueType: true
+    checkMissingVarTagTypehint: true
+    checkMissingTypehints: true
+    checkUninitializedProperties: true

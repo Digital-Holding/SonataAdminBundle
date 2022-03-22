@@ -1,8 +1,8 @@
 Select2
 =======
 
-The admin comes with `select2 <https://select2.org/>`_ integration
-since version 2.2.6. Select2 is a jQuery based replacement for select boxes.
+The admin comes with `select2 <https://select2.org/>`_ integration.
+Select2 is a jQuery based replacement for select boxes.
 It supports searching, remote data sets, and infinite scrolling of results.
 
 The select2 is enabled on all ``select`` form elements by default.
@@ -34,9 +34,9 @@ set data attribute ``data-sonata-select2 = "false"`` to this form element::
 
     use Sonata\AdminBundle\Form\Type\ModelType;
 
-    protected function configureFormFields(FormMapper $formMapper)
+    protected function configureFormFields(FormMapper $form): void
     {
-        $formMapper
+        $form
             ->add('category', ModelType::class, [
                 'attr' => [
                     'data-sonata-select2' => 'false'
@@ -58,9 +58,9 @@ to enable ``allowClear`` or ``data-sonata-select2-allow-clear = "false"`` to dis
 
     use Sonata\AdminBundle\Form\Type\ModelType;
 
-    protected function configureFormFields(FormMapper $formMapper)
+    protected function configureFormFields(FormMapper $form): void
     {
-        $formMapper
+        $form
             ->add('category', ModelType::class, [
                 'attr' => [
                     'data-sonata-select2-allow-clear' => 'false'
@@ -72,3 +72,26 @@ to enable ``allowClear`` or ``data-sonata-select2-allow-clear = "false"`` to dis
 .. note::
 
     You have to use false as string! ``"false"``!
+
+Minimum results for search
+--------------------------
+
+To control the minimum amount of results that are required before the select is searchable you can set the data attribute ``data-sonata-select2-minimumResultsForSearch``. This controls select2's ``minimumResultsForSearch`` parameter::
+
+
+    use Sonata\AdminBundle\Form\Type\ModelType;
+
+    protected function configureFormFields(FormMapper $form): void
+    {
+        $form
+            ->add('category', ModelType::class, [
+                'attr' => [
+                    'data-sonata-select2-minimumResultsForSearch' => '10',
+                ]
+            ])
+        ;
+    }
+
+.. note::
+
+    By default ``minimumResultsForSearch`` will be set to ``10``

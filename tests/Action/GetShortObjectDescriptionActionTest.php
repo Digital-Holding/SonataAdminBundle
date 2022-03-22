@@ -13,16 +13,15 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Action;
 
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
-use Prophecy\Argument;
 use Sonata\AdminBundle\Action\GetShortObjectDescriptionAction;
-use Sonata\AdminBundle\Admin\AbstractAdmin;
-use Sonata\AdminBundle\Admin\Pool;
-use Sonata\AdminBundle\Templating\TemplateRegistry;
-use Symfony\Component\DependencyInjection\Container;
-use Symfony\Component\HttpFoundation\JsonResponse;
+use Sonata\AdminBundle\Admin\AdminInterface;
+use Sonata\AdminBundle\Exception\BadRequestParamHttpException;
+use Sonata\AdminBundle\Request\AdminFetcherInterface;
+use Sonata\AdminBundle\Templating\MutableTemplateRegistry;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Twig\Environment;
 use Twig\Loader\ArrayLoader;
@@ -30,9 +29,9 @@ use Twig\Loader\ArrayLoader;
 final class GetShortObjectDescriptionActionTest extends TestCase
 {
     /**
-     * @var Pool
+     * @var Stub&AdminFetcherInterface
      */
-    private $pool;
+    private $adminFetcher;
 
     /**
      * @var Environment
@@ -45,34 +44,33 @@ final class GetShortObjectDescriptionActionTest extends TestCase
     private $action;
 
     /**
-     * @var AbstractAdmin
+     * @var AdminInterface<object>&MockObject
      */
     private $admin;
 
     protected function setUp(): void
     {
         $this->twig = new Environment(new ArrayLoader(['short_object_description' => 'renderedTemplate']));
-        $this->pool = $this->prophesize(Pool::class);
-        $this->admin = $this->prophesize(AbstractAdmin::class);
-        $this->pool->getInstance(Argument::any())->willReturn($this->admin->reveal());
-        $this->admin->setRequest(Argument::type(Request::class))->shouldBeCalled();
+        $this->admin = $this->createMock(AdminInterface::class);
+        $this->adminFetcher = $this->createStub(AdminFetcherInterface::class);
+
         $this->action = new GetShortObjectDescriptionAction(
             $this->twig,
-            $this->pool->reveal()
+            $this->adminFetcher
         );
     }
 
     public function testGetShortObjectDescriptionActionInvalidAdmin(): void
     {
         $request = new Request([
-            'code' => 'sonata.post.admin',
+            '_sonata_admin' => 'non_existing_code',
             'objectId' => 42,
             'uniqid' => 'asdasd123',
         ]);
 
-        $this->pool->getInstance('sonata.post.admin')
-            ->willThrow(new \InvalidArgumentException());
-        $this->admin->setRequest(Argument::type(Request::class))->shouldNotBeCalled();
+        $this->adminFetcher->method('get')->willThrowException(new \InvalidArgumentException());
+
+        $this->admin->expects(static::never())->method('setRequest');
 
         $this->expectException(NotFoundHttpException::class);
 
@@ -81,100 +79,98 @@ final class GetShortObjectDescriptionActionTest extends TestCase
 
     public function testGetShortObjectDescriptionActionObjectDoesNotExist(): void
     {
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Invalid format');
+        $this->adminFetcher->method('get')->willReturn($this->admin);
 
         $request = new Request([
-            'code' => 'sonata.post.admin',
+            '_sonata_admin' => 'sonata.post.admin',
             'objectId' => 42,
             'uniqid' => 'asdasd123',
         ]);
 
-        $this->admin->setUniqid('asdasd123')->shouldBeCalled();
-        $this->admin->getObject(42)->willReturn(null);
+        $this->admin->method('getObject')->with(42)->willReturn(null);
 
+        $this->expectException(NotFoundHttpException::class);
         ($this->action)($request);
     }
 
     public function testGetShortObjectDescriptionActionEmptyObjectId(): void
     {
         $request = new Request([
-            'code' => 'sonata.post.admin',
-            'objectId' => '',
+            '_sonata_admin' => 'sonata.post.admin',
             'uniqid' => 'asdasd123',
             '_format' => 'html',
         ]);
 
-        $this->admin->setUniqid('asdasd123')->shouldBeCalled();
-        $this->admin->getObject(null)->willReturn(null);
+        $this->adminFetcher->method('get')->willReturn($this->admin);
 
-        $this->assertInstanceOf(Response::class, ($this->action)($request));
+        $this->admin->method('getObject')->with(null)->willReturn(null);
+
+        $this->expectException(BadRequestParamHttpException::class);
+        ($this->action)($request);
     }
 
     public function testGetShortObjectDescriptionActionObject(): void
     {
-        $templateRegistry = new TemplateRegistry([
+        $templateRegistry = new MutableTemplateRegistry([
             'short_object_description' => 'short_object_description',
         ]);
-        $container = new Container();
-        $container->set('sonata.post.admin.template_registry', $templateRegistry);
-        $this->pool->getContainer()->willReturn($container);
 
         $request = new Request([
-            'code' => 'sonata.post.admin',
+            '_sonata_admin' => 'sonata.post.admin',
             'objectId' => 42,
             'uniqid' => 'asdasd123',
             '_format' => 'html',
         ]);
         $object = new \stdClass();
 
-        $this->admin->setUniqid('asdasd123')->shouldBeCalled();
-        $this->admin->getObject(42)->willReturn($object);
-        $this->admin->toString($object)->willReturn('bar');
-        $this->admin->getCode()->willReturn('sonata.post.admin');
+        $this->adminFetcher->method('get')->willReturn($this->admin);
+
+        $this->admin->method('getObject')->with(42)->willReturn($object);
+        $this->admin->method('toString')->with($object)->willReturn('bar');
+        $this->admin->method('getCode')->willReturn('sonata.post.admin');
+        $this->admin->method('getTemplateRegistry')->willReturn($templateRegistry);
 
         $response = ($this->action)($request);
 
-        $this->assertSame('renderedTemplate', $response->getContent());
+        static::assertSame('renderedTemplate', $response->getContent());
     }
 
     public function testGetShortObjectDescriptionActionEmptyObjectIdAsJson(): void
     {
         $request = new Request([
-            'code' => 'sonata.post.admin',
-            'objectId' => '',
+            '_sonata_admin' => 'sonata.post.admin',
             'uniqid' => 'asdasd123',
             '_format' => 'json',
         ]);
 
-        $this->admin->setUniqid('asdasd123')->shouldBeCalled();
-        $this->admin->getObject(null)->willReturn(null);
-        $this->admin->id(null)->willReturn('');
-        $this->admin->toString(null)->willReturn('');
+        $this->adminFetcher->method('get')->willReturn($this->admin);
 
-        $response = ($this->action)($request);
+        $this->admin->method('getObject')->with(null)->willReturn(null);
+        $this->admin->method('id')->with(null)->willReturn('');
+        $this->admin->method('toString')->with(null)->willReturn('');
 
-        $this->assertInstanceOf(JsonResponse::class, $response);
-        $this->assertSame('{"result":{"id":"","label":""}}', $response->getContent());
+        $this->expectException(BadRequestParamHttpException::class);
+        ($this->action)($request);
     }
 
     public function testGetShortObjectDescriptionActionObjectAsJson(): void
     {
         $request = new Request([
-            'code' => 'sonata.post.admin',
+            '_sonata_admin' => 'sonata.post.admin',
             'objectId' => 42,
             'uniqid' => 'asdasd123',
             '_format' => 'json',
         ]);
         $object = new \stdClass();
 
-        $this->admin->setUniqid('asdasd123')->shouldBeCalled();
-        $this->admin->id($object)->willReturn(42);
-        $this->admin->getObject(42)->willReturn($object);
-        $this->admin->toString($object)->willReturn('bar');
+        $this->adminFetcher->method('get')->willReturn($this->admin);
+
+        $this->admin->method('id')->with($object)->willReturn('42');
+        $this->admin->method('getObject')->with(42)->willReturn($object);
+        $this->admin->method('toString')->with($object)->willReturn('bar');
 
         $response = ($this->action)($request);
 
-        $this->assertSame('{"result":{"id":"42","label":"bar"}}', $response->getContent());
+        static::assertSame('{"result":{"id":"42","label":"bar"}}', $response->getContent());
     }
 }

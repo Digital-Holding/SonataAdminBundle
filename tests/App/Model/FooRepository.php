@@ -13,7 +13,10 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\App\Model;
 
-final class FooRepository
+/**
+ * @phpstan-implements RepositoryInterface<Foo>
+ */
+final class FooRepository implements RepositoryInterface
 {
     /**
      * @var Foo[]

@@ -14,112 +14,74 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Tests\DependencyInjection;
 
 use Matthias\SymfonyDependencyInjectionTest\PhpUnit\AbstractExtensionTestCase;
-use Sonata\AdminBundle\Admin\AdminHelper;
-use Sonata\AdminBundle\Admin\BreadcrumbsBuilder;
 use Sonata\AdminBundle\Admin\BreadcrumbsBuilderInterface;
 use Sonata\AdminBundle\Admin\Pool;
 use Sonata\AdminBundle\Bridge\Exporter\AdminExporter;
+use Sonata\AdminBundle\DependencyInjection\Compiler\AddAuditReadersCompilerPass;
+use Sonata\AdminBundle\DependencyInjection\Compiler\ModelManagerCompilerPass;
 use Sonata\AdminBundle\DependencyInjection\Configuration;
 use Sonata\AdminBundle\DependencyInjection\SonataAdminExtension;
-use Sonata\AdminBundle\Event\AdminEventExtension;
-use Sonata\AdminBundle\Filter\FilterFactory;
 use Sonata\AdminBundle\Filter\FilterFactoryInterface;
 use Sonata\AdminBundle\Filter\Persister\FilterPersisterInterface;
-use Sonata\AdminBundle\Filter\Persister\SessionFilterPersister;
-use Sonata\AdminBundle\Model\AuditManager;
 use Sonata\AdminBundle\Model\AuditManagerInterface;
-use Sonata\AdminBundle\Route\AdminPoolLoader;
-use Sonata\AdminBundle\Search\SearchHandler;
-use Sonata\AdminBundle\Templating\MutableTemplateRegistryInterface;
-use Sonata\AdminBundle\Templating\TemplateRegistry;
-use Sonata\AdminBundle\Translator\BCLabelTranslatorStrategy;
-use Sonata\AdminBundle\Translator\Extractor\AdminExtractor;
-use Sonata\AdminBundle\Translator\FormLabelTranslatorStrategy;
+use Sonata\AdminBundle\Model\AuditReaderInterface;
+use Sonata\AdminBundle\Model\ModelManagerInterface;
 use Sonata\AdminBundle\Translator\LabelTranslatorStrategyInterface;
-use Sonata\AdminBundle\Translator\NativeLabelTranslatorStrategy;
-use Sonata\AdminBundle\Translator\NoopLabelTranslatorStrategy;
-use Sonata\AdminBundle\Translator\UnderscoreLabelTranslatorStrategy;
-use Sonata\AdminBundle\Twig\GlobalVariables;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Definition\Processor;
 
-class SonataAdminExtensionTest extends AbstractExtensionTestCase
+/**
+ * @phpstan-import-type SonataAdminConfiguration from \Sonata\AdminBundle\DependencyInjection\Configuration
+ */
+final class SonataAdminExtensionTest extends AbstractExtensionTestCase
 {
     /**
-     * @var array
+     * @var array<string, mixed>
+     * @phpstan-var SonataAdminConfiguration
      */
-    private $defaultConfiguration = [];
+    private $defaultConfiguration;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->container->setParameter('kernel.bundles', []);
 
-        $this->defaultConfiguration = (new Processor())->processConfiguration(new Configuration(), []);
+        /** @phpstan-var SonataAdminConfiguration $config */
+        $config = (new Processor())->processConfiguration(new Configuration(), []);
+        $this->defaultConfiguration = $config;
     }
 
     public function testHasCoreServicesAlias(): void
     {
         $this->load();
 
-        $this->assertContainerBuilderHasService(Pool::class);
-        $this->assertContainerBuilderHasService(AdminPoolLoader::class);
-        $this->assertContainerBuilderHasService(AdminHelper::class);
-        $this->assertContainerBuilderHasService(FilterFactory::class);
-        $this->assertContainerBuilderHasService(
-            FilterFactoryInterface::class,
-            FilterFactory::class
-        );
-        $this->assertContainerBuilderHasService(BreadcrumbsBuilder::class);
-        $this->assertContainerBuilderHasService(
-            BreadcrumbsBuilderInterface::class,
-            BreadcrumbsBuilder::class
-        );
-        $this->assertContainerBuilderHasService(BCLabelTranslatorStrategy::class);
-        $this->assertContainerBuilderHasService(NativeLabelTranslatorStrategy::class);
-        $this->assertContainerBuilderHasService(
-            LabelTranslatorStrategyInterface::class,
-            NativeLabelTranslatorStrategy::class
-        );
-        $this->assertContainerBuilderHasService(NoopLabelTranslatorStrategy::class);
-        $this->assertContainerBuilderHasService(UnderscoreLabelTranslatorStrategy::class);
-        $this->assertContainerBuilderHasService(FormLabelTranslatorStrategy::class);
-        $this->assertContainerBuilderHasService(AuditManager::class);
-        $this->assertContainerBuilderHasService(AuditManagerInterface::class, AuditManager::class);
-        $this->assertContainerBuilderHasService(SearchHandler::class);
-        $this->assertContainerBuilderHasService(AdminEventExtension::class);
-        $this->assertContainerBuilderHasService(GlobalVariables::class);
-        $this->assertContainerBuilderHasService(SessionFilterPersister::class);
-        $this->assertContainerBuilderHasService(
-            FilterPersisterInterface::class,
-            SessionFilterPersister::class
-        );
-        $this->assertContainerBuilderHasService(TemplateRegistry::class);
-        $this->assertContainerBuilderHasService(
-            MutableTemplateRegistryInterface::class,
-            TemplateRegistry::class
-        );
-        $this->assertContainerBuilderHasService(AdminExtractor::class);
+        self::assertContainerBuilderHasService(Pool::class);
+        self::assertContainerBuilderHasService(FilterFactoryInterface::class);
+        self::assertContainerBuilderHasService(BreadcrumbsBuilderInterface::class);
+        self::assertContainerBuilderHasService(LabelTranslatorStrategyInterface::class);
+        self::assertContainerBuilderHasService(AuditManagerInterface::class);
+        self::assertContainerBuilderHasService(FilterPersisterInterface::class);
     }
 
     public function testHasServiceDefinitionForLockExtension(): void
     {
         $this->container->setParameter('kernel.bundles', []);
         $this->load(['options' => ['lock_protection' => true]]);
-        $this->assertContainerBuilderHasService('sonata.admin.lock.extension');
+        self::assertContainerBuilderHasService('sonata.admin.lock.extension');
     }
 
     public function testNotHasServiceDefinitionForLockExtension(): void
     {
         $this->container->setParameter('kernel.bundles', []);
         $this->load(['options' => ['lock_protection' => false]]);
-        $this->assertContainerBuilderNotHasService('sonata.admin.lock.extension');
+        self::assertContainerBuilderNotHasService('sonata.admin.lock.extension');
     }
 
     public function testLoadsExporterServiceDefinitionWhenExporterBundleIsRegistered(): void
     {
         $this->container->setParameter('kernel.bundles', ['SonataExporterBundle' => 'whatever']);
         $this->load();
-        $this->assertContainerBuilderHasService(
+        self::assertContainerBuilderHasService(
             'sonata.admin.admin_exporter',
             AdminExporter::class
         );
@@ -130,8 +92,8 @@ class SonataAdminExtensionTest extends AbstractExtensionTestCase
         $this->container->setParameter('kernel.bundles', []);
         $this->load();
 
-        $this->assertContainerBuilderHasParameter('sonata.admin.configuration.security.role_admin');
-        $this->assertContainerBuilderHasParameter('sonata.admin.configuration.security.role_super_admin');
+        self::assertContainerBuilderHasParameter('sonata.admin.configuration.security.role_admin');
+        self::assertContainerBuilderHasParameter('sonata.admin.configuration.security.role_super_admin');
     }
 
     public function testHasDefaultServiceParameters(): void
@@ -139,9 +101,11 @@ class SonataAdminExtensionTest extends AbstractExtensionTestCase
         $this->container->setParameter('kernel.bundles', []);
         $this->load();
 
-        $this->assertContainerBuilderHasParameter('sonata.admin.configuration.default_group');
-        $this->assertContainerBuilderHasParameter('sonata.admin.configuration.default_label_catalogue');
-        $this->assertContainerBuilderHasParameter('sonata.admin.configuration.default_icon');
+        self::assertContainerBuilderHasParameter('sonata.admin.configuration.default_group');
+        self::assertContainerBuilderHasParameter('sonata.admin.configuration.default_label_catalogue');
+        self::assertContainerBuilderHasParameter('sonata.admin.configuration.default_translation_domain');
+        self::assertContainerBuilderHasParameter('sonata.admin.configuration.default_icon');
+        self::assertContainerBuilderHasParameter('sonata.admin.configuration.default_controller');
     }
 
     public function testExtraStylesheetsGetAdded(): void
@@ -155,10 +119,12 @@ class SonataAdminExtensionTest extends AbstractExtensionTestCase
             ],
         ]);
 
-        $stylesheets = $this->container->getDefinition('sonata.admin.pool')->getArgument(3)['stylesheets'];
+        $options = $this->container->getDefinition('sonata.admin.configuration')->getArgument(2);
+        static::assertIsArray($options);
 
-        $this->assertSame(
-            array_merge($this->defaultConfiguration['assets']['stylesheets'], $extraStylesheets),
+        $stylesheets = $options['stylesheets'];
+        static::assertSame(
+            array_merge($this->getDefaultStylesheets(), $extraStylesheets),
             $stylesheets
         );
     }
@@ -167,17 +133,20 @@ class SonataAdminExtensionTest extends AbstractExtensionTestCase
     {
         $this->container->setParameter('kernel.bundles', []);
         $removeStylesheets = [
-            'bundles/sonataadmin/vendor/admin-lte/dist/css/skins/skin-black.min.css',
-            'bundles/sonataadmin/vendor/jqueryui/themes/base/jquery-ui.css',
+            'bundles/sonataadmin/app.css',
+            'bundles/sonataadmin/admin-lte-skins/skin-black.min.css',
         ];
         $this->load([
             'assets' => [
                 'remove_stylesheets' => $removeStylesheets,
             ],
         ]);
-        $stylesheets = $this->container->getDefinition('sonata.admin.pool')->getArgument(3)['stylesheets'];
 
-        $this->assertSame(
+        $options = $this->container->getDefinition('sonata.admin.configuration')->getArgument(2);
+        static::assertIsArray($options);
+
+        $stylesheets = $options['stylesheets'];
+        static::assertSame(
             array_values(
                 array_diff($this->defaultConfiguration['assets']['stylesheets'], $removeStylesheets)
             ),
@@ -194,9 +163,12 @@ class SonataAdminExtensionTest extends AbstractExtensionTestCase
                 'extra_javascripts' => $extraJavascripts,
             ],
         ]);
-        $javascripts = $this->container->getDefinition('sonata.admin.pool')->getArgument(3)['javascripts'];
 
-        $this->assertSame(
+        $options = $this->container->getDefinition('sonata.admin.configuration')->getArgument(2);
+        static::assertIsArray($options);
+
+        $javascripts = $options['javascripts'];
+        static::assertSame(
             array_merge($this->defaultConfiguration['assets']['javascripts'], $extraJavascripts),
             $javascripts
         );
@@ -206,17 +178,19 @@ class SonataAdminExtensionTest extends AbstractExtensionTestCase
     {
         $this->container->setParameter('kernel.bundles', []);
         $removeJavascripts = [
-            'bundles/sonataadmin/vendor/readmore-js/readmore.min.js',
-            'bundles/sonataadmin/jquery/jquery.confirmExit.js',
+            'bundles/sonataadmin/app.js',
         ];
         $this->load([
             'assets' => [
                 'remove_javascripts' => $removeJavascripts,
             ],
         ]);
-        $javascripts = $this->container->getDefinition('sonata.admin.pool')->getArgument(3)['javascripts'];
 
-        $this->assertSame(
+        $options = $this->container->getDefinition('sonata.admin.configuration')->getArgument(2);
+        static::assertIsArray($options);
+
+        $javascripts = $options['javascripts'];
+        static::assertSame(
             array_values(
                 array_diff($this->defaultConfiguration['assets']['javascripts'], $removeJavascripts)
             ),
@@ -230,12 +204,11 @@ class SonataAdminExtensionTest extends AbstractExtensionTestCase
         $extraStylesheets = ['foo/bar.css', 'bar/quux.css'];
         $extraJavascripts = ['foo/bar.js', 'bar/quux.js'];
         $removeStylesheets = [
-            'bundles/sonataadmin/vendor/admin-lte/dist/css/skins/skin-black.min.css',
-            'bundles/sonataadmin/vendor/jqueryui/themes/base/jquery-ui.css',
+            'bundles/sonataadmin/app.css',
+            'bundles/sonataadmin/admin-lte-skins/skin-black.min.css',
         ];
         $removeJavascripts = [
-            'bundles/sonataadmin/vendor/readmore-js/readmore.min.js',
-            'bundles/sonataadmin/jquery/jquery.confirmExit.js',
+            'bundles/sonataadmin/app.js',
         ];
         $this->load([
             'assets' => [
@@ -245,11 +218,12 @@ class SonataAdminExtensionTest extends AbstractExtensionTestCase
                 'remove_javascripts' => $removeJavascripts,
             ],
         ]);
-        $stylesheets = $this->container
-            ->getDefinition('sonata.admin.pool')->getArgument(3)['stylesheets']
-        ;
 
-        $this->assertSame(
+        $options = $this->container->getDefinition('sonata.admin.configuration')->getArgument(2);
+        static::assertIsArray($options);
+
+        $stylesheets = $options['stylesheets'];
+        static::assertSame(
             array_merge(
                 array_diff($this->defaultConfiguration['assets']['stylesheets'], $removeStylesheets),
                 $extraStylesheets
@@ -257,9 +231,8 @@ class SonataAdminExtensionTest extends AbstractExtensionTestCase
             $stylesheets
         );
 
-        $javascripts = $this->container->getDefinition('sonata.admin.pool')->getArgument(3)['javascripts'];
-
-        $this->assertSame(
+        $javascripts = $options['javascripts'];
+        static::assertSame(
             array_merge(
                 array_diff($this->defaultConfiguration['assets']['javascripts'], $removeJavascripts),
                 $extraJavascripts
@@ -272,7 +245,7 @@ class SonataAdminExtensionTest extends AbstractExtensionTestCase
     {
         $this->load();
 
-        $this->assertSame([
+        static::assertSame([
             'user_block' => '@SonataAdmin/Core/user_block.html.twig',
             'add_block' => '@SonataAdmin/Core/add_block.html.twig',
             'layout' => '@SonataAdmin/standard_layout.html.twig',
@@ -312,20 +285,129 @@ class SonataAdminExtensionTest extends AbstractExtensionTestCase
             'button_history' => '@SonataAdmin/Button/history_button.html.twig',
             'button_list' => '@SonataAdmin/Button/list_button.html.twig',
             'button_show' => '@SonataAdmin/Button/show_button.html.twig',
+            'form_theme' => [],
+            'filter_theme' => [],
         ], $this->container->getParameter('sonata.admin.configuration.templates'));
     }
 
     public function testLoadIntlTemplate(): void
     {
-        $bundlesWithSonataIntlBundle = array_merge($this->container->getParameter('kernel.bundles'), ['SonataIntlBundle' => true]);
-        $this->container->setParameter('kernel.bundles', $bundlesWithSonataIntlBundle);
+        $bundles = $this->container->getParameter('kernel.bundles');
+        static::assertIsArray($bundles);
+
+        $this->container->setParameter('kernel.bundles', array_merge($bundles, ['SonataIntlBundle' => true]));
         $this->load();
+
         $templates = $this->container->getParameter('sonata.admin.configuration.templates');
-        $this->assertSame('@SonataIntl/CRUD/history_revision_timestamp.html.twig', $templates['history_revision_timestamp']);
+        static::assertIsArray($templates);
+        static::assertSame('@SonataIntl/CRUD/history_revision_timestamp.html.twig', $templates['history_revision_timestamp']);
+    }
+
+    public function testDefaultSkin(): void
+    {
+        $this->container->setParameter('kernel.bundles', []);
+        $this->load();
+
+        $options = $this->container->getDefinition('sonata.admin.configuration')->getArgument(2);
+        static::assertIsArray($options);
+
+        $stylesheets = $options['stylesheets'];
+        static::assertSame($this->getDefaultStylesheets(), $stylesheets);
+
+        $skin = $options['skin'];
+        static::assertSame('skin-black', $skin);
+    }
+
+    public function testSetSkin(): void
+    {
+        $this->container->setParameter('kernel.bundles', []);
+        $this->load([
+            'options' => [
+                'skin' => 'skin-blue',
+            ],
+        ]);
+
+        $options = $this->container->getDefinition('sonata.admin.configuration')->getArgument(2);
+        static::assertIsArray($options);
+
+        $stylesheets = $options['stylesheets'];
+        static::assertSame($this->getDefaultStylesheets('skin-blue'), $stylesheets);
+
+        $skin = $options['skin'];
+        static::assertSame('skin-blue', $skin);
+    }
+
+    public function testSetDefaultSkin(): void
+    {
+        $this->container->setParameter('kernel.bundles', []);
+        $this->load([
+            'options' => [
+                'skin' => 'skin-black',
+            ],
+        ]);
+
+        $options = $this->container->getDefinition('sonata.admin.configuration')->getArgument(2);
+        static::assertIsArray($options);
+
+        $stylesheets = $options['stylesheets'];
+        static::assertSame($this->getDefaultStylesheets(), $stylesheets);
+
+        $skin = $options['skin'];
+        static::assertSame('skin-black', $skin);
+    }
+
+    public function testSetInvalidSkin(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('The value "skin-invalid" is not allowed for path "sonata_admin.options.skin". Permissible values: "skin-black", "skin-black-light", "skin-blue", "skin-blue-light", "skin-green", "skin-green-light", "skin-purple", "skin-purple-light", "skin-red", "skin-red-light", "skin-yellow", "skin-yellow-light"');
+        $this->container->setParameter('kernel.bundles', []);
+        $this->load([
+            'options' => [
+                'skin' => 'skin-invalid',
+            ],
+        ]);
+    }
+
+    public function testAutoregisterAddingTagsToServices(): void
+    {
+        $this->load();
+
+        $autoconfiguredInstancesOf = $this->container->getAutoconfiguredInstanceof();
+
+        static::assertArrayHasKey(ModelManagerInterface::class, $autoconfiguredInstancesOf);
+        static::assertTrue($autoconfiguredInstancesOf[ModelManagerInterface::class]->hasTag(ModelManagerCompilerPass::MANAGER_TAG));
+
+        static::assertArrayHasKey(AuditReaderInterface::class, $autoconfiguredInstancesOf);
+        static::assertTrue($autoconfiguredInstancesOf[AuditReaderInterface::class]->hasTag(AddAuditReadersCompilerPass::AUDIT_READER_TAG));
     }
 
     protected function getContainerExtensions(): array
     {
         return [new SonataAdminExtension()];
+    }
+
+    /**
+     * @return string[]
+     */
+    private function getDefaultStylesheets(?string $skin = 'skin-black'): array
+    {
+        $this->load([
+            'options' => [
+                'skin' => $skin,
+            ],
+        ]);
+
+        $options = $this->container->getDefinition('sonata.admin.configuration')->getArgument(2);
+        static::assertIsArray($options);
+
+        $skin = $options['skin'];
+
+        $defaultStylesheets = $this->defaultConfiguration['assets']['stylesheets'];
+        $defaultStylesheets[] = sprintf(
+            'bundles/sonataadmin/admin-lte-skins/%s.min.css',
+            $skin
+        );
+
+        return $defaultStylesheets;
     }
 }

@@ -16,7 +16,6 @@ namespace Sonata\AdminBundle\Route;
 use Sonata\AdminBundle\Admin\Pool;
 use Symfony\Component\Config\Loader\Loader;
 use Symfony\Component\Config\Resource\FileResource;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Routing\RouteCollection as SymfonyRouteCollection;
 
 /**
@@ -31,47 +30,50 @@ final class AdminPoolLoader extends Loader
      */
     private $pool;
 
-    /**
-     * @var array
-     */
-    private $adminServiceIds = [];
-
-    /**
-     * @var ContainerInterface
-     */
-    private $container;
-
-    public function __construct(Pool $pool, array $adminServiceIds, ContainerInterface $container)
+    public function __construct(Pool $pool)
     {
+        // Remove this check when dropping support for support of symfony/symfony-config < 5.3.
+        // @phpstan-ignore-next-line
+        if (method_exists(parent::class, '__construct')) {
+            parent::__construct();
+        }
+
         $this->pool = $pool;
-        $this->adminServiceIds = $adminServiceIds;
-        $this->container = $container;
     }
 
-    public function supports($resource, $type = null)
+    /**
+     * NEXT_MAJOR: Add the ?string param typehint when Symfony 4 support is dropped.
+     *
+     * @param mixed       $resource
+     * @param string|null $type
+     */
+    public function supports($resource, $type = null): bool
     {
         return self::ROUTE_TYPE_NAME === $type;
     }
 
-    public function load($resource, $type = null)
+    /**
+     * NEXT_MAJOR: Add the ?string param typehint when Symfony 4 support is dropped.
+     *
+     * @param mixed       $resource
+     * @param string|null $type
+     */
+    public function load($resource, $type = null): SymfonyRouteCollection
     {
         $collection = new SymfonyRouteCollection();
-        foreach ($this->adminServiceIds as $id) {
+        foreach ($this->pool->getAdminServiceIds() as $id) {
             $admin = $this->pool->getInstance($id);
 
-            foreach ($admin->getRoutes()->getElements() as $code => $route) {
-                $collection->add($route->getDefault('_sonata_name'), $route);
+            foreach ($admin->getRoutes()->getElements() as $route) {
+                $name = $route->getDefault('_sonata_name');
+                \assert(\is_string($name));
+                $collection->add($name, $route);
             }
 
             $reflection = new \ReflectionObject($admin);
-            if (file_exists($reflection->getFileName())) {
+            if (false !== $reflection->getFileName() && file_exists($reflection->getFileName())) {
                 $collection->addResource(new FileResource($reflection->getFileName()));
             }
-        }
-
-        $reflection = new \ReflectionObject($this->container);
-        if (file_exists($reflection->getFileName())) {
-            $collection->addResource(new FileResource($reflection->getFileName()));
         }
 
         return $collection;

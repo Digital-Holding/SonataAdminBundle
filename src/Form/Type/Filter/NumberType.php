@@ -16,7 +16,6 @@ namespace Sonata\AdminBundle\Form\Type\Filter;
 use Sonata\AdminBundle\Form\Type\Operator\NumberOperatorType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\NumberType as FormNumberType;
-use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
@@ -24,22 +23,20 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
  */
 final class NumberType extends AbstractType
 {
-    public function getBlockPrefix()
+    public function getBlockPrefix(): string
     {
         return 'sonata_type_filter_number';
     }
 
-    public function buildForm(FormBuilderInterface $builder, array $options): void
+    public function getParent(): string
     {
-        $builder
-            ->add('type', NumberOperatorType::class, ['required' => false])
-            ->add('value', $options['field_type'], array_merge(['required' => false], $options['field_options']))
-        ;
+        return FilterDataType::class;
     }
 
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
+            'operator_type' => NumberOperatorType::class,
             'field_type' => FormNumberType::class,
             'field_options' => [],
         ]);

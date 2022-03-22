@@ -14,73 +14,104 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Datagrid;
 
 use Sonata\AdminBundle\Admin\AdminInterface;
-use Sonata\AdminBundle\Admin\FieldDescriptionCollection;
-use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
 use Sonata\AdminBundle\Builder\ListBuilderInterface;
-use Sonata\AdminBundle\Mapper\BaseMapper;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionCollection;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface;
+use Sonata\AdminBundle\Mapper\MapperInterface;
 
 /**
  * This class is used to simulate the Form API.
  *
- * @final since sonata-project/admin-bundle 3.52
- *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ *
+ * @phpstan-import-type FieldDescriptionOptions from \Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface
+ *
+ * @phpstan-template T of object
+ * @phpstan-implements MapperInterface<T>
  */
-class ListMapper extends BaseMapper
+final class ListMapper implements MapperInterface
 {
+    public const NAME_ACTIONS = '_actions';
+    public const NAME_BATCH = '_batch';
+    public const NAME_SELECT = '_select';
+
     public const TYPE_ACTIONS = 'actions';
     public const TYPE_BATCH = 'batch';
     public const TYPE_SELECT = 'select';
 
     /**
-     * @var FieldDescriptionCollection
-     */
-    protected $list;
-
-    /**
      * @var ListBuilderInterface
      */
-    protected $builder;
+    private $builder;
 
+    /**
+     * @var FieldDescriptionCollection<FieldDescriptionInterface>
+     */
+    private $list;
+
+    /**
+     * @var AdminInterface<object>
+     * @phpstan-var AdminInterface<T>
+     */
+    private $admin;
+
+    /**
+     * @param FieldDescriptionCollection<FieldDescriptionInterface> $list
+     *
+     * @phpstan-param AdminInterface<T> $admin
+     */
     public function __construct(
         ListBuilderInterface $listBuilder,
         FieldDescriptionCollection $list,
         AdminInterface $admin
     ) {
-        parent::__construct($listBuilder, $admin);
+        $this->admin = $admin;
+        $this->builder = $listBuilder;
         $this->list = $list;
     }
 
+    public function getAdmin(): AdminInterface
+    {
+        return $this->admin;
+    }
+
     /**
-     * @param FieldDescriptionInterface|string $name
+     * @param array<string, mixed> $fieldDescriptionOptions
+     *
+     * @return static
+     *
+     * @phpstan-param FieldDescriptionOptions $fieldDescriptionOptions
      */
-    public function addIdentifier($name, ?string $type = null, array $fieldDescriptionOptions = []): self
+    public function addIdentifier(string $name, ?string $type = null, array $fieldDescriptionOptions = []): self
     {
         $fieldDescriptionOptions['identifier'] = true;
-
-        if (!isset($fieldDescriptionOptions['route']['name'])) {
-            $routeName = ($this->admin->hasAccess('edit') && $this->admin->hasRoute('edit')) ? 'edit' : 'show';
-            $fieldDescriptionOptions['route']['name'] = $routeName;
-        }
-
-        if (!isset($fieldDescriptionOptions['route']['parameters'])) {
-            $fieldDescriptionOptions['route']['parameters'] = [];
-        }
 
         return $this->add($name, $type, $fieldDescriptionOptions);
     }
 
     /**
-     * @param FieldDescriptionInterface|string $name
+     * @param array<string, mixed> $fieldDescriptionOptions
      *
      * @throws \LogicException
+     *
+     * @return static
+     *
+     * @phpstan-param FieldDescriptionOptions $fieldDescriptionOptions
      */
-    public function add($name, ?string $type = null, array $fieldDescriptionOptions = []): self
+    public function add(string $name, ?string $type = null, array $fieldDescriptionOptions = []): self
     {
+        if (
+            isset($fieldDescriptionOptions['role'])
+            && \is_string($fieldDescriptionOptions['role'])
+            && !$this->getAdmin()->isGranted($fieldDescriptionOptions['role'])
+        ) {
+            return $this;
+        }
+
         // Default sort on "associated_property"
         if (isset($fieldDescriptionOptions['associated_property'])) {
             if (!isset($fieldDescriptionOptions['sortable'])) {
-                $fieldDescriptionOptions['sortable'] = true;
+                $fieldDescriptionOptions['sortable'] = !\is_callable($fieldDescriptionOptions['associated_property']);
             }
             if (!isset($fieldDescriptionOptions['sort_parent_association_mappings'])) {
                 $fieldDescriptionOptions['sort_parent_association_mappings'] = [[
@@ -95,7 +126,7 @@ class ListMapper extends BaseMapper
         }
 
         // Type-guess the action field here because it is not a model property.
-        if ('_action' === $name && null === $type) {
+        if (self::NAME_ACTIONS === $name && null === $type) {
             $type = self::TYPE_ACTIONS;
         }
 
@@ -103,52 +134,38 @@ class ListMapper extends BaseMapper
             throw new \InvalidArgumentException(sprintf('Value for "identifier" option must be boolean, %s given.', \gettype($fieldDescriptionOptions['identifier'])));
         }
 
-        if ($name instanceof FieldDescriptionInterface) {
-            $fieldDescription = $name;
-            $fieldDescription->mergeOptions($fieldDescriptionOptions);
-        } elseif (\is_string($name)) {
-            if ($this->admin->hasListFieldDescription($name)) {
-                throw new \LogicException(sprintf(
-                    'Duplicate field name "%s" in list mapper. Names should be unique.',
-                    $name
-                ));
-            }
-
-            $fieldDescription = $this->admin->getModelManager()->getNewFieldDescriptionInstance(
-                $this->admin->getClass(),
-                $name,
-                $fieldDescriptionOptions
-            );
-        } else {
-            throw new \TypeError(
-                'Unknown field name in list mapper.'
-                .' Field name should be either of FieldDescriptionInterface interface or string.'
-            );
+        if ($this->getAdmin()->hasListFieldDescription($name)) {
+            throw new \LogicException(sprintf(
+                'Duplicate field name "%s" in list mapper. Names should be unique.',
+                $name
+            ));
         }
+
+        $fieldDescription = $this->getAdmin()->createFieldDescription(
+            $name,
+            $fieldDescriptionOptions
+        );
 
         if (null === $fieldDescription->getLabel()) {
             $fieldDescription->setOption(
                 'label',
-                $this->admin->getLabelTranslatorStrategy()->getLabel($fieldDescription->getName(), 'list', 'label')
+                $this->getAdmin()->getLabelTranslatorStrategy()->getLabel($fieldDescription->getName(), 'list', 'label')
             );
         }
 
-        if (!isset($fieldDescriptionOptions['role']) || $this->admin->isGranted($fieldDescriptionOptions['role'])) {
-            // add the field with the FormBuilder
-            $this->builder->addField($this->list, $type, $fieldDescription, $this->admin);
+        $this->builder->addField($this->list, $type, $fieldDescription);
 
-            // Ensure batch and action pseudo-fields are tagged as virtual
-            if (\in_array($fieldDescription->getType(), [self::TYPE_ACTIONS, self::TYPE_BATCH, self::TYPE_SELECT], true)) {
-                $fieldDescription->setOption('virtual_field', true);
-            }
+        // Ensure batch and action pseudo-fields are tagged as virtual
+        if (\in_array($fieldDescription->getType(), [self::TYPE_ACTIONS, self::TYPE_BATCH, self::TYPE_SELECT], true)) {
+            $fieldDescription->setOption('virtual_field', true);
         }
 
         return $this;
     }
 
-    public function get(string $name): FieldDescriptionInterface
+    public function get(string $key): FieldDescriptionInterface
     {
-        return $this->list->get($name);
+        return $this->list->get($key);
     }
 
     public function has(string $key): bool
@@ -156,19 +173,25 @@ class ListMapper extends BaseMapper
         return $this->list->has($key);
     }
 
+    /**
+     * @return static
+     */
     public function remove(string $key): self
     {
-        $this->admin->removeListFieldDescription($key);
+        $this->getAdmin()->removeListFieldDescription($key);
         $this->list->remove($key);
 
         return $this;
     }
 
-    final public function keys(): array
+    public function keys(): array
     {
         return array_keys($this->list->getElements());
     }
 
+    /**
+     * @return static
+     */
     public function reorder(array $keys): self
     {
         $this->list->reorder($keys);

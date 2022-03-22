@@ -16,7 +16,7 @@ namespace Sonata\AdminBundle\Tests\App;
 use Knp\Bundle\MenuBundle\KnpMenuBundle;
 use Sonata\AdminBundle\SonataAdminBundle;
 use Sonata\BlockBundle\SonataBlockBundle;
-use Sonata\Doctrine\Bridge\Symfony\Bundle\SonataDoctrineBundle;
+use Sonata\Doctrine\Bridge\Symfony\SonataDoctrineBundle;
 use Sonata\Form\Bridge\Symfony\SonataFormBundle;
 use Sonata\Twig\Bridge\Symfony\SonataTwigBundle;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
@@ -25,8 +25,10 @@ use Symfony\Bundle\SecurityBundle\SecurityBundle;
 use Symfony\Bundle\TwigBundle\TwigBundle;
 use Symfony\Component\Config\Loader\LoaderInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\HttpFoundation\Session\Storage\NativeSessionStorageFactory;
 use Symfony\Component\HttpKernel\Kernel;
-use Symfony\Component\Routing\RouteCollectionBuilder;
+use Symfony\Component\Routing\Loader\Configurator\RoutingConfigurator;
+use Symfony\Component\Security\Http\Authentication\AuthenticatorManager;
 
 final class AppKernel extends Kernel
 {
@@ -37,9 +39,9 @@ final class AppKernel extends Kernel
         parent::__construct('test', false);
     }
 
-    public function registerBundles()
+    public function registerBundles(): iterable
     {
-        $bundles = [
+        return [
             new FrameworkBundle(),
             new TwigBundle(),
             new SecurityBundle(),
@@ -50,8 +52,6 @@ final class AppKernel extends Kernel
             new SonataTwigBundle(),
             new SonataFormBundle(),
         ];
-
-        return $bundles;
     }
 
     public function getCacheDir(): string
@@ -64,36 +64,60 @@ final class AppKernel extends Kernel
         return sprintf('%slog', $this->getBaseDir());
     }
 
-    public function getProjectDir()
+    public function getProjectDir(): string
     {
         return __DIR__;
     }
 
-    protected function configureRoutes(RouteCollectionBuilder $routes): void
+    /**
+     * TODO: add typehint when support for Symfony < 5.1 is dropped.
+     *
+     * @param RoutingConfigurator $routes
+     */
+    protected function configureRoutes($routes): void
     {
         $routes->import(sprintf('%s/config/routes.yml', $this->getProjectDir()));
     }
 
     protected function configureContainer(ContainerBuilder $containerBuilder, LoaderInterface $loader): void
     {
-        $containerBuilder->loadFromExtension('framework', [
+        $frameworkConfig = [
             'secret' => 'MySecret',
             'fragments' => ['enabled' => true],
             'form' => ['enabled' => true],
-            'session' => ['handler_id' => 'session.handler.native_file', 'storage_id' => 'session.storage.mock_file', 'name' => 'MOCKSESSID'],
             'assets' => null,
             'test' => true,
+            'router' => ['utf8' => true],
             'translator' => [
                 'default_path' => '%kernel.project_dir%/translations',
             ],
-        ]);
+        ];
 
-        $containerBuilder->loadFromExtension('security', [
-            'firewalls' => ['main' => ['anonymous' => true]],
+        // TODO: Remove else case when dropping support of Symfony < 5.3
+        if (class_exists(NativeSessionStorageFactory::class)) {
+            $frameworkConfig['session'] = ['storage_factory_id' => 'session.storage.factory.mock_file'];
+        } else {
+            $frameworkConfig['session'] = ['storage_id' => 'session.storage.mock_file'];
+        }
+
+        $containerBuilder->loadFromExtension('framework', $frameworkConfig);
+
+        $securityConfig = [
+            'firewalls' => ['main' => []],
             'providers' => ['in_memory' => ['memory' => null]],
-        ]);
+        ];
+
+        // TODO: Remove else case when dropping support of Symfony < 5.3
+        if (class_exists(AuthenticatorManager::class)) {
+            $securityConfig['enable_authenticator_manager'] = true;
+        } else {
+            $securityConfig['firewalls']['main']['anonymous'] = true;
+        }
+
+        $containerBuilder->loadFromExtension('security', $securityConfig);
 
         $containerBuilder->loadFromExtension('twig', [
+            'default_path' => sprintf('%s/templates', $this->getProjectDir()),
             'strict_variables' => '%kernel.debug%',
             'exception_controller' => null,
             'form_themes' => ['@SonataAdmin/Form/form_admin_fields.html.twig'],

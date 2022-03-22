@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Filter;
 
 use Sonata\AdminBundle\Datagrid\ProxyQueryInterface;
+use Sonata\AdminBundle\Filter\Model\FilterData;
 
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
@@ -24,147 +25,119 @@ interface FilterInterface
 
     public const CONDITION_AND = 'AND';
 
-    /**
-     * Apply the filter to the QueryBuilder instance.
-     *
-     * @param string  $alias
-     * @param string  $field
-     * @param mixed[] $value
-     */
-    public function filter(ProxyQueryInterface $queryBuilder, $alias, $field, $value);
+    public function apply(ProxyQueryInterface $query, FilterData $filterData): void;
 
     /**
-     * @param mixed $query
-     * @param mixed $value
+     * @throws \LogicException if the filter is not initialized
      */
-    public function apply($query, $value);
+    public function getName(): string;
 
     /**
-     * Returns the filter name.
-     *
-     * @return string
+     * @throws \LogicException if the filter is not initialized
      */
-    public function getName();
+    public function getFormName(): string;
 
     /**
-     * Returns the filter form name.
+     * Returns the label to use for the current field.
+     * Use null to fallback to the default label and false to hide the label.
      *
-     * @return string
-     */
-    public function getFormName();
-
-    /**
-     * Returns the label name.
-     *
-     * @return string|bool
+     * @return string|false|null
      */
     public function getLabel();
 
     /**
-     * @param string $label
+     * @param string|false|null $label
      */
-    public function setLabel($label);
-
-    /**
-     * @return array
-     */
-    public function getDefaultOptions();
-
-    /**
-     * @param string     $name
-     * @param mixed|null $default
-     *
-     * @return mixed
-     */
-    public function getOption($name, $default = null);
-
-    /**
-     * @param string $name
-     * @param mixed  $value
-     */
-    public function setOption($name, $value);
-
-    /**
-     * @param string $name
-     */
-    public function initialize($name, array $options = []);
-
-    /**
-     * @return string
-     */
-    public function getFieldName();
-
-    /**
-     * @return array<string, string> array of mappings
-     */
-    public function getParentAssociationMappings();
-
-    /**
-     * @return array<string, string> field mapping
-     */
-    public function getFieldMapping();
-
-    /**
-     * @return array<string, string>  association mapping
-     */
-    public function getAssociationMapping();
+    public function setLabel($label): void;
 
     /**
      * @return array<string, mixed>
      */
-    public function getFieldOptions();
+    public function getDefaultOptions(): array;
 
     /**
-     * Get field option.
-     *
-     * @param string     $name
-     * @param mixed|null $default
+     * @return array<string, mixed>
+     */
+    public function getOptions(): array;
+
+    /**
+     * @param mixed $default
      *
      * @return mixed
      */
-    public function getFieldOption($name, $default = null);
+    public function getOption(string $name, $default = null);
 
     /**
-     * Set field option.
+     * @param mixed $value
+     */
+    public function setOption(string $name, $value): void;
+
+    /**
+     * @param array<string, mixed> $options
+     */
+    public function initialize(string $name, array $options = []): void;
+
+    /**
+     * @throws \RuntimeException if the `field_name` option is not set
+     */
+    public function getFieldName(): string;
+
+    /**
+     * @return array<array<string, mixed>> array of mappings
+     */
+    public function getParentAssociationMappings(): array;
+
+    /**
+     * @throws \RuntimeException if the `field_mapping` option is not set
      *
-     * @param string $name
-     * @param mixed  $value
+     * @return array<string, mixed> field mapping
      */
-    public function setFieldOption($name, $value);
+    public function getFieldMapping(): array;
 
     /**
-     * @return string
+     * @throws \RuntimeException if the `association_mapping` option is not set
+     *
+     * @return array<string, mixed> association mapping
      */
-    public function getFieldType();
+    public function getAssociationMapping(): array;
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getFieldOptions(): array;
+
+    /**
+     * @param mixed $default
+     *
+     * @return mixed
+     */
+    public function getFieldOption(string $name, $default = null);
+
+    /**
+     * @param mixed $value
+     */
+    public function setFieldOption(string $name, $value): void;
+
+    public function getFieldType(): string;
 
     /**
      * Returns the main widget used to render the filter.
      *
-     * @return array{0: string, 1: array<string, mixed>}
+     * @return array{string, array<string, mixed>}
      */
-    public function getRenderSettings();
+    public function getRenderSettings(): array;
 
     /**
      * Returns true if filter is active.
-     *
-     * @return bool
      */
-    public function isActive();
+    public function isActive(): bool;
 
     /**
      * Set the condition to use with the left side of the query : OR or AND.
-     *
-     * @param string $condition
      */
-    public function setCondition($condition);
+    public function setCondition(string $condition): void;
 
-    /**
-     * @return string
-     */
-    public function getCondition();
+    public function getCondition(): ?string;
 
-    /**
-     * @return string
-     */
-    public function getTranslationDomain();
+    public function getTranslationDomain(): ?string;
 }

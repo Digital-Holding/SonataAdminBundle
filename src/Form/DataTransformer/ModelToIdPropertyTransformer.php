@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Form\DataTransformer;
 
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\Common\Util\ClassUtils;
 use Sonata\AdminBundle\Model\ModelManagerInterface;
 use Symfony\Component\Form\DataTransformerInterface;
@@ -21,21 +23,29 @@ use Symfony\Component\Form\DataTransformerInterface;
  * Transform object to ID and property label.
  *
  * @author Andrej Hudec <pulzarraider@gmail.com>
+ *
+ * @phpstan-template T of object
+ * @phpstan-template P
+ * @phpstan-implements DataTransformerInterface<T|array<T>|\Traversable<T>, int|string|array<int|string|array<string>>>
  */
 final class ModelToIdPropertyTransformer implements DataTransformerInterface
 {
     /**
      * @var ModelManagerInterface
+     * @phpstan-var ModelManagerInterface<T>
      */
     private $modelManager;
 
     /**
      * @var string
+     *
+     * @phpstan-var class-string<T>
      */
     private $className;
 
     /**
-     * @var string
+     * @var string|string[]
+     * @phpstan-var P
      */
     private $property;
 
@@ -46,21 +56,24 @@ final class ModelToIdPropertyTransformer implements DataTransformerInterface
 
     /**
      * @var callable|null
+     * @phpstan-var null|callable(T, P): string
      */
     private $toStringCallback;
 
     /**
-     * @param string        $className
-     * @param string        $property
-     * @param bool          $multiple
-     * @param callable|null $toStringCallback
+     * @param string|string[] $property
+     *
+     * @phpstan-param ModelManagerInterface<T> $modelManager
+     * @phpstan-param class-string<T> $className
+     * @phpstan-param P $property
+     * @phpstan-param null|callable(T, P): string $toStringCallback
      */
     public function __construct(
         ModelManagerInterface $modelManager,
-        $className,
+        string $className,
         $property,
-        $multiple = false,
-        $toStringCallback = null
+        bool $multiple = false,
+        ?callable $toStringCallback = null
     ) {
         $this->modelManager = $modelManager;
         $this->className = $className;
@@ -69,19 +82,32 @@ final class ModelToIdPropertyTransformer implements DataTransformerInterface
         $this->toStringCallback = $toStringCallback;
     }
 
+    /**
+     * @param int|string|array<int|string|array<string>>|null $value
+     *
+     * @throws \UnexpectedValueException
+     *
+     * @return Collection<int|string, object>|object|null
+     *
+     * @psalm-param int|string|(array{_labels?: array<string>}&array<int|string>)|null $value
+     * @phpstan-param int|string|array<int|string|array<string>>|null $value
+     * @phpstan-return Collection<array-key, T>|T|null
+     */
     public function reverseTransform($value)
     {
-        $collection = $this->modelManager->getModelCollectionInstance($this->className);
-
-        if (empty($value)) {
+        if (null === $value || [] === $value || '' === $value) {
             if ($this->multiple) {
-                return $collection;
+                return new ArrayCollection();
             }
 
             return null;
         }
 
         if (!$this->multiple) {
+            if (\is_array($value)) {
+                throw new \UnexpectedValueException('Value should not be an array.');
+            }
+
             return $this->modelManager->find($this->className, $value);
         }
 
@@ -89,36 +115,42 @@ final class ModelToIdPropertyTransformer implements DataTransformerInterface
             throw new \UnexpectedValueException(sprintf('Value should be array, %s given.', \gettype($value)));
         }
 
-        foreach ($value as $key => $id) {
-            if ('_labels' === $key) {
-                continue;
-            }
+        unset($value['_labels']);
 
-            $collection[] = $this->modelManager->find($this->className, $id);
-        }
-
-        return $collection;
+        return (new ModelsToArrayTransformer($this->modelManager, $this->className))->reverseTransform($value);
     }
 
-    public function transform($entityOrCollection)
+    /**
+     * @param object|array<object>|\Traversable<object>|null $value
+     *
+     * @throws \InvalidArgumentException
+     *
+     * @return array<string|int, int|string|array<string>>
+     *
+     * @phpstan-param T|array<T>|\Traversable<T>|null $value
+     * @psalm-return array{_labels?: array<string>}&array<int|string>
+     * @phpstan-return array<int|string|array<string>>
+     *
+     * @psalm-suppress PossiblyInvalidArrayAssignment @see https://github.com/vimeo/psalm/issues/5891
+     */
+    public function transform($value): array
     {
         $result = [];
 
-        if (!$entityOrCollection) {
+        if (null === $value) {
             return $result;
         }
 
         if ($this->multiple) {
-            $isArray = \is_array($entityOrCollection);
-            if (!$isArray && substr(\get_class($entityOrCollection), -1 * \strlen($this->className)) === $this->className) {
+            if (!\is_array($value) && substr(\get_class($value), -1 * \strlen($this->className)) === $this->className) {
                 throw new \InvalidArgumentException(
                     'A multiple selection must be passed a collection not a single value.'
                     .' Make sure that form option "multiple=false" is set for many-to-one relation and "multiple=true"'
                     .' is set for many-to-many or one-to-many relations.'
                 );
             }
-            if ($isArray || ($entityOrCollection instanceof \ArrayAccess)) {
-                $collection = $entityOrCollection;
+            if (\is_array($value) || $value instanceof \Traversable) {
+                $collection = $value;
             } else {
                 throw new \InvalidArgumentException(
                     'A multiple selection must be passed a collection not a single value.'
@@ -127,43 +159,36 @@ final class ModelToIdPropertyTransformer implements DataTransformerInterface
                 );
             }
         } else {
-            if (substr(\get_class($entityOrCollection), -1 * \strlen($this->className)) === $this->className) {
-                $collection = [$entityOrCollection];
-            } elseif ($entityOrCollection instanceof \ArrayAccess) {
+            if (!\is_array($value) && substr(\get_class($value), -1 * \strlen($this->className)) === $this->className) {
+                $collection = [$value];
+            } elseif (\is_array($value) || $value instanceof \Traversable) {
                 throw new \InvalidArgumentException(
                     'A single selection must be passed a single value not a collection.'
                     .' Make sure that form option "multiple=false" is set for many-to-one relation and "multiple=true"'
                     .' is set for many-to-many or one-to-many relations.'
                 );
             } else {
-                $collection = [$entityOrCollection];
+                $collection = [$value];
             }
         }
 
-        if (empty($this->property)) {
+        if ('' === $this->property) {
             throw new \RuntimeException('Please define "property" parameter.');
         }
 
+        /** @phpstan-var array<T>|\Traversable<T> $collection */
         foreach ($collection as $model) {
             $id = current($this->modelManager->getIdentifierValues($model));
 
             if (null !== $this->toStringCallback) {
-                if (!\is_callable($this->toStringCallback)) {
-                    throw new \RuntimeException(
-                        'Callback in "to_string_callback" option doesn`t contain callable function.'
-                    );
-                }
-
                 $label = ($this->toStringCallback)($model, $this->property);
+            } elseif (method_exists($model, '__toString')) {
+                $label = $model->__toString();
             } else {
-                try {
-                    $label = (string) $model;
-                } catch (\Exception $e) {
-                    throw new \RuntimeException(sprintf(
-                        'Unable to convert the entity %s to String, entity must have a \'__toString()\' method defined',
-                        ClassUtils::getClass($model)
-                    ), 0, $e);
-                }
+                throw new \RuntimeException(sprintf(
+                    'Unable to convert the entity %s to String, entity must have a \'__toString()\' method defined',
+                    ClassUtils::getClass($model)
+                ));
             }
 
             $result[] = $id;

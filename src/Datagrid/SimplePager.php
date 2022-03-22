@@ -14,17 +14,21 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Datagrid;
 
 use Doctrine\Common\Collections\ArrayCollection;
+use Sonata\AdminBundle\Util\TraversableToCollection;
 
 /**
  * @author Lukas Kahwe Smith <smith@pooteeweet.org>
  * @author Sjoerd Peters <sjoerd.peters@gmail.com>
+ *
+ * @phpstan-template T of ProxyQueryInterface
+ * @phpstan-extends Pager<T>
  */
 final class SimplePager extends Pager
 {
     /**
-     * @var bool
+     * @var iterable<object>|null
      */
-    private $haveToPaginate;
+    protected $results;
 
     /**
      * How many pages to look forward to create links to next pages.
@@ -34,7 +38,9 @@ final class SimplePager extends Pager
     private $threshold;
 
     /**
-     * @var int
+     * thresholdCount is null prior to its initialization in `getCurrentPageResults()`.
+     *
+     * @var int|null
      */
     private $thresholdCount;
 
@@ -46,105 +52,81 @@ final class SimplePager extends Pager
      * If set to 2 the pager will generate links to the next two pages
      * If set to 3 the pager will generate links to the next three pages
      * etc.
-     *
-     * @param int $maxPerPage Number of records to display per page
-     * @param int $threshold
      */
-    public function __construct($maxPerPage = 10, $threshold = 1)
+    public function __construct(int $maxPerPage = 10, int $threshold = 1)
     {
         parent::__construct($maxPerPage);
         $this->setThreshold($threshold);
     }
 
-    public function getNbResults(): int
+    public function countResults(): int
     {
-        $n = ($this->getLastPage() - 1) * $this->getMaxPerPage();
-        if ($this->getLastPage() === $this->getPage()) {
-            return $n + $this->thresholdCount;
-        }
-
-        return $n;
+        return ($this->getPage() - 1) * $this->getMaxPerPage() + ($this->thresholdCount ?? 0);
     }
 
-    public function getResults($hydrationMode = null)
+    public function getCurrentPageResults(): iterable
     {
-        if ($this->results) {
+        if (null !== $this->results) {
             return $this->results;
         }
 
-        $this->results = $this->getQuery()->execute([], $hydrationMode);
-        $this->thresholdCount = \count($this->results);
-        if (\count($this->results) > $this->getMaxPerPage()) {
-            $this->haveToPaginate = true;
-            // doctrine/phpcr-odm returns ArrayCollection
-            if ($this->results instanceof ArrayCollection) {
-                $this->results = $this->results->toArray();
-            }
-            $this->results = \array_slice($this->results, 0, $this->getMaxPerPage());
-        } else {
-            $this->haveToPaginate = false;
+        $query = $this->getQuery();
+        if (null === $query) {
+            throw new \LogicException('Uninitialized query.');
         }
+
+        $results = TraversableToCollection::transform($query->execute());
+        $this->thresholdCount = $results->count();
+
+        if ($this->thresholdCount > $this->getMaxPerPage()) {
+            $results = new ArrayCollection($results->slice(0, $this->getMaxPerPage()));
+        }
+
+        $this->results = $results;
 
         return $this->results;
     }
 
-    public function haveToPaginate()
-    {
-        return $this->haveToPaginate || $this->getPage() > 1;
-    }
-
     /**
-     * {@inheritdoc}
-     *
-     * @throws \RuntimeException the QueryBuilder is uninitialized
+     * @throws \LogicException the query is uninitialized
      */
     public function init(): void
     {
-        if (!$this->getQuery()) {
-            throw new \RuntimeException('Uninitialized QueryBuilder');
+        $query = $this->getQuery();
+        if (null === $query) {
+            throw new \LogicException('Uninitialized query.');
         }
-        $this->resetIterator();
 
         if (0 === $this->getPage() || 0 === $this->getMaxPerPage()) {
             $this->setLastPage(0);
-            $this->getQuery()->setFirstResult(0);
-            $this->getQuery()->setMaxResults(0);
+            $query->setFirstResult(0);
+            $query->setMaxResults(0);
         } else {
             $offset = ($this->getPage() - 1) * $this->getMaxPerPage();
-            $this->getQuery()->setFirstResult($offset);
+            $query->setFirstResult($offset);
 
             $maxOffset = $this->getThreshold() > 0
                 ? $this->getMaxPerPage() * $this->threshold + 1 : $this->getMaxPerPage() + 1;
 
-            $this->getQuery()->setMaxResults($maxOffset);
-            $this->initializeIterator();
+            $query->setMaxResults($maxOffset);
 
-            $t = (int) ceil($this->thresholdCount / $this->getMaxPerPage()) + $this->getPage() - 1;
+            $this->results = $this->getCurrentPageResults();
+
+            $t = (int) ceil(($this->thresholdCount ?? 0) / $this->getMaxPerPage()) + $this->getPage() - 1;
             $this->setLastPage(max(1, $t));
         }
     }
 
     /**
      * Set how many pages to look forward to create links to next pages.
-     *
-     * @param int $threshold
      */
-    public function setThreshold($threshold): void
+    public function setThreshold(int $threshold): void
     {
-        $this->threshold = (int) $threshold;
+        $this->threshold = $threshold;
     }
 
-    /**
-     * @return int
-     */
-    public function getThreshold()
+    public function getThreshold(): int
     {
         return $this->threshold;
-    }
-
-    protected function resetIterator(): void
-    {
-        parent::resetIterator();
-        $this->haveToPaginate = false;
     }
 }

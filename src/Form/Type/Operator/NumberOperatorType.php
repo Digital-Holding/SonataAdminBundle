@@ -15,6 +15,7 @@ namespace Sonata\AdminBundle\Form\Type\Operator;
 
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType as FormChoiceType;
+use Symfony\Component\Form\FormTypeInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 final class NumberOperatorType extends AbstractType
@@ -25,9 +26,9 @@ final class NumberOperatorType extends AbstractType
     public const TYPE_LESS_EQUAL = 4;
     public const TYPE_LESS_THAN = 5;
 
-    public function configureOptions(OptionsResolver $resolver)
+    public function configureOptions(OptionsResolver $resolver): void
     {
-        $resolver->setDefaults($defaultOptions = [
+        $resolver->setDefaults([
             'choice_translation_domain' => 'SonataAdminBundle',
             'choices' => [
                 'label_type_equal' => self::TYPE_EQUAL,
@@ -39,12 +40,15 @@ final class NumberOperatorType extends AbstractType
         ]);
     }
 
-    public function getParent()
+    /**
+     * @phpstan-return class-string<FormTypeInterface>
+     */
+    public function getParent(): string
     {
         return FormChoiceType::class;
     }
 
-    public function getBlockPrefix()
+    public function getBlockPrefix(): string
     {
         return 'sonata_type_operator_number';
     }

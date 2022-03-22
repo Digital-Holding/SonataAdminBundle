@@ -13,10 +13,12 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Translator\Extractor;
 
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Sonata\AdminBundle\Admin\AdminInterface;
 use Sonata\AdminBundle\Admin\BreadcrumbsBuilderInterface;
 use Sonata\AdminBundle\Admin\Pool;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionCollection;
 use Sonata\AdminBundle\Translator\Extractor\AdminExtractor;
 use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\Translation\MessageCatalogue;
@@ -34,34 +36,45 @@ final class AdminExtractorTest extends TestCase
     private $pool;
 
     /**
-     * @var AdminInterface
+     * @var AdminInterface<object>&MockObject
      */
     private $fooAdmin;
 
     /**
-     * @var AdminInterface
+     * @var AdminInterface<object>&MockObject
      */
     private $barAdmin;
 
     /**
-     * @var BreadcrumbsBuilderInterface
+     * @var BreadcrumbsBuilderInterface&MockObject
      */
     private $breadcrumbsBuilder;
 
     protected function setUp(): void
     {
-        $this->fooAdmin = $this->createStub(AdminInterface::class);
-        $this->barAdmin = $this->createStub(AdminInterface::class);
+        $this->fooAdmin = $this->createMock(AdminInterface::class);
+        $this->barAdmin = $this->createMock(AdminInterface::class);
+
+        $this->fooAdmin->method('getShow')->willReturn(new FieldDescriptionCollection());
+        $this->fooAdmin->method('getList')->willReturn(new FieldDescriptionCollection());
+        $this->barAdmin->method('getShow')->willReturn(new FieldDescriptionCollection());
+        $this->barAdmin->method('getList')->willReturn(new FieldDescriptionCollection());
 
         $container = new Container();
         $container->set('foo_admin', $this->fooAdmin);
         $container->set('bar_admin', $this->barAdmin);
 
-        $this->pool = new Pool($container, 'title', 'logo_title');
-        $this->pool->setAdminServiceIds(['foo_admin', 'bar_admin']);
-        $this->pool->setAdminGroups(['group' => [
-            'label_catalogue' => 'admin_domain',
-        ]]);
+        $this->pool = new Pool($container, ['foo_admin', 'bar_admin'], [
+            'group' => [
+                'label' => 'label',
+                'icon' => 'icon',
+                'translation_domain' => 'admin_domain',
+                'items' => [],
+                'keep_open' => false,
+                'on_top' => false,
+                'roles' => [],
+            ],
+        ]);
 
         $this->breadcrumbsBuilder = $this->createMock(BreadcrumbsBuilderInterface::class);
         $this->adminExtractor = new AdminExtractor($this->pool, $this->breadcrumbsBuilder);
@@ -72,7 +85,7 @@ final class AdminExtractorTest extends TestCase
         $catalogue = new MessageCatalogue('en');
 
         $this->adminExtractor->extract([], $catalogue);
-        $this->assertFalse($catalogue->has('foo', 'foo_admin_domain'));
+        static::assertFalse($catalogue->has('foo', 'foo_admin_domain'));
     }
 
     public function testExtract(): void
@@ -88,12 +101,12 @@ final class AdminExtractorTest extends TestCase
 
         $this->adminExtractor->extract([], $catalogue);
 
-        $this->assertCount(2, $catalogue->getDomains());
+        static::assertCount(2, $catalogue->getDomains());
         $message = $catalogue->get('foo', 'foo_admin_domain');
-        $this->assertSame('foo', $message);
+        static::assertSame('foo', $message);
 
-        $this->assertTrue($catalogue->has('group', 'admin_domain'));
-        $this->assertTrue($catalogue->has('foo_label', 'foo_admin_domain'));
+        static::assertTrue($catalogue->has('group', 'admin_domain'));
+        static::assertTrue($catalogue->has('foo_label', 'foo_admin_domain'));
     }
 
     public function testExtractWithException(): void
@@ -115,7 +128,7 @@ final class AdminExtractorTest extends TestCase
         $numberOfAdmins = \count($this->pool->getAdminServiceIds());
         $numberOfActionsToCheck = 6;
 
-        $this->breadcrumbsBuilder->expects($this->exactly($numberOfAdmins * $numberOfActionsToCheck))
+        $this->breadcrumbsBuilder->expects(static::exactly($numberOfAdmins * $numberOfActionsToCheck))
             ->method('getBreadcrumbs');
         $catalogue = new MessageCatalogue('en');
 
@@ -125,10 +138,10 @@ final class AdminExtractorTest extends TestCase
     public function testExtractSetsSubject(): void
     {
         $this->fooAdmin
-            ->expects($this->exactly(1))
+            ->expects(static::exactly(1))
             ->method('setSubject');
         $this->fooAdmin
-            ->expects($this->exactly(1))
+            ->expects(static::exactly(1))
             ->method('getNewInstance');
 
         $catalogue = new MessageCatalogue('en');

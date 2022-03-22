@@ -23,18 +23,18 @@ use Symfony\Component\Console\Question\Question;
 abstract class QuestionableCommand extends Command
 {
     /**
-     * @param string   $questionText
-     * @param mixed    $default
-     * @param callable $validator
-     *
      * @return mixed
+     *
+     * @phpstan-template T
+     * @phpstan-param callable(string): T $validator
+     * @phpstan-return T
      */
     final protected function askAndValidate(
         InputInterface $input,
         OutputInterface $output,
-        $questionText,
-        $default,
-        $validator
+        string $questionText,
+        string $default,
+        callable $validator
     ) {
         $questionHelper = $this->getQuestionHelper();
 
@@ -45,18 +45,12 @@ abstract class QuestionableCommand extends Command
         return $questionHelper->ask($input, $output, $question);
     }
 
-    /**
-     * @param string $questionText
-     * @param string $default
-     *
-     * @return string
-     */
     final protected function askConfirmation(
         InputInterface $input,
         OutputInterface $output,
-        $questionText,
-        $default
-    ) {
+        string $questionText,
+        string $default
+    ): bool {
         $questionHelper = $this->getQuestionHelper();
         $question = new ConfirmationQuestion(
             (new Question($questionText, $default))->getQuestion(),
@@ -66,18 +60,8 @@ abstract class QuestionableCommand extends Command
         return $questionHelper->ask($input, $output, $question);
     }
 
-    /**
-     * @return QuestionHelper
-     */
-    final protected function getQuestionHelper()
+    final protected function getQuestionHelper(): QuestionHelper
     {
-        $questionHelper = $this->getHelper('question');
-
-        if (!$questionHelper instanceof QuestionHelper) {
-            $questionHelper = new QuestionHelper();
-            $this->getHelperSet()->set($questionHelper);
-        }
-
-        return $questionHelper;
+        return $this->getHelper('question');
     }
 }

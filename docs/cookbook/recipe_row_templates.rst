@@ -33,9 +33,6 @@ Two template keys need to be set:
         <!-- config/services.xml -->
 
         <service id="sonata.admin.comment" class="%sonata.admin.comment.class%">
-            <argument/>
-            <argument>%sonata.admin.comment.entity%</argument>
-            <argument>%sonata.admin.comment.controller%</argument>
             <call method="setTemplates">
                 <argument type="collection">
                     <argument key="inner_list_row">
@@ -48,10 +45,12 @@ Two template keys need to be set:
             </call>
             <tag
                 name="sonata.admin"
+                model_class="%sonata.admin.comment.entity%"
+                controller="%sonata.admin.comment.controller%"
                 manager_type="orm"
                 group="sonata_blog"
+                translation_domain="%sonata.admin.comment.translation_domain%"
                 label="comments"
-                label_catalogue="%sonata.admin.comment.translation_domain%"
                 label_translator_strategy="sonata.admin.label.strategy.underscore"
                 />
         </service>

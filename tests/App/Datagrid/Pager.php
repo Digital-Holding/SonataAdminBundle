@@ -14,8 +14,12 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Tests\App\Datagrid;
 
 use Sonata\AdminBundle\Datagrid\PagerInterface;
+use Sonata\AdminBundle\Datagrid\ProxyQueryInterface;
 use Sonata\AdminBundle\Tests\App\Model\FooRepository;
 
+/**
+ * @phpstan-implements PagerInterface<ProxyQueryInterface>
+ */
 final class Pager implements PagerInterface
 {
     /**
@@ -32,21 +36,47 @@ final class Pager implements PagerInterface
     {
     }
 
-    public function getMaxPerPage()
+    public function getMaxPerPage(): int
     {
         return 1;
     }
 
-    public function setMaxPerPage($max): void
+    public function setMaxPerPage(int $max): void
     {
     }
 
-    public function setPage($page): void
+    public function getPage(): int
+    {
+        return 1;
+    }
+
+    public function setPage(int $page): void
     {
     }
 
-    public function setQuery($query): void
+    public function getNextPage(): int
     {
+        return 1;
+    }
+
+    public function getPreviousPage(): int
+    {
+        return 1;
+    }
+
+    public function getFirstPage(): int
+    {
+        return 1;
+    }
+
+    public function isFirstPage(): bool
+    {
+        return true;
+    }
+
+    public function getLastPage(): int
+    {
+        return 1;
     }
 
     public function isLastPage(): bool
@@ -54,21 +84,40 @@ final class Pager implements PagerInterface
         return false;
     }
 
-    public function getNbResults(): int
+    public function getQuery(): ProxyQueryInterface
     {
-        return 10;
+        return new ProxyQuery();
     }
 
-    public function getResults(): array
+    public function setQuery(ProxyQueryInterface $query): void
+    {
+    }
+
+    public function haveToPaginate(): bool
+    {
+        return false;
+    }
+
+    public function getCurrentPageResults(): iterable
     {
         return $this->repository->all();
     }
 
-    public function setMaxPageLinks($maxPageLinks): void
+    public function countResults(): int
+    {
+        return 1;
+    }
+
+    public function getLinks(?int $nbLinks = null): array
+    {
+        return [];
+    }
+
+    public function setMaxPageLinks(int $maxPageLinks): void
     {
     }
 
-    public function getMaxPageLinks()
+    public function getMaxPageLinks(): int
     {
         return 1;
     }

@@ -14,98 +14,108 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Datagrid;
 
 use Sonata\AdminBundle\Admin\AdminInterface;
-use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
 use Sonata\AdminBundle\Builder\DatagridBuilderInterface;
 use Sonata\AdminBundle\Filter\FilterInterface;
-use Sonata\AdminBundle\Mapper\BaseMapper;
+use Sonata\AdminBundle\Mapper\MapperInterface;
 
 /**
  * This class is use to simulate the Form API.
  *
- * @final since sonata-project/admin-bundle 3.52
- *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ *
+ * @phpstan-import-type FieldDescriptionOptions from \Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface
+ *
+ * @phpstan-template T of object
+ * @phpstan-implements MapperInterface<T>
  */
-class DatagridMapper extends BaseMapper
+final class DatagridMapper implements MapperInterface
 {
     /**
-     * @var DatagridInterface
+     * @var DatagridBuilderInterface<ProxyQueryInterface>
      */
-    protected $datagrid;
+    private $builder;
 
     /**
-     * @var DatagridBuilderInterface
+     * @var DatagridInterface<ProxyQueryInterface>
      */
-    protected $builder;
+    private $datagrid;
 
+    /**
+     * @var AdminInterface<object>
+     * @phpstan-var AdminInterface<T>
+     */
+    private $admin;
+
+    /**
+     * @param DatagridBuilderInterface<ProxyQueryInterface> $datagridBuilder
+     * @param DatagridInterface<ProxyQueryInterface>        $datagrid
+     *
+     * @phpstan-param AdminInterface<T> $admin
+     */
     public function __construct(
         DatagridBuilderInterface $datagridBuilder,
         DatagridInterface $datagrid,
         AdminInterface $admin
     ) {
-        parent::__construct($datagridBuilder, $admin);
+        $this->admin = $admin;
+        $this->builder = $datagridBuilder;
         $this->datagrid = $datagrid;
     }
 
+    public function getAdmin(): AdminInterface
+    {
+        return $this->admin;
+    }
+
     /**
-     * @param FieldDescriptionInterface|string $name
+     * @param array<string, mixed> $filterOptions
+     * @param array<string, mixed> $fieldDescriptionOptions
      *
      * @throws \LogicException
+     *
+     * @return static
+     *
+     * @phpstan-param class-string|null $type
+     * @phpstan-param FieldDescriptionOptions $fieldDescriptionOptions
      */
     public function add(
-        $name,
+        string $name,
         ?string $type = null,
         array $filterOptions = [],
-        ?string $fieldType = null,
-        ?array $fieldOptions = null,
         array $fieldDescriptionOptions = []
     ): self {
-        if (\is_array($fieldOptions)) {
-            $filterOptions['field_options'] = $fieldOptions;
+        if (
+            isset($fieldDescriptionOptions['role'])
+            && \is_string($fieldDescriptionOptions['role'])
+            && !$this->getAdmin()->isGranted($fieldDescriptionOptions['role'])
+        ) {
+            return $this;
         }
 
-        if ($fieldType) {
-            $filterOptions['field_type'] = $fieldType;
+        if ($this->getAdmin()->hasFilterFieldDescription($name)) {
+            throw new \LogicException(sprintf(
+                'Duplicate field name "%s" in datagrid mapper. Names should be unique.',
+                $name
+            ));
         }
 
-        if ($name instanceof FieldDescriptionInterface) {
-            $fieldDescription = $name;
-            $fieldDescription->mergeOptions($filterOptions);
-        } elseif (\is_string($name)) {
-            if ($this->admin->hasFilterFieldDescription($name)) {
-                throw new \LogicException(sprintf(
-                    'Duplicate field name "%s" in datagrid mapper. Names should be unique.',
-                    $name
-                ));
-            }
+        $fieldDescription = $this->getAdmin()->createFieldDescription(
+            $name,
+            array_merge($filterOptions, $fieldDescriptionOptions)
+        );
 
-            if (!isset($filterOptions['field_name'])) {
-                $filterOptions['field_name'] = substr(strrchr('.'.$name, '.'), 1);
-            }
-
-            $fieldDescription = $this->admin->getModelManager()->getNewFieldDescriptionInstance(
-                $this->admin->getClass(),
-                $name,
-                array_merge($filterOptions, $fieldDescriptionOptions)
-            );
-        } else {
-            throw new \TypeError(
-                'Unknown field name in datagrid mapper.'
-                .' Field name should be either of FieldDescriptionInterface interface or string.'
-            );
+        if (null === $fieldDescription->getLabel()) {
+            $fieldDescription->setOption('label', $this->getAdmin()->getLabelTranslatorStrategy()->getLabel($fieldDescription->getName(), 'filter', 'label'));
         }
 
-        if (!isset($fieldDescriptionOptions['role']) || $this->admin->isGranted($fieldDescriptionOptions['role'])) {
-            // add the field with the DatagridBuilder
-            $this->builder->addFilter($this->datagrid, $type, $fieldDescription, $this->admin);
-        }
+        $this->builder->addFilter($this->datagrid, $type, $fieldDescription);
 
         return $this;
     }
 
-    public function get(string $name): FilterInterface
+    public function get(string $key): FilterInterface
     {
-        return $this->datagrid->getFilter($name);
+        return $this->datagrid->getFilter($key);
     }
 
     public function has(string $key): bool
@@ -113,19 +123,25 @@ class DatagridMapper extends BaseMapper
         return $this->datagrid->hasFilter($key);
     }
 
-    final public function keys(): array
+    public function keys(): array
     {
         return array_keys($this->datagrid->getFilters());
     }
 
+    /**
+     * @return static
+     */
     public function remove(string $key): self
     {
-        $this->admin->removeFilterFieldDescription($key);
+        $this->getAdmin()->removeFilterFieldDescription($key);
         $this->datagrid->removeFilter($key);
 
         return $this;
     }
 
+    /**
+     * @return static
+     */
     public function reorder(array $keys): self
     {
         $this->datagrid->reorderFilters($keys);

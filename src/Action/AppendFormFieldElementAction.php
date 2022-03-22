@@ -14,8 +14,8 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Action;
 
 use Sonata\AdminBundle\Admin\AdminHelper;
-use Sonata\AdminBundle\Admin\Pool;
-use Symfony\Component\Form\Form;
+use Sonata\AdminBundle\Exception\BadRequestParamHttpException;
+use Sonata\AdminBundle\Request\AdminFetcherInterface;
 use Symfony\Component\Form\FormRenderer;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -24,11 +24,6 @@ use Twig\Environment;
 
 final class AppendFormFieldElementAction
 {
-    /**
-     * @var Pool
-     */
-    private $pool;
-
     /**
      * @var AdminHelper
      */
@@ -39,11 +34,16 @@ final class AppendFormFieldElementAction
      */
     private $twig;
 
-    public function __construct(Environment $twig, Pool $pool, AdminHelper $helper)
+    /**
+     * @var AdminFetcherInterface
+     */
+    private $adminFetcher;
+
+    public function __construct(Environment $twig, AdminFetcherInterface $adminFetcher, AdminHelper $helper)
     {
-        $this->pool = $pool;
         $this->helper = $helper;
         $this->twig = $twig;
+        $this->adminFetcher = $adminFetcher;
     }
 
     /**
@@ -51,43 +51,44 @@ final class AppendFormFieldElementAction
      */
     public function __invoke(Request $request): Response
     {
-        $code = $request->get('code');
-        $elementId = $request->get('elementId');
+        try {
+            $admin = $this->adminFetcher->get($request);
+        } catch (\InvalidArgumentException $e) {
+            throw new NotFoundHttpException($e->getMessage());
+        }
+
         $objectId = $request->get('objectId');
-        $uniqid = $request->get('uniqid');
-
-        $admin = $this->pool->getInstance($code);
-        $admin->setRequest($request);
-
-        if ($uniqid) {
-            $admin->setUniqid($uniqid);
-        }
-
-        $subject = $admin->getObject($objectId);
-        if ($objectId && !$subject) {
-            throw new NotFoundHttpException(sprintf('Could not find subject for id "%s"', $objectId));
-        }
-
-        if (!$subject) {
+        if (null === $objectId) {
             $subject = $admin->getNewInstance();
+        } elseif (\is_string($objectId) || \is_int($objectId)) {
+            $subject = $admin->getObject($objectId);
+            if (null === $subject) {
+                throw new NotFoundHttpException(sprintf(
+                    'Unable to find the object id: %s, class: %s',
+                    $objectId,
+                    $admin->getClass()
+                ));
+            }
+        } else {
+            throw new BadRequestParamHttpException('objectId', ['string', 'int', 'null'], $objectId);
         }
 
         $admin->setSubject($subject);
 
-        list(, $form) = $this->helper->appendFormFieldElement($admin, $subject, $elementId);
+        $elementId = $request->get('elementId');
+        if (!\is_string($elementId)) {
+            throw new BadRequestParamHttpException('elementId', 'string', $elementId);
+        }
 
-        \assert($form instanceof Form);
+        [, $form] = $this->helper->appendFormFieldElement($admin, $subject, $elementId);
+
         $view = $this->helper->getChildFormView($form->createView(), $elementId);
+        \assert(null !== $view);
 
         // render the widget
-        $renderer = $this->getFormRenderer();
+        $renderer = $this->twig->getRuntime(FormRenderer::class);
         $renderer->setTheme($view, $admin->getFormTheme());
 
         return new Response($renderer->searchAndRenderBlock($view, 'widget'));
-    }
-
-    private function getFormRenderer(): FormRenderer
-    {
-        return $this->twig->getRuntime(FormRenderer::class);
     }
 }

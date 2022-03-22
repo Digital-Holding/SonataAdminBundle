@@ -6,29 +6,30 @@ List and Show Actions
 
 There are many field types that can be used in the list and show action :
 
-=======================================    =============================================
-Fieldtype                                  Description
-=======================================    =============================================
-``TemplateRegistry::TYPE_ARRAY``           display value from an array
-``TemplateRegistry::TYPE_BOOLEAN``         display a green or red picture dependant on the boolean value
-``TemplateRegistry::TYPE_DATE``            display a formatted date. Accepts the option ``format``
-``TemplateRegistry::TYPE_TIME``            display a formatted time. Accepts the options ``format`` and ``timezone``
-``TemplateRegistry::TYPE_DATETIME``        display a formatted date and time. Accepts the options ``format`` and ``timezone``
-``TemplateRegistry::TYPE_STRING``          display a text
-``TemplateRegistry::TYPE_EMAIL``           display a mailto link. Accepts the options ``as_string``, ``subject`` and ``body``
-``TemplateRegistry::TYPE_TEXTAREA``        display a textarea
-``TemplateRegistry::TYPE_TRANS``           translate the value with a provided ``catalogue`` (translation domain) and ``format`` (sprintf format) option
-``TemplateRegistry::TYPE_FLOAT``           display a number
-``TemplateRegistry::TYPE_CURRENCY``        display a number with a provided ``currency`` option
-``TemplateRegistry::TYPE_PERCENT``         display a percentage
-``TemplateRegistry::TYPE_CHOICE``          uses the given value as index for the ``choices`` array and displays (and optionally translates) the matching value
-``TemplateRegistry::TYPE_URL``             display a link
-``TemplateRegistry::TYPE_HTML``            display (and optionally truncate or strip tags from) raw html
-``TemplateRegistry::TYPE_MANY_TO_MANY``    used for relational tables
-``TemplateRegistry::TYPE_MANY_TO_ONE``     used for relational tables
-``TemplateRegistry::TYPE_ONE_TO_MANY``     used for relational tables
-``TemplateRegistry::TYPE_ONE_TO_ONE``      used for relational tables
-=======================================    =============================================
+================================================    =============================================
+Fieldtype                                           Description
+================================================    =============================================
+``FieldDescriptionInterface::TYPE_ARRAY``           display value from an array
+``FieldDescriptionInterface::TYPE_BOOLEAN``         display a green or red picture dependant on the boolean value
+``FieldDescriptionInterface::TYPE_DATE``            display a formatted date. Accepts the option ``format``
+``FieldDescriptionInterface::TYPE_TIME``            display a formatted time. Accepts the options ``format`` and ``timezone``
+``FieldDescriptionInterface::TYPE_DATETIME``        display a formatted date and time. Accepts the options ``format`` and ``timezone``
+``FieldDescriptionInterface::TYPE_STRING``          display a text
+``FieldDescriptionInterface::TYPE_EMAIL``           display a mailto link. Accepts the options ``as_string``, ``subject`` and ``body``
+``FieldDescriptionInterface::TYPE_ENUM``            display the name of a backed enum
+``FieldDescriptionInterface::TYPE_TEXTAREA``        display a textarea
+``FieldDescriptionInterface::TYPE_TRANS``           translate the value with a provided ``value_translation_domain`` and ``format`` (sprintf format) option
+``FieldDescriptionInterface::TYPE_FLOAT``           display a number
+``FieldDescriptionInterface::TYPE_CURRENCY``        display a number with a provided ``currency`` option
+``FieldDescriptionInterface::TYPE_PERCENT``         display a percentage
+``FieldDescriptionInterface::TYPE_CHOICE``          uses the given value as index for the ``choices`` array and displays (and optionally translates) the matching value
+``FieldDescriptionInterface::TYPE_URL``             display a link
+``FieldDescriptionInterface::TYPE_HTML``            display (and optionally truncate or strip tags from) raw html
+``FieldDescriptionInterface::TYPE_MANY_TO_MANY``    used for relational tables
+``FieldDescriptionInterface::TYPE_MANY_TO_ONE``     used for relational tables
+``FieldDescriptionInterface::TYPE_ONE_TO_MANY``     used for relational tables
+``FieldDescriptionInterface::TYPE_ONE_TO_ONE``      used for relational tables
+================================================    =============================================
 
 Theses types accept an ``editable`` option to edit the value from within the list action.
 This is currently limited to scalar types (text, integer, url...) and choice types with association field.
@@ -41,18 +42,18 @@ This is currently limited to scalar types (text, integer, url...) and choice typ
     Option for currency type must be an official ISO code, example : EUR for "euros".
     List of ISO codes : `https://en.wikipedia.org/wiki/List_of_circulating_currencies <https://en.wikipedia.org/wiki/List_of_circulating_currencies>`_
 
-    In ``TemplateRegistry::TYPE_DATE``, ``TemplateRegistry::TYPE_TIME`` and ``TemplateRegistry::TYPE_DATETIME`` field types, ``format`` pattern must match twig's
+    In ``FieldDescriptionInterface::TYPE_DATE``, ``FieldDescriptionInterface::TYPE_TIME`` and ``FieldDescriptionInterface::TYPE_DATETIME`` field types, ``format`` pattern must match twig's
     ``date`` filter specification, available at: `https://twig.symfony.com/doc/2.x/filters/date.html <https://twig.symfony.com/doc/2.x/filters/date.html>`_
 
-    In ``TemplateRegistry::TYPE_TIME`` and ``TemplateRegistry::TYPE_DATETIME`` field types, ``timezone`` syntax must match twig's
+    In ``FieldDescriptionInterface::TYPE_TIME`` and ``FieldDescriptionInterface::TYPE_DATETIME`` field types, ``timezone`` syntax must match twig's
     ``date`` filter specification, available at: `https://twig.symfony.com/doc/2.x/filters/date.html <https://twig.symfony.com/doc/2.x/filters/date.html>`_
     and php timezone list: `https://www.php.net/manual/en/timezones.php <https://www.php.net/manual/en/timezones.php>`_
-    You can use in lists what `view-timezone <https://symfony.com/doc/4.4/reference/forms/types/datetime.html#view-timezone>`_ allows on forms,
+    You can use in lists what `view-timezone <https://symfony.com/doc/5.4/reference/forms/types/datetime.html#view-timezone>`_ allows on forms,
     a way to render the date in the user timezone::
 
-        protected function configureListFields(ListMapper $listMapper)
+        protected function configureListFields(ListMapper $list): void
         {
-            $listMapper
+            $list
 
                 // store date in UTC but display is in the user timezone
                 ->add('date', null, [
@@ -62,44 +63,42 @@ This is currently limited to scalar types (text, integer, url...) and choice typ
             ;
         }
 
-``TemplateRegistry::TYPE_ARRAY``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+``FieldDescriptionInterface::TYPE_ARRAY``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You can use the following options:
 
 ======================================  ============================================================
 Option                                  Description
 ======================================  ============================================================
-**inline**                              If `true`, the array will be displayed as a single line,
+**inline**                              If ``true``, the array will be displayed as a single line,
                                         the whole array and each array level will be wrapped up with square brackets.
-                                        If `false`, the array will be displayed as an unordered list.
-                                        For the `show` action, the default value is `true` and for the `list` action
-                                        it's `false`.
+                                        If ``false``, the array will be displayed as an unordered list.
+                                        For the ``show`` action, the default value is ``true`` and for the ``list`` action
+                                        it's ``false``.
 **display**                             Define what should be displayed: keys, values or both.
-                                        Defaults to `'both'`.
-                                        Available options are: `'both'`, `'keys'`, `'values'`.
+                                        Defaults to ``'both'``.
+                                        Available options are: ``'both'``, ``'keys'``, ``'values'``.
 **key_translation_domain**              This option determines if the keys should be translated and
                                         in which translation domain.
-
-                                        The values of this option can be `true` (use admin
-                                        translation domain), `false` (disable translation), `null`
+                                        The values of this option can be ``true`` (use admin
+                                        translation domain), ``false`` (disable translation), ``null``
                                         (uses the parent translation domain or the default domain)
                                         or a string which represents the exact translation domain to use.
 **value_translation_domain**            This option determines if the values should be translated and
                                         in which translation domain.
-
-                                        The values of this option can be `true` (use admin
-                                        translation domain), `false` (disable translation), `null`
+                                        The values of this option can be ``true`` (use admin
+                                        translation domain), ``false`` (disable translation), ``null``
                                         (uses the parent translation domain or the default domain)
                                         or a string which represents the exact translation domain to use.
 ======================================  ============================================================
 
 .. code-block:: php
 
-    protected function configureListFields(ListMapper $listMapper): void
+    protected function configureListFields(ListMapper $list): void
     {
-        $listMapper
-            ->add('options', TemplateRegistry::TYPE_ARRAY, [
+        $list
+            ->add('options', FieldDescriptionInterface::TYPE_ARRAY, [
                 'inline' => true,
                 'display' => 'both',
                 'key_translation_domain' => true,
@@ -108,8 +107,8 @@ Option                                  Description
         ;
     }
 
-``TemplateRegistry::TYPE_BOOLEAN``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+``FieldDescriptionInterface::TYPE_BOOLEAN``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You can use the following options:
 
@@ -123,10 +122,10 @@ Option                                  Description
 
 .. code-block:: php
 
-    protected function configureListFields(ListMapper $listMapper)
+    protected function configureListFields(ListMapper $list): void
     {
-        $listMapper
-            ->add('invalid', TemplateRegistry::TYPE_BOOLEAN, [
+        $list
+            ->add('invalid', FieldDescriptionInterface::TYPE_BOOLEAN, [
                 'editable' => true,
                 'inverse'  => true,
             ])
@@ -138,8 +137,8 @@ Option                                  Description
     It is better to prefer non negative notions when possible for boolean values
     so use the ``inverse`` option if you really cannot find a good enough antonym for the name you have.
 
-``TemplateRegistry::TYPE_CHOICE``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+``FieldDescriptionInterface::TYPE_CHOICE``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You can use the following options:
 
@@ -149,7 +148,7 @@ Option                                  Description
 **choices**                             Array of choices.
 **multiple**                            Determines if choosing multiple options is allowed. Defaults to false.
 **delimiter**                           Separator of values, if multiple.
-**catalogue**                           Translation catalogue.
+**choice_translation_domain**           Translation domain.
 **class**                               Class qualified name for editable association field.
 **required**                            Whether the field is required or not (default true) when the
                                         ``editable`` option is set to ``true``. If false, an empty
@@ -158,28 +157,28 @@ Option                                  Description
 
 .. code-block:: php
 
-    protected function configureListFields(ListMapper $listMapper)
+    protected function configureListFields(ListMapper $list)
     {
-        // For the value `prog`, the displayed text is `In progress`. The `App` catalogue will be used to translate `In progress` message.
-        $listMapper
-            ->add('status', TemplateRegistry::TYPE_CHOICE, [
+        // For the value `prog`, the displayed text is `In progress`. The `App` domain will be used to translate `In progress` message.
+        $list
+            ->add('status', FieldDescriptionInterface::TYPE_CHOICE, [
                 'choices' => [
                     'prep' => 'Prepared',
                     'prog' => 'In progress',
                     'done' => 'Done',
                 ],
-                'catalogue' => 'App',
+                'choice_translation_domain' => 'App',
             ])
         ;
     }
 
-The ``TemplateRegistry::TYPE_CHOICE`` field type also supports multiple values that can be separated by a ``delimiter``::
+The ``FieldDescriptionInterface::TYPE_CHOICE`` field type also supports multiple values that can be separated by a ``delimiter``::
 
-    protected function configureListFields(ListMapper $listMapper)
+    protected function configureListFields(ListMapper $list): void
     {
         // For the value `['r', 'b']`, the displayed text ist `red | blue`.
-        $listMapper
-            ->add('colors', TemplateRegistry::TYPE_CHOICE, [
+        $list
+            ->add('colors', FieldDescriptionInterface::TYPE_CHOICE, [
                 'multiple' => true,
                 'delimiter' => ' | ',
                 'choices' => [
@@ -195,8 +194,8 @@ The ``TemplateRegistry::TYPE_CHOICE`` field type also supports multiple values t
 
     The default delimiter is a comma ``,``.
 
-``TemplateRegistry::TYPE_URL``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+``FieldDescriptionInterface::TYPE_URL``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Display URL link to external website or controller action.
 
@@ -216,34 +215,34 @@ Option                                  Description
 
 .. code-block:: php
 
-    protected function configureListFields(ListMapper $listMapper)
+    protected function configureListFields(ListMapper $list): void
     {
-        $listMapper
+        $list
             // Output for value `http://example.com`:
             // `<a href="http://example.com">http://example.com</a>`
-            ->add('targetUrl', TemplateRegistry::TYPE_URL)
+            ->add('targetUrl', FieldDescriptionInterface::TYPE_URL)
 
             // Output for value `http://example.com`:
             // `<a href="http://example.com" target="_blank">example.com</a>`
-            ->add('targetUrl', TemplateRegistry::TYPE_URL, [
+            ->add('targetUrl', FieldDescriptionInterface::TYPE_URL, [
                 'attributes' => ['target' => '_blank']
             ])
 
             // Output for value `http://example.com`:
             // `<a href="http://example.com">example.com</a>`
-            ->add('targetUrl', TemplateRegistry::TYPE_URL, [
+            ->add('targetUrl', FieldDescriptionInterface::TYPE_URL, [
                 'hide_protocol' => true
             ])
 
             // Output for value `Homepage of example.com` :
             // `<a href="http://example.com">Homepage of example.com</a>`
-            ->add('title', TemplateRegistry::TYPE_URL, [
+            ->add('title', FieldDescriptionInterface::TYPE_URL, [
                 'url' => 'http://example.com'
             ])
 
             // Output for value `Acme Blog Homepage`:
             // `<a href="http://blog.example.com">Acme Blog Homepage</a>`
-            ->add('title', TemplateRegistry::TYPE_URL, [
+            ->add('title', FieldDescriptionInterface::TYPE_URL, [
                 'route' => [
                     'name' => 'acme_blog_homepage',
                     'absolute' => true
@@ -252,7 +251,7 @@ Option                                  Description
 
             // Output for value `Sonata is great!` (related object has identifier `123`):
             // `<a href="http://blog.example.com/xml/123">Sonata is great!</a>`
-            ->add('title', TemplateRegistry::TYPE_URL, [
+            ->add('title', FieldDescriptionInterface::TYPE_URL, [
                 'route' => [
                     'name' => 'acme_blog_article',
                     'absolute' => true,
@@ -265,10 +264,10 @@ Option                                  Description
 
 .. note::
 
-    Do not use ``TemplateRegistry::TYPE_URL`` type with ``addIdentifier()`` method, because it will create invalid nested URLs.
+    Do not use ``FieldDescriptionInterface::TYPE_URL`` type with ``addIdentifier()`` method, because it will create invalid nested URLs.
 
-``TemplateRegistry::TYPE_HTML``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+``FieldDescriptionInterface::TYPE_HTML``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Display (and optionally truncate or strip tags from) raw html.
 
@@ -286,29 +285,29 @@ Option                      Description
 
 .. code-block:: php
 
-    protected function configureListFields(ListMapper $listMapper)
+    protected function configureListFields(ListMapper $list): void
     {
-        $listMapper
+        $list
 
             // Output for value `<p><strong>Creating a Template for the Field</strong> and form</p>`:
             // `<p><strong>Creating a Template for the Field</strong> and form</p>` (no escaping is done)
-            ->add('content', TemplateRegistry::TYPE_HTML)
+            ->add('content', FieldDescriptionInterface::TYPE_HTML)
 
             // Output for value `<p><strong>Creating a Template for the Field</strong> and form</p>`:
             // `Creating a Template for the Fi...`
-            ->add('content', TemplateRegistry::TYPE_HTML, [
+            ->add('content', FieldDescriptionInterface::TYPE_HTML, [
                 'strip' => true
             ])
 
             // Output for value `<p><strong>Creating a Template for the Field</strong> and form</p>`:
             // `Creating a Template for...`
-            ->add('content', TemplateRegistry::TYPE_HTML, [
+            ->add('content', FieldDescriptionInterface::TYPE_HTML, [
                 'truncate' => true
             ])
 
             // Output for value `<p><strong>Creating a Template for the Field</strong> and form</p>`:
             // `Creating a...`
-            ->add('content', TemplateRegistry::TYPE_HTML, [
+            ->add('content', FieldDescriptionInterface::TYPE_HTML, [
                 'truncate' => [
                     'length' => 10
                 ]
@@ -316,7 +315,7 @@ Option                      Description
 
             // Output for value `<p><strong>Creating a Template for the Field</strong> and form</p>`:
             // `Creating a Template for the Field...`
-            ->add('content', TemplateRegistry::TYPE_HTML, [
+            ->add('content', FieldDescriptionInterface::TYPE_HTML, [
                 'truncate' => [
                     'cut' => false
                 ]
@@ -324,7 +323,7 @@ Option                      Description
 
             // Output for value `<p><strong>Creating a Template for the Field</strong> and form</p>`:
             // `Creating a Template for the Fi, etc.`
-            ->add('content', TemplateRegistry::TYPE_HTML, [
+            ->add('content', FieldDescriptionInterface::TYPE_HTML, [
                 'truncate' => [
                     'ellipsis' => ', etc.'
                 ]
@@ -332,7 +331,7 @@ Option                      Description
 
             // Output for value `<p><strong>Creating a Template for the Field</strong> and form</p>`:
             // `Creating a Template for***`
-            ->add('content', TemplateRegistry::TYPE_HTML, [
+            ->add('content', FieldDescriptionInterface::TYPE_HTML, [
                 'truncate' => [
                     'length' => 20,
                     'cut' => false,
@@ -357,7 +356,7 @@ section matching your model manager. The example below uses
         templates:
             types:
                 show: # or "list"
-                    dump: 'fieldtypes/show_dump.html.twig'
+                    dump: 'field_types/show_dump.html.twig'
 
 Now add a twig file to your ``templates/`` directory. The example below
 uses ``@SonataAdmin/CRUD/base_show_field.html.twig`` to provide the row
@@ -367,7 +366,7 @@ rewrite the contents of the field content cell in this row.
 
 .. code-block:: html+twig
 
-    {# templates/fieldtypes/show_dump.html.twig #}
+    {# templates/field_types/show_dump.html.twig #}
 
     {% extends '@SonataAdmin/CRUD/base_show_field.html.twig' %}
 
@@ -378,3 +377,11 @@ rewrite the contents of the field content cell in this row.
 Take a look at the default templates in
 ``@SonataAdmin/Resources/views/CRUD`` to get an idea of the
 possibilities when writing field templates.
+
+You can now use it in your admin::
+
+    protected function configureShowFields(ShowMapper $show): void
+    {
+        $show
+            ->add('foo', 'dump');
+    }

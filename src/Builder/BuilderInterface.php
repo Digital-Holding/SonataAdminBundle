@@ -13,19 +13,21 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Builder;
 
-use Sonata\AdminBundle\Admin\AdminInterface;
-use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface;
 
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ *
+ * NEXT_MAJOR: Remove this interface
+ *
+ * @deprecated since sonata-project/admin-bundle version 4.1 and will be removed in 5.0.
  */
 interface BuilderInterface
 {
     /**
-     * Adds missing information to the given field description from the model manager metadata, and the given admin.
+     * Adds missing information to the given field description and the given admin.
      *
-     * @param AdminInterface            $admin            will be used to gather information
      * @param FieldDescriptionInterface $fieldDescription will be modified
      */
-    public function fixFieldDescription(AdminInterface $admin, FieldDescriptionInterface $fieldDescription): void;
+    public function fixFieldDescription(FieldDescriptionInterface $fieldDescription): void;
 }

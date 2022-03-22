@@ -13,11 +13,14 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Fixtures\Bundle\Entity;
 
-class Tag
+final class Tag
 {
+    /**
+     * @var Post|null
+     */
     private $post;
 
-    public function setPost(Post $post): void
+    public function setPost(?Post $post): void
     {
         $this->post = $post;
     }

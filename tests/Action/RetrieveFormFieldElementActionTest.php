@@ -13,14 +13,14 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Action;
 
+use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
-use Prophecy\Argument;
-use Sonata\AdminBundle\Action\GetShortObjectDescriptionAction;
 use Sonata\AdminBundle\Action\RetrieveFormFieldElementAction;
-use Sonata\AdminBundle\Admin\AbstractAdmin;
 use Sonata\AdminBundle\Admin\AdminHelper;
-use Sonata\AdminBundle\Admin\Pool;
+use Sonata\AdminBundle\Admin\AdminInterface;
 use Sonata\AdminBundle\Model\ModelManagerInterface;
+use Sonata\AdminBundle\Request\AdminFetcherInterface;
 use Symfony\Component\Form\Form;
 use Symfony\Component\Form\FormBuilder;
 use Symfony\Component\Form\FormRenderer;
@@ -32,42 +32,41 @@ use Twig\Environment;
 final class RetrieveFormFieldElementActionTest extends TestCase
 {
     /**
-     * @var Pool
+     * @var Stub&AdminFetcherInterface
      */
-    private $pool;
+    private $adminFetcher;
 
     /**
-     * @var GetShortObjectDescriptionAction
+     * @var RetrieveFormFieldElementAction
      */
     private $action;
 
     /**
-     * @var AbstractAdmin
+     * @var AdminInterface<object>&MockObject
      */
     private $admin;
 
     /**
-     * @var Environment
+     * @var Environment&MockObject
      */
     private $twig;
 
     /**
-     * @var AdminHelper
+     * @var AdminHelper&MockObject
      */
     private $helper;
 
     protected function setUp(): void
     {
-        $this->twig = $this->prophesize(Environment::class);
-        $this->admin = $this->prophesize(AbstractAdmin::class);
-        $this->admin->setRequest(Argument::type(Request::class))->shouldBeCalled();
-        $this->pool = $this->prophesize(Pool::class);
-        $this->pool->getInstance(Argument::any())->willReturn($this->admin->reveal());
-        $this->helper = $this->prophesize(AdminHelper::class);
+        $this->twig = $this->createMock(Environment::class);
+        $this->admin = $this->createMock(AdminInterface::class);
+        $this->adminFetcher = $this->createStub(AdminFetcherInterface::class);
+        $this->adminFetcher->method('get')->willReturn($this->admin);
+        $this->helper = $this->createMock(AdminHelper::class);
         $this->action = new RetrieveFormFieldElementAction(
-            $this->twig->reveal(),
-            $this->pool->reveal(),
-            $this->helper->reveal()
+            $this->twig,
+            $this->adminFetcher,
+            $this->helper
         );
     }
 
@@ -75,7 +74,7 @@ final class RetrieveFormFieldElementActionTest extends TestCase
     {
         $object = new \stdClass();
         $request = new Request([
-            'code' => 'sonata.post.admin',
+            '_sonata_admin' => 'sonata.post.admin',
             'objectId' => 42,
             'elementId' => 'element_42',
             'field' => 'enabled',
@@ -83,39 +82,41 @@ final class RetrieveFormFieldElementActionTest extends TestCase
             'context' => 'list',
         ], [], [], [], [], ['REQUEST_METHOD' => Request::METHOD_POST]);
 
-        $modelManager = $this->prophesize(ModelManagerInterface::class);
+        $modelManager = $this->createMock(ModelManagerInterface::class);
         $formView = new FormView();
-        $form = $this->prophesize(Form::class);
-        $formBuilder = $this->prophesize(FormBuilder::class);
+        $form = $this->createMock(Form::class);
+        $formBuilder = $this->createStub(FormBuilder::class);
 
         $renderer = $this->configureFormRenderer();
 
-        $this->admin->getObject(42)->willReturn($object);
-        $this->admin->getClass()->willReturn(\get_class($object));
-        $this->admin->setSubject($object)->shouldBeCalled();
-        $this->admin->getFormTheme()->willReturn([$formView]);
-        $this->admin->getFormBuilder()->willReturn($formBuilder->reveal());
-        $this->helper->getChildFormView($formView, 'element_42')
-            ->willReturn($formView);
-        $modelManager->find(\get_class($object), 42)->willReturn($object);
-        $form->setData($object)->shouldBeCalled();
-        $form->handleRequest($request)->shouldBeCalled();
-        $form->createView()->willReturn($formView);
-        $formBuilder->getForm()->willReturn($form->reveal());
-        $renderer->setTheme($formView, [$formView])->shouldBeCalled();
-        $renderer->searchAndRenderBlock($formView, 'widget')->willReturn('block');
+        $this->admin->method('getObject')->with(42)->willReturn($object);
+        $this->admin->method('getClass')->willReturn(\get_class($object));
+        $this->admin->expects(static::once())->method('setSubject')->with($object);
+        $this->admin->method('getFormTheme')->willReturn([]);
+        $this->admin->method('getFormBuilder')->willReturn($formBuilder);
+        $this->helper->method('getChildFormView')->with($formView, 'element_42')->willReturn($formView);
+        $modelManager->method('find')->with(\get_class($object), 42)->willReturn($object);
+        $form->expects(static::once())->method('setData')->with($object);
+        $form->expects(static::once())->method('handleRequest')->with($request);
+        $form->method('createView')->willReturn($formView);
+        $formBuilder->method('getForm')->willReturn($form);
+        $renderer->expects(static::once())->method('setTheme')->with($formView, []);
+        $renderer->method('searchAndRenderBlock')->with($formView, 'widget')->willReturn('block');
 
         $response = ($this->action)($request);
 
-        $this->assertInstanceOf(Response::class, $response);
-        $this->assertSame($response->getContent(), 'block');
+        static::assertInstanceOf(Response::class, $response);
+        static::assertSame($response->getContent(), 'block');
     }
 
-    private function configureFormRenderer()
+    /**
+     * @return MockObject&FormRenderer
+     */
+    private function configureFormRenderer(): MockObject
     {
-        $runtime = $this->prophesize(FormRenderer::class);
+        $runtime = $this->createMock(FormRenderer::class);
 
-        $this->twig->getRuntime(FormRenderer::class)->willReturn($runtime->reveal());
+        $this->twig->method('getRuntime')->with(FormRenderer::class)->willReturn($runtime);
 
         return $runtime;
     }

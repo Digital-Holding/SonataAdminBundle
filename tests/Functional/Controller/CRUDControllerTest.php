@@ -25,19 +25,11 @@ final class CRUDControllerTest extends WebTestCase
         $client = static::createClient();
         $crawler = $client->request(Request::METHOD_GET, '/admin/tests/app/foo/list');
 
-        $this->assertSame(Response::HTTP_OK, $client->getResponse()->getStatusCode());
-        $this->assertSame(
+        static::assertSame(Response::HTTP_OK, $client->getResponse()->getStatusCode());
+        static::assertCount(
             1,
-            $crawler->filter('.sonata-ba-list-field:contains("foo_name")')->count()
+            $crawler->filter('.sonata-ba-list-field:contains("foo_name")')
         );
-    }
-
-    public function testEmptyList(): void
-    {
-        $client = static::createClient();
-        $client->request(Request::METHOD_GET, '/admin/empty/list');
-
-        $this->assertSame(Response::HTTP_OK, $client->getResponse()->getStatusCode());
     }
 
     public function testCreate(): void
@@ -45,23 +37,15 @@ final class CRUDControllerTest extends WebTestCase
         $client = static::createClient();
         $crawler = $client->request(Request::METHOD_GET, '/admin/tests/app/foo/create');
 
-        $this->assertSame(Response::HTTP_OK, $client->getResponse()->getStatusCode());
-        $this->assertSame(
+        static::assertSame(Response::HTTP_OK, $client->getResponse()->getStatusCode());
+        static::assertCount(
             1,
-            $crawler->filter('.sonata-ba-collapsed-fields label:contains("Name")')->count()
+            $crawler->filter('.sonata-ba-collapsed-fields label:contains("Name")')
         );
-        $this->assertCount(
+        static::assertCount(
             1,
-            $crawler->filter('.sonata-ba-field-help:contains("Help me!")')
+            $crawler->filter('p.help-block.sonata-ba-field-help:contains("Help me!")')
         );
-    }
-
-    public function testEmptyCreate(): void
-    {
-        $client = static::createClient();
-        $client->request(Request::METHOD_GET, '/admin/empty/create');
-
-        $this->assertSame(Response::HTTP_OK, $client->getResponse()->getStatusCode());
     }
 
     public function testShow(): void
@@ -69,19 +53,11 @@ final class CRUDControllerTest extends WebTestCase
         $client = static::createClient();
         $crawler = $client->request(Request::METHOD_GET, '/admin/tests/app/foo/test_id/show');
 
-        $this->assertSame(Response::HTTP_OK, $client->getResponse()->getStatusCode());
-        $this->assertSame(
+        static::assertSame(Response::HTTP_OK, $client->getResponse()->getStatusCode());
+        static::assertCount(
             1,
-            $crawler->filter('td:contains("foo_name")')->count()
+            $crawler->filter('td:contains("foo_name")')
         );
-    }
-
-    public function testEmptyShow(): void
-    {
-        $client = static::createClient();
-        $client->request(Request::METHOD_GET, '/admin/empty/test_id/show');
-
-        $this->assertSame(Response::HTTP_OK, $client->getResponse()->getStatusCode());
     }
 
     public function testEdit(): void
@@ -89,22 +65,44 @@ final class CRUDControllerTest extends WebTestCase
         $client = static::createClient();
         $crawler = $client->request(Request::METHOD_GET, '/admin/tests/app/foo/test_id/edit');
 
-        $this->assertSame(Response::HTTP_OK, $client->getResponse()->getStatusCode());
-        $this->assertSame(
+        static::assertSame(Response::HTTP_OK, $client->getResponse()->getStatusCode());
+        static::assertCount(
             1,
-            $crawler->filter('.sonata-ba-collapsed-fields label:contains("Name")')->count()
+            $crawler->filter('.sonata-ba-collapsed-fields label:contains("Name")')
         );
     }
 
-    public function testEmptyEdit(): void
+    /**
+     * @dataProvider urlIsSuccessfulDataProvider
+     */
+    public function testUrlIsSuccessful(string $url): void
     {
         $client = static::createClient();
-        $client->request(Request::METHOD_GET, '/admin/empty/test_id/edit');
+        $client->request(Request::METHOD_GET, $url);
 
-        $this->assertSame(Response::HTTP_OK, $client->getResponse()->getStatusCode());
+        static::assertSame(Response::HTTP_OK, $client->getResponse()->getStatusCode());
     }
 
-    protected static function getKernelClass()
+    /**
+     * @phpstan-return iterable<array-key, array{string}>
+     */
+    public function urlIsSuccessfulDataProvider(): iterable
+    {
+        return [
+            ['/admin/tests/app/foo/browse'], // CustomAdminExtension route
+            ['/admin/empty/list'],
+            ['/admin/empty/create'],
+            ['/admin/empty/test_id/show'],
+            ['/admin/empty/test_id/edit'],
+            ['/admin/tests/app/foo-with-custom-controller/list'],
+            ['/admin/tests/app/foo-with-custom-controller/create'],
+            ['/admin/tests/app/foo-with-custom-controller/test_id/show'],
+            ['/admin/tests/app/foo-with-custom-controller/test_id/edit'],
+            ['/admin/tests/app/foo/test_id/bar/list'],
+        ];
+    }
+
+    protected static function getKernelClass(): string
     {
         return AppKernel::class;
     }

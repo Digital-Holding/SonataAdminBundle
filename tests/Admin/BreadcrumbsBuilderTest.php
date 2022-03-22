@@ -16,11 +16,12 @@ namespace Sonata\AdminBundle\Tests\Admin;
 use Knp\Menu\ItemInterface;
 use Knp\Menu\MenuFactory;
 use PHPUnit\Framework\TestCase;
-use Sonata\AdminBundle\Admin\AbstractAdmin;
+use Sonata\AdminBundle\Admin\AdminInterface;
 use Sonata\AdminBundle\Admin\BreadcrumbsBuilder;
 use Sonata\AdminBundle\Route\RouteGeneratorInterface;
 use Sonata\AdminBundle\Translator\LabelTranslatorStrategyInterface;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
  * This test class contains unit and integration tests. Maybe it could be
@@ -28,137 +29,113 @@ use Symfony\Component\HttpFoundation\Request;
  *
  * @author Grégoire Paris <postmaster@greg0ire.fr>
  */
-class BreadcrumbsBuilderTest extends TestCase
+final class BreadcrumbsBuilderTest extends TestCase
 {
     public function testChildGetBreadCrumbs(): void
     {
-        $subject = new \stdClass();
-
-        $menu = $this->prophesize(ItemInterface::class);
-        $menu->getParent()->willReturn(null);
-
-        $dashboardMenu = $this->prophesize(ItemInterface::class);
-        $dashboardMenu->getParent()->willReturn($menu);
-
-        $adminListMenu = $this->prophesize(ItemInterface::class);
-        $adminListMenu->getParent()->willReturn($dashboardMenu);
-
-        $adminSubjectMenu = $this->prophesize(ItemInterface::class);
-        $adminSubjectMenu->getParent()->willReturn($adminListMenu);
-
-        $childMenu = $this->prophesize(ItemInterface::class);
-        $childMenu->getParent()->willReturn($adminSubjectMenu);
-
-        $leafMenu = $this->prophesize(ItemInterface::class);
-        $leafMenu->getParent()->willReturn($childMenu);
-
         $action = 'my_action';
         $breadcrumbsBuilder = new BreadcrumbsBuilder(['child_admin_route' => 'show']);
-        $admin = $this->prophesize(AbstractAdmin::class);
-        $admin->isChild()->willReturn(false);
+        $admin = $this->createMock(AdminInterface::class);
+        $admin->method('isChild')->willReturn(false);
 
-        $menuFactory = $this->prophesize(MenuFactory::class);
-        $menuFactory->createItem('root')->willReturn($menu);
-        $admin->getMenuFactory()->willReturn($menuFactory);
-        $labelTranslatorStrategy = $this->prophesize(
-            LabelTranslatorStrategyInterface::class
+        $admin->method('getMenuFactory')->willReturn(new MenuFactory());
+        $labelTranslatorStrategy = $this->createStub(LabelTranslatorStrategyInterface::class);
+
+        $routeGenerator = $this->createMock(RouteGeneratorInterface::class);
+        $routeGenerator->method('generate')->with('sonata_admin_dashboard')->willReturn('/dashboard');
+
+        $admin->method('getRouteGenerator')->willReturn($routeGenerator);
+        $labelTranslatorStrategy->method('getLabel')->willReturnMap([
+            ['my_class_name_list', 'breadcrumb', 'link', 'My class'],
+            ['my_child_class_name_list', 'breadcrumb', 'link', 'My child class'],
+        ]);
+
+        $subject = new \stdClass();
+        $childSubject = new \stdClass();
+
+        $childAdmin = $this->createMock(AdminInterface::class);
+        $childAdmin->method('isChild')->willReturn(true);
+        $childAdmin->method('getParent')->willReturn($admin);
+        $childAdmin->method('getTranslationDomain')->willReturn('ChildBundle');
+        $childAdmin->method('getLabelTranslatorStrategy')->willReturn($labelTranslatorStrategy);
+        $childAdmin->method('getClassnameLabel')->willReturn('my_child_class_name');
+        $childAdmin->method('hasRoute')->with('list')->willReturn(true);
+        $childAdmin->method('hasAccess')->with('list')->willReturn(true);
+        $childAdmin->method('generateUrl')->with('list')->willReturn('/myadmin/my-object/mychildadmin/list');
+        $childAdmin->method('getCurrentChildAdmin')->willReturn(null);
+        $childAdmin->method('hasSubject')->willReturn(true);
+        $childAdmin->method('getSubject')->willReturn($childSubject);
+        $childAdmin->method('toString')->with($childSubject)->willReturn('My subject');
+
+        $admin->method('hasRoute')->willReturnMap([
+            ['show', true],
+            ['list', true],
+            ['edit', true],
+        ]);
+        $admin->method('hasAccess')->willReturnMap([
+            ['show', $subject, true],
+            ['list', null, true],
+            ['edit', null, true],
+        ]);
+        $admin->method('generateUrl')->willReturnMap([
+            ['show', ['slug' => 'my-object'], UrlGeneratorInterface::ABSOLUTE_PATH, '/myadmin/my-object'],
+            ['edit', ['slug' => 'my-object'], UrlGeneratorInterface::ABSOLUTE_PATH, '/myadmin/my-object'],
+            ['list', [], UrlGeneratorInterface::ABSOLUTE_PATH, '/myadmin/list'],
+        ]);
+
+        $admin->method('getCurrentChildAdmin')->willReturn($childAdmin);
+        $request = $this->createMock(Request::class);
+        $request->method('get')->with('slug')->willReturn('my-object');
+
+        $admin->method('getIdParameter')->willReturn('slug');
+        $admin->method('getRequest')->willReturn($request);
+        $admin->method('hasSubject')->willReturn(true);
+        $admin->method('getSubject')->willReturn($subject);
+        $admin->method('toString')->with($subject)->willReturn('My subject');
+        $admin->method('getTranslationDomain')->willReturn('FooBundle');
+        $admin->method('getLabelTranslatorStrategy')->willReturn($labelTranslatorStrategy);
+        $admin->method('getClassnameLabel')->willReturn('my_class_name');
+
+        $breadcrumbs = $breadcrumbsBuilder->getBreadcrumbs($childAdmin, $action);
+        static::assertCount(5, $breadcrumbs);
+
+        [$dashboardMenu, $adminListMenu, $adminSubjectMenu, $childMenu] = $breadcrumbs;
+
+        static::assertSame('link_breadcrumb_dashboard', $dashboardMenu->getName());
+        static::assertSame('/dashboard', $dashboardMenu->getUri());
+        static::assertSame(
+            ['translation_domain' => 'SonataAdminBundle'],
+            $dashboardMenu->getExtras()
         );
 
-        $routeGenerator = $this->prophesize(RouteGeneratorInterface::class);
-        $routeGenerator->generate('sonata_admin_dashboard')->willReturn('/dashboard');
-
-        $admin->getRouteGenerator()->willReturn($routeGenerator->reveal());
-        $menu->addChild('link_breadcrumb_dashboard', [
-            'uri' => '/dashboard',
-            'extras' => [
-                'translation_domain' => 'SonataAdminBundle',
-            ],
-        ])->willReturn(
-            $dashboardMenu->reveal()
+        static::assertSame('My class', $adminListMenu->getName());
+        static::assertSame('/myadmin/list', $adminListMenu->getUri());
+        static::assertSame(
+            ['translation_domain' => 'FooBundle'],
+            $adminListMenu->getExtras()
         );
-        $labelTranslatorStrategy->getLabel(
-            'my_class_name_list',
-            'breadcrumb',
-            'link'
-        )->willReturn('My class');
-        $labelTranslatorStrategy->getLabel(
-            'my_child_class_name_list',
-            'breadcrumb',
-            'link'
-        )->willReturn('My child class');
-        $childAdmin = $this->prophesize(AbstractAdmin::class);
-        $childAdmin->isChild()->willReturn(true);
-        $childAdmin->getParent()->willReturn($admin->reveal());
-        $childAdmin->getTranslationDomain()->willReturn('ChildBundle');
-        $childAdmin->getLabelTranslatorStrategy()
-            ->shouldBeCalled()
-            ->willReturn($labelTranslatorStrategy->reveal());
-        $childAdmin->getClassnameLabel()->willReturn('my_child_class_name');
-        $childAdmin->hasRoute('list')->willReturn(true);
-        $childAdmin->hasAccess('list')->willReturn(true);
-        $childAdmin->generateUrl('list')->willReturn('/myadmin/my-object/mychildadmin/list');
-        $childAdmin->getCurrentChildAdmin()->willReturn(null);
-        $childAdmin->hasSubject()->willReturn(true);
-        $childAdmin->getSubject()->willReturn($subject);
-        $childAdmin->toString($subject)->willReturn('My subject');
 
-        $admin->hasAccess('show', $subject)->willReturn(true)->shouldBeCalled();
-        $admin->hasRoute('show')->willReturn(true);
-        $admin->generateUrl('show', ['id' => 'my-object'])->willReturn('/myadmin/my-object');
-
-        $admin->hasRoute('list')->willReturn(true);
-        $admin->hasAccess('list')->willReturn(true);
-        $admin->generateUrl('list')->willReturn('/myadmin/list');
-        $admin->getCurrentChildAdmin()->willReturn($childAdmin->reveal());
-        $request = $this->prophesize(Request::class);
-        $request->get('slug')->willReturn('my-object');
-
-        $admin->getIdParameter()->willReturn('slug');
-        $admin->hasRoute('edit')->willReturn(true);
-        $admin->hasAccess('edit')->willReturn(true);
-        $admin->generateUrl('edit', ['id' => 'my-object'])->willReturn('/myadmin/my-object');
-        $admin->getRequest()->willReturn($request->reveal());
-        $admin->hasSubject()->willReturn(true);
-        $admin->getSubject()->willReturn($subject);
-        $admin->toString($subject)->willReturn('My subject');
-        $admin->getTranslationDomain()->willReturn('FooBundle');
-        $admin->getLabelTranslatorStrategy()->willReturn(
-            $labelTranslatorStrategy->reveal()
-        );
-        $admin->getClassnameLabel()->willReturn('my_class_name');
-
-        $dashboardMenu->addChild('My class', [
-            'extras' => [
-                'translation_domain' => 'FooBundle',
-            ],
-            'uri' => '/myadmin/list',
-        ])->shouldBeCalled()->willReturn($adminListMenu->reveal());
-
-        $adminListMenu->addChild('My subject', [
-            'uri' => '/myadmin/my-object',
-            'extras' => [
+        static::assertSame('My subject', $adminSubjectMenu->getName());
+        static::assertSame('/myadmin/my-object', $adminSubjectMenu->getUri());
+        static::assertSame(
+            [
                 'translation_domain' => false,
+                'safe_label' => false,
             ],
-        ])->shouldBeCalled()->willReturn($adminSubjectMenu->reveal());
+            $adminSubjectMenu->getExtras()
+        );
 
-        $adminSubjectMenu->addChild('My child class', [
-            'extras' => [
-                'translation_domain' => 'ChildBundle',
-            ],
-            'uri' => '/myadmin/my-object/mychildadmin/list',
-        ])->shouldBeCalled()->willReturn($childMenu->reveal());
-        $adminSubjectMenu->setExtra('safe_label', false)->willReturn($childMenu);
-
-        $childMenu->addChild('My subject', [
-            'extras' => [
-                'translation_domain' => false,
-            ],
-        ])->shouldBeCalled()->willReturn($leafMenu->reveal());
-
-        $breadcrumbs = $breadcrumbsBuilder->getBreadcrumbs($childAdmin->reveal(), $action);
-        $this->assertCount(5, $breadcrumbs);
+        static::assertSame('My child class', $childMenu->getName());
+        static::assertSame('/myadmin/my-object/mychildadmin/list', $childMenu->getUri());
+        static::assertSame(
+            ['translation_domain' => 'ChildBundle'],
+            $childMenu->getExtras()
+        );
     }
 
+    /**
+     * @phpstan-return array<array{string}>
+     */
     public function actionProvider(): array
     {
         return [
@@ -178,119 +155,89 @@ class BreadcrumbsBuilderTest extends TestCase
 
         $breadcrumbsBuilder = new BreadcrumbsBuilder();
 
-        $menu = $this->prophesize(ItemInterface::class);
-        $menuFactory = $this->prophesize(MenuFactory::class);
-        $menuFactory->createItem('root')->willReturn($menu);
-        $admin = $this->prophesize(AbstractAdmin::class);
-        $admin->getMenuFactory()->willReturn($menuFactory);
-        $labelTranslatorStrategy = $this->prophesize(LabelTranslatorStrategyInterface::class);
+        $menu = $this->createMock(ItemInterface::class);
+        $menuFactory = $this->createMock(MenuFactory::class);
+        $menuFactory->method('createItem')->with('root')->willReturn($menu);
+        $admin = $this->createMock(AdminInterface::class);
+        $admin->method('getMenuFactory')->willReturn($menuFactory);
+        $labelTranslatorStrategy = $this->createStub(LabelTranslatorStrategyInterface::class);
 
-        $routeGenerator = $this->prophesize(RouteGeneratorInterface::class);
-        $routeGenerator->generate('sonata_admin_dashboard')->willReturn('/dashboard');
-        $admin->getRouteGenerator()->willReturn($routeGenerator->reveal());
-        $menu->addChild('link_breadcrumb_dashboard', [
-            'uri' => '/dashboard',
-            'extras' => [
-                'translation_domain' => 'SonataAdminBundle',
-            ],
-        ])->willReturn(
-            $menu->reveal()
-        );
-        $labelTranslatorStrategy->getLabel(
-            'my_class_name_list',
-            'breadcrumb',
-            'link'
-        )->willReturn('My class');
-        $labelTranslatorStrategy->getLabel(
-            'my_child_class_name_list',
-            'breadcrumb',
-            'link'
-        )->willReturn('My child class');
-        $labelTranslatorStrategy->getLabel(
-            'my_child_class_name_my_action',
-            'breadcrumb',
-            'link'
-        )->willReturn('My action');
-        if ('create' === $action) {
-            $labelTranslatorStrategy->getLabel(
-                'my_class_name_create',
-                'breadcrumb',
-                'link'
-            )->willReturn('create my object');
-            $menu->addChild('create my object', [
-                'extras' => [
-                    'translation_domain' => 'FooBundle',
-                ],
-            ])->willReturn($menu);
-        }
-        $childAdmin = $this->prophesize(AbstractAdmin::class);
-        $childAdmin->getTranslationDomain()->willReturn('ChildBundle');
-        $childAdmin->getLabelTranslatorStrategy()->willReturn($labelTranslatorStrategy->reveal());
-        $childAdmin->getClassnameLabel()->willReturn('my_child_class_name');
-        $childAdmin->hasRoute('list')->willReturn(false);
-        $childAdmin->getCurrentChildAdmin()->willReturn(null);
-        $childAdmin->hasSubject()->willReturn(false);
+        $routeGenerator = $this->createMock(RouteGeneratorInterface::class);
+        $routeGenerator->method('generate')->with('sonata_admin_dashboard')->willReturn('/dashboard');
+        $admin->method('getRouteGenerator')->willReturn($routeGenerator);
 
-        $admin->hasRoute('list')->willReturn(true);
-        $admin->hasAccess('list')->willReturn(true);
-        $admin->generateUrl('list')->willReturn('/myadmin/list');
-        $admin->getCurrentChildAdmin()->willReturn(
-            'my_action' === $action ? $childAdmin->reveal() : null
-        );
+        $menu->method('addChild')->willReturnMap([
+            ['link_breadcrumb_dashboard', [
+                'uri' => '/dashboard',
+                'extras' => ['translation_domain' => 'SonataAdminBundle'],
+            ], $menu],
+            ['create my object', [
+                'extras' => ['translation_domain' => 'FooBundle'],
+            ], $menu],
+            ['My class', [
+                'extras' => ['translation_domain' => 'FooBundle'],
+                'uri' => '/myadmin/list',
+            ], $menu],
+            ['My subject', [
+                'extras' => ['translation_domain' => false],
+            ], $menu],
+            ['My subject', [
+                'uri' => null,
+                'extras' => ['translation_domain' => false],
+            ], $menu],
+            ['My child class', [
+                'extras' => ['translation_domain' => 'ChildBundle'],
+                'uri' => null,
+            ], $menu],
+            ['My action', [
+                'extras' => ['translation_domain' => 'ChildBundle'],
+            ], $menu],
+        ]);
+
+        $menu->method('setExtra')->with('safe_label', false)->willReturn($menu);
+
+        $labelTranslatorStrategy->method('getLabel')->willReturnMap([
+            ['my_class_name_list', 'breadcrumb', 'link', 'My class'],
+            ['my_child_class_name_list', 'breadcrumb', 'link', 'My child class'],
+            ['my_child_class_name_my_action', 'breadcrumb', 'link', 'My action'],
+            ['my_class_name_create', 'breadcrumb', 'link', 'create my object'],
+        ]);
+
+        $childAdmin = $this->createMock(AdminInterface::class);
+        $childAdmin->method('getTranslationDomain')->willReturn('ChildBundle');
+        $childAdmin->method('getLabelTranslatorStrategy')->willReturn($labelTranslatorStrategy);
+        $childAdmin->method('getClassnameLabel')->willReturn('my_child_class_name');
+        $childAdmin->method('hasRoute')->with('list')->willReturn(false);
+        $childAdmin->method('getCurrentChildAdmin')->willReturn(null);
+        $childAdmin->method('hasSubject')->willReturn(false);
+
+        $admin->method('hasRoute')->willReturnMap([
+            ['list', true],
+            ['show', false],
+        ]);
+        $admin->method('hasAccess')->with('list')->willReturn(true);
+        $admin->method('generateUrl')->with('list')->willReturn('/myadmin/list');
+        $admin->method('getCurrentChildAdmin')->willReturn('my_action' === $action ? $childAdmin : null);
+
         if ('list' === $action) {
-            $admin->isChild()->willReturn(true);
-            $menu->setUri(null)->shouldBeCalled();
+            $admin->method('isChild')->willReturn(true);
+            $menu->expects(static::once())->method('setUri')->with(null);
         } else {
-            $menu->setUri()->shouldNotBeCalled();
+            $menu->expects(static::never())->method('setUri');
         }
-        $request = $this->prophesize(Request::class);
-        $request->get('slug')->willReturn('my-object');
 
-        $admin->getIdParameter()->willReturn('slug');
-        $admin->hasRoute('edit')->willReturn(false);
-        $admin->getRequest()->willReturn($request->reveal());
-        $admin->hasSubject()->willReturn(true);
-        $admin->getSubject()->willReturn($subject);
-        $admin->toString($subject)->willReturn('My subject');
-        $admin->getTranslationDomain()->willReturn('FooBundle');
-        $admin->getLabelTranslatorStrategy()->willReturn(
-            $labelTranslatorStrategy->reveal()
-        );
-        $admin->getClassnameLabel()->willReturn('my_class_name');
+        $request = $this->createMock(Request::class);
+        $request->method('get')->with('slug')->willReturn('my-object');
 
-        $menu->addChild('My class', [
-            'uri' => '/myadmin/list',
-            'extras' => [
-                'translation_domain' => 'FooBundle',
-            ],
-        ])->willReturn($menu->reveal());
-        $menu->addChild('My subject', [
-            'extras' => [
-                'translation_domain' => false,
-            ],
-        ])->willReturn($menu);
-        $menu->addChild('My subject', [
-            'uri' => null,
-            'extras' => [
-                'translation_domain' => false,
-            ],
-        ])->willReturn($menu);
-        $menu->addChild('My child class', [
-            'extras' => [
-                'translation_domain' => 'ChildBundle',
-            ],
-            'uri' => null,
-        ])->willReturn($menu);
-        $menu->setExtra('safe_label', false)->willReturn($menu);
-        $menu->addChild('My action', [
-            'extras' => [
-                'translation_domain' => 'ChildBundle',
-            ],
-        ])->willReturn($menu);
+        $admin->method('getIdParameter')->willReturn('slug');
+        $admin->method('getRequest')->willReturn($request);
+        $admin->method('hasSubject')->willReturn(true);
+        $admin->method('getSubject')->willReturn($subject);
+        $admin->method('toString')->with($subject)->willReturn('My subject');
+        $admin->method('getTranslationDomain')->willReturn('FooBundle');
+        $admin->method('getLabelTranslatorStrategy')->willReturn($labelTranslatorStrategy);
+        $admin->method('getClassnameLabel')->willReturn('my_class_name');
 
-        $reflection = new \ReflectionMethod('Sonata\AdminBundle\Admin\BreadcrumbsBuilder', 'buildBreadcrumbs');
-        $reflection->setAccessible(true);
-
-        $reflection->invoke($breadcrumbsBuilder, $admin->reveal(), $action);
+        $breadcrumbsBuilder->buildBreadcrumbs($admin, $action);
     }
 }

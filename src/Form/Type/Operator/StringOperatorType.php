@@ -15,6 +15,7 @@ namespace Sonata\AdminBundle\Form\Type\Operator;
 
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType as FormChoiceType;
+use Symfony\Component\Form\FormTypeInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 final class StringOperatorType extends AbstractType
@@ -24,8 +25,9 @@ final class StringOperatorType extends AbstractType
     public const TYPE_EQUAL = 3;
     public const TYPE_STARTS_WITH = 4;
     public const TYPE_ENDS_WITH = 5;
+    public const TYPE_NOT_EQUAL = 6;
 
-    public function configureOptions(OptionsResolver $resolver)
+    public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
             'choice_translation_domain' => 'SonataAdminBundle',
@@ -35,16 +37,20 @@ final class StringOperatorType extends AbstractType
                 'label_type_equals' => self::TYPE_EQUAL,
                 'label_type_starts_with' => self::TYPE_STARTS_WITH,
                 'label_type_ends_with' => self::TYPE_ENDS_WITH,
+                'label_type_not_equals' => self::TYPE_NOT_EQUAL,
             ],
         ]);
     }
 
-    public function getParent()
+    /**
+     * @phpstan-return class-string<FormTypeInterface>
+     */
+    public function getParent(): string
     {
         return FormChoiceType::class;
     }
 
-    public function getBlockPrefix()
+    public function getBlockPrefix(): string
     {
         return 'sonata_type_operator_string';
     }

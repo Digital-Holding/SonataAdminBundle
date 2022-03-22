@@ -14,26 +14,43 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Tests\Form\Type\Filter;
 
 use Sonata\AdminBundle\Form\Type\Filter\DateTimeRangeType;
+use Sonata\AdminBundle\Form\Type\Operator\DateRangeOperatorType;
 use Sonata\Form\Type\DateTimeRangeType as FormDateTimeRangeType;
-use Symfony\Component\Form\Test\TypeTestCase;
+use Symfony\Component\Form\Extension\Core\Type\DateTimeType;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
-class DateTimeRangeTypeTest extends TypeTestCase
+final class DateTimeRangeTypeTest extends BaseTypeTest
 {
+    public function testDefaultOptions(): void
+    {
+        $form = $this->factory->create($this->getTestedType());
+
+        $view = $form->createView();
+
+        static::assertFalse($view->children['type']->vars['required']);
+        static::assertFalse($view->children['value']->vars['required']);
+    }
+
     public function testGetDefaultOptions(): void
     {
         $type = new DateTimeRangeType();
 
-        $optionResolver = new OptionsResolver();
+        $optionsResolver = new OptionsResolver();
 
-        $type->configureOptions($optionResolver);
+        $type->configureOptions($optionsResolver);
 
-        $options = $optionResolver->resolve();
+        $options = $optionsResolver->resolve();
 
         $expected = [
+            'operator_type' => DateRangeOperatorType::class,
             'field_type' => FormDateTimeRangeType::class,
-            'field_options' => ['date_format' => 'yyyy-MM-dd'],
+            'field_options' => ['field_options' => ['date_format' => DateTimeType::HTML5_FORMAT]],
         ];
-        $this->assertSame($expected, $options);
+        static::assertSame($expected, $options);
+    }
+
+    protected function getTestedType(): string
+    {
+        return DateTimeRangeType::class;
     }
 }

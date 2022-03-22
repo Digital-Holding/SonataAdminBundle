@@ -13,78 +13,75 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Form\DataTransformer;
 
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Sonata\AdminBundle\Form\DataTransformer\ModelToIdTransformer;
 use Sonata\AdminBundle\Model\ModelManagerInterface;
 
-class ModelToIdTransformerTest extends TestCase
+final class ModelToIdTransformerTest extends TestCase
 {
+    /**
+     * @var ModelManagerInterface<object>&MockObject
+     */
     private $modelManager;
 
     protected function setUp(): void
     {
-        $this->modelManager = $this->getMockForAbstractClass(ModelManagerInterface::class);
-    }
-
-    public function testReverseTransformWhenPassing0AsId(): void
-    {
-        $transformer = new ModelToIdTransformer($this->modelManager, 'TEST');
-
-        $this->modelManager
-                ->expects($this->exactly(2))
-                ->method('find')
-                ->willReturn(true);
-
-        $this->assertFalse(\in_array(false, ['0', 0], true));
-
-        // we pass 0 as integer
-        $this->assertTrue($transformer->reverseTransform(0));
-
-        // we pass 0 as string
-        $this->assertTrue($transformer->reverseTransform('0'));
-
-        // we pass null must return null
-        $this->assertNull($transformer->reverseTransform(null));
-
-        // we pass false, must return null
-        $this->assertNull($transformer->reverseTransform(false));
+        $this->modelManager = $this->createMock(ModelManagerInterface::class);
     }
 
     /**
+     * @param int|string $value
+     *
      * @dataProvider getReverseTransformValues
      */
-    public function testReverseTransform($value, $expected): void
+    public function testReverseTransform($value): void
     {
-        $transformer = new ModelToIdTransformer($this->modelManager, 'TEST2');
+        $className = \stdClass::class;
+        $transformer = new ModelToIdTransformer($this->modelManager, $className);
 
-        $this->modelManager->method('find');
+        $found = new \stdClass();
+        $this->modelManager
+            ->expects(static::once())
+            ->method('find')
+            ->willReturn($found);
 
-        $this->assertSame($expected, $transformer->reverseTransform($value));
+        static::assertSame($found, $transformer->reverseTransform($value));
     }
 
-    public function getReverseTransformValues()
+    /**
+     * @return array<array{int|string}>
+     */
+    public function getReverseTransformValues(): array
     {
         return [
-            [null, null],
-            [false, null],
-            [[], null],
-            ['', null],
+            [0],
+            ['0'],
         ];
+    }
+
+    public function testReverseTransformEmpty(): void
+    {
+        $className = \stdClass::class;
+        $transformer = new ModelToIdTransformer($this->modelManager, $className);
+
+        $this->modelManager->expects(static::never())->method('find');
+
+        static::assertNull($transformer->reverseTransform(null));
+        static::assertNull($transformer->reverseTransform(''));
     }
 
     public function testTransform(): void
     {
-        $this->modelManager->expects($this->once())
+        $this->modelManager->expects(static::once())
             ->method('getNormalizedIdentifier')
-            ->willReturn(123);
+            ->willReturn('123');
 
-        $transformer = new ModelToIdTransformer($this->modelManager, 'TEST');
+        $className = \stdClass::class;
+        $transformer = new ModelToIdTransformer($this->modelManager, $className);
 
-        $this->assertNull($transformer->transform(null));
-        $this->assertNull($transformer->transform(false));
-        $this->assertNull($transformer->transform(0));
-        $this->assertNull($transformer->transform('0'));
+        static::assertNull($transformer->transform(null));
 
-        $this->assertSame(123, $transformer->transform(new \stdClass()));
+        static::assertSame('123', $transformer->transform(new \stdClass()));
     }
 }

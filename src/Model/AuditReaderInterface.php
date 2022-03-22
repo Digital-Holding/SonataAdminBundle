@@ -15,50 +15,51 @@ namespace Sonata\AdminBundle\Model;
 
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ *
+ * @phpstan-template T of object
  */
 interface AuditReaderInterface
 {
     /**
-     * @param string $className
-     * @param string $id
-     * @param string $revision
+     * @param int|string $id
+     * @param int|string $revisionId
      *
-     * @return object
+     * @phpstan-param class-string<T> $className
+     * @phpstan-return T|null
      */
-    public function find($className, $id, $revision);
+    public function find(string $className, $id, $revisionId): ?object;
 
     /**
-     * @param string $className
-     * @param int    $limit
-     * @param int    $offset
+     * @return Revision[]
      *
-     * @return object[]
+     * @phpstan-param class-string<T> $className
      */
-    public function findRevisionHistory($className, $limit = 20, $offset = 0);
+    public function findRevisionHistory(string $className, int $limit = 20, int $offset = 0): array;
 
     /**
-     * @param string $classname
-     * @param string $revision
+     * @param int|string $revisionId
      *
-     * @return object
+     * @phpstan-param class-string<T> $className
      */
-    public function findRevision($classname, $revision);
+    public function findRevision(string $className, $revisionId): ?Revision;
 
     /**
-     * @param string $className
-     * @param string $id
+     * @param int|string $id
      *
-     * @return object[]
+     * @return Revision[]
+     *
+     * @phpstan-param class-string<T> $className
      */
-    public function findRevisions($className, $id);
+    public function findRevisions(string $className, $id): array;
 
     /**
-     * @param string $className
-     * @param int    $id
-     * @param int    $oldRevision
-     * @param int    $newRevision
+     * @param int|string $id
+     * @param int|string $oldRevisionId
+     * @param int|string $newRevisionId
      *
-     * @return array
+     * @return array<string, array{old: mixed, new: mixed, same: mixed}>
+     *
+     * @phpstan-param class-string<T> $className
      */
-    public function diff($className, $id, $oldRevision, $newRevision);
+    public function diff(string $className, $id, $oldRevisionId, $newRevisionId): array;
 }

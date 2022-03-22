@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Event;
 
 use Sonata\AdminBundle\Admin\AdminInterface;
-use Sonata\AdminBundle\Mapper\BaseMapper;
+use Sonata\AdminBundle\Mapper\MapperInterface;
 use Symfony\Contracts\EventDispatcher\Event;
 
 /**
@@ -29,6 +29,8 @@ use Symfony\Contracts\EventDispatcher\Event;
  *   - sonata.admin.event.configure.[admin_code].[form|list|datagrid|show] (not implemented yet)
  *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ *
+ * @phpstan-template T of object
  */
 final class ConfigureEvent extends Event
 {
@@ -38,12 +40,14 @@ final class ConfigureEvent extends Event
     public const TYPE_LIST = 'list';
 
     /**
-     * @var AdminInterface
+     * @var AdminInterface<object>
+     * @phpstan-var AdminInterface<T>
      */
     private $admin;
 
     /**
-     * @var BaseMapper
+     * @var MapperInterface<object>
+     * @phpstan-var MapperInterface<T>
      */
     private $mapper;
 
@@ -53,35 +57,33 @@ final class ConfigureEvent extends Event
     private $type;
 
     /**
-     * @param string $type
+     * @phpstan-param AdminInterface<T> $admin
+     * @phpstan-param MapperInterface<T> $mapper
      */
-    public function __construct(AdminInterface $admin, BaseMapper $mapper, $type)
+    public function __construct(AdminInterface $admin, MapperInterface $mapper, string $type)
     {
         $this->admin = $admin;
         $this->mapper = $mapper;
         $this->type = $type;
     }
 
-    /**
-     * @return string
-     */
-    public function getType()
+    public function getType(): string
     {
         return $this->type;
     }
 
     /**
-     * @return AdminInterface
+     * @phpstan-return AdminInterface<T>
      */
-    public function getAdmin()
+    public function getAdmin(): AdminInterface
     {
         return $this->admin;
     }
 
     /**
-     * @return BaseMapper
+     * @phpstan-return MapperInterface<T>
      */
-    public function getMapper()
+    public function getMapper(): MapperInterface
     {
         return $this->mapper;
     }

@@ -18,6 +18,8 @@ use Knp\Menu\Matcher\MatcherInterface;
 use Knp\Menu\Renderer\TwigRenderer;
 use PHPUnit\Framework\TestCase;
 use Sonata\AdminBundle\Tests\Fixtures\StubTranslator;
+use Sonata\AdminBundle\Twig\Extension\IconExtension;
+use Sonata\AdminBundle\Twig\IconRuntime;
 use Symfony\Bridge\Twig\Extension\TranslationExtension;
 use Symfony\Contracts\Translation\TranslatorInterface;
 use Twig\Environment;
@@ -29,8 +31,10 @@ use Twig\Loader\FilesystemLoader;
 abstract class BaseMenuTest extends TestCase
 {
     /**
-     * {@inheritdoc}
+     * @var Environment
      */
+    private $environment;
+
     protected function setUp(): void
     {
         // Adapt to both bundle and project-wide test strategy
@@ -44,23 +48,27 @@ abstract class BaseMenuTest extends TestCase
         $this->environment = new Environment($loader, ['strict_variables' => true]);
     }
 
-    abstract protected function getTemplate();
+    abstract protected function getTemplate(): string;
 
     protected function getTranslator(): TranslatorInterface
     {
         return new StubTranslator();
     }
 
-    protected function renderMenu(ItemInterface $item, array $options = [])
+    /**
+     * @param array<string, mixed> $options
+     */
+    protected function renderMenu(ItemInterface $item, array $options = []): string
     {
         $this->environment->addExtension(new TranslationExtension($this->getTranslator()));
-        $this->renderer = new TwigRenderer(
+        $this->environment->addExtension(new IconExtension(new IconRuntime()));
+        $renderer = new TwigRenderer(
             $this->environment,
             $this->getTemplate(),
-            $this->getMockForAbstractClass(MatcherInterface::class)
+            $this->createMock(MatcherInterface::class)
         );
 
-        return $this->renderer->render($item, $options);
+        return $renderer->render($item, $options);
     }
 
     /**
@@ -68,10 +76,10 @@ abstract class BaseMenuTest extends TestCase
      */
     protected function cleanHtmlWhitespace(string $html): string
     {
-        $html = preg_replace_callback('/>([^<]+)</', static function ($value) {
+        $html = preg_replace_callback('/>([^<]+)</', static function ($value): string {
             return sprintf('>%s<', trim($value[1]));
         }, $html);
 
-        return $html;
+        return $html ?? '';
     }
 }

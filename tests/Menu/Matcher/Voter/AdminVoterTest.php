@@ -14,23 +14,51 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Tests\Menu\Matcher\Voter;
 
 use Knp\Menu\ItemInterface;
-use Knp\Menu\Matcher\Voter\VoterInterface;
-use Sonata\AdminBundle\Admin\AbstractAdmin;
+use PHPUnit\Framework\TestCase;
+use Sonata\AdminBundle\Admin\AdminInterface;
 use Sonata\AdminBundle\Menu\Matcher\Voter\AdminVoter;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 
-class AdminVoterTest extends AbstractVoterTest
+final class AdminVoterTest extends TestCase
 {
     /**
-     * {@inheritdoc}
+     * @param mixed $itemData
+     *
+     * @dataProvider provideData
      */
-    public function provideData(): array
+    public function testMatching($itemData, ?string $voterData, ?string $route, ?bool $expected): void
+    {
+        $item = $this->createMock(ItemInterface::class);
+        $item
+            ->method('getExtra')
+            ->with(static::logicalOr(
+                static::equalTo('admin'),
+                static::equalTo('route')
+            ))
+            ->willReturn($itemData);
+
+        $request = new Request();
+        $request->request->set('_sonata_admin', $voterData);
+        $request->request->set('_route', $route);
+
+        $requestStack = new RequestStack();
+        $requestStack->push($request);
+
+        $voter = new AdminVoter($requestStack);
+
+        static::assertSame($expected, $voter->matchItem($item));
+    }
+
+    /**
+     * @return iterable<array{mixed, string|null, string|null, bool|null}>
+     */
+    public function provideData(): iterable
     {
         return [
             'no data' => [null, null, null, null],
             'no route and granted' => [$this->getAdmin('_sonata_admin'), '_sonata_admin', null, null],
-            'no granted' => [$this->getAdmin('_sonata_admin', true, false), '_sonata_admin', null, null],
+            'no granted' => [$this->getAdmin('_sonata_admin', true), '_sonata_admin', null, null],
             'no code' => [$this->getAdmin('_sonata_admin_code', true, true), '_sonata_admin', null, null],
             'no code request' => [$this->getAdmin('_sonata_admin', true, true), '_sonata_admin_unexpected', null, null],
             'no route' => [$this->getAdmin('_sonata_admin', false, true), '_sonata_admin', null, null],
@@ -43,101 +71,59 @@ class AdminVoterTest extends AbstractVoterTest
     }
 
     /**
-     * {@inheritdoc}
+     * @return AdminInterface<object>
      */
-    protected function createVoter($dataVoter, $route): VoterInterface
+    private function getAdmin(string $code, bool $list = false, bool $granted = false): AdminInterface
     {
-        $request = new Request();
-        $request->request->set('_sonata_admin', $dataVoter);
-        $request->request->set('_route', $route);
-
-        $requestStack = new RequestStack();
-        $requestStack->push($request);
-
-        return new AdminVoter($requestStack);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function createItem($data): ItemInterface
-    {
-        $item = $this->getMockForAbstractClass(ItemInterface::class);
-        $item
-            ->method('getExtra')
-            ->with($this->logicalOr(
-                $this->equalTo('admin'),
-                $this->equalTo('route')
-            ))
-            ->willReturn($data)
-        ;
-
-        return $item;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    private function getAdmin(string $code, bool $list = false, bool $granted = false): AbstractAdmin
-    {
-        $admin = $this->createMock(AbstractAdmin::class);
+        $admin = $this->createMock(AdminInterface::class);
         $admin
             ->method('hasRoute')
             ->with('list')
-            ->willReturn($list)
-        ;
+            ->willReturn($list);
         $admin
             ->method('hasAccess')
             ->with('list')
-            ->willReturn($granted)
-        ;
+            ->willReturn($granted);
         $admin
             ->method('getCode')
-            ->willReturn($code)
-        ;
+            ->willReturn($code);
         $admin
             ->method('getChildren')
-            ->willReturn([])
-        ;
+            ->willReturn([]);
 
         return $admin;
     }
 
     /**
-     * {@inheritdoc}
+     * @return AdminInterface<object>
      */
     private function getChildAdmin(
         string $parentCode,
         string $childCode,
         bool $list = false,
         bool $granted = false
-    ): AbstractAdmin {
-        $parentAdmin = $this->createMock(AbstractAdmin::class);
+    ): AdminInterface {
+        $parentAdmin = $this->createMock(AdminInterface::class);
         $parentAdmin
             ->method('hasRoute')
             ->with('list')
-            ->willReturn($list)
-        ;
+            ->willReturn($list);
         $parentAdmin
             ->method('hasAccess')
             ->with('list')
-            ->willReturn($granted)
-        ;
+            ->willReturn($granted);
         $parentAdmin
             ->method('getCode')
-            ->willReturn($parentCode)
-        ;
+            ->willReturn($parentCode);
 
-        $childAdmin = $this->createMock(AbstractAdmin::class);
+        $childAdmin = $this->createMock(AdminInterface::class);
         $childAdmin
             ->method('getBaseCodeRoute')
-            ->willReturn(sprintf('%s|%s', $parentCode, $childCode))
-        ;
+            ->willReturn(sprintf('%s|%s', $parentCode, $childCode));
 
         $parentAdmin
             ->method('getChildren')
-            ->willReturn([$childAdmin])
-        ;
+            ->willReturn([$childAdmin]);
 
         return $parentAdmin;
     }

@@ -5,13 +5,13 @@ In some cases, when you extend existing Admins, you might want to delete
 fields from the admin, or make them not show. You could delete every
 field by hand, using the ``FormMapper``s ``remove`` method::
 
-    class UserAdmin extends Sonata\UserBundle\Admin\Model\UserAdmin
+    final class UserAdmin extends Sonata\UserBundle\Admin\Model\UserAdmin
     {
-        protected function configureFormFields(FormMapper $formMapper)
+        protected function configureFormFields(FormMapper $form): void
         {
-            parent::configureFormFields($formMapper);
+            parent::configureFormFields($form);
 
-            $formMapper
+            $form
                 ->remove('facebookName')
                 ->remove('twitterUid')
                 ->remove('twitterName')
@@ -27,13 +27,13 @@ of the 'Social' Group of the form, the fields will be deleted and the empty grou
 For this case, the FormMapper comes with a method, which allows you to get rid
 of a whole form group: ``removeGroup``::
 
-    class UserAdmin extends Sonata\UserBundle\Admin\Model\UserAdmin
+    final class UserAdmin extends Sonata\UserBundle\Admin\Model\UserAdmin
     {
-        protected function configureFormFields(FormMapper $formMapper)
+        protected function configureFormFields(FormMapper $form): void
         {
-            parent::configureFormFields($formMapper);
+            parent::configureFormFields($form);
 
-            $formMapper->removeGroup('Social', 'User');
+            $form->removeGroup('Social', 'User');
         }
     }
 

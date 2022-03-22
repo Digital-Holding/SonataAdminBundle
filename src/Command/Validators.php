@@ -19,15 +19,9 @@ namespace Sonata\AdminBundle\Command;
 final class Validators
 {
     /**
-     * @static
-     *
-     * @param string|null $username
-     *
      * @throws \InvalidArgumentException
-     *
-     * @return mixed
      */
-    public static function validateUsername($username)
+    public static function validateUsername(?string $username): string
     {
         if (null === $username) {
             throw new \InvalidArgumentException('The username must be set');
@@ -37,39 +31,11 @@ final class Validators
     }
 
     /**
-     * @static
-     *
-     * @param string $shortcut
-     *
      * @throws \InvalidArgumentException
      *
-     * @return array
+     * @phpstan-return class-string
      */
-    public static function validateEntityName($shortcut)
-    {
-        $model = str_replace('/', '\\', $shortcut);
-
-        if (false === $pos = strpos($model, ':')) {
-            throw new \InvalidArgumentException(sprintf(
-                'The entity name must contain a ":" (colon sign)'
-                .' ("%s" given, expecting something like AcmeBlogBundle:Post)',
-                $model
-            ));
-        }
-
-        return [substr($model, 0, $pos), substr($model, $pos + 1)];
-    }
-
-    /**
-     * @static
-     *
-     * @param string $class
-     *
-     * @throws \InvalidArgumentException
-     *
-     * @return string
-     */
-    public static function validateClass($class)
+    public static function validateClass(string $class): string
     {
         $class = str_replace('/', '\\', $class);
 
@@ -81,15 +47,9 @@ final class Validators
     }
 
     /**
-     * @static
-     *
-     * @param string $adminClassBasename
-     *
      * @throws \InvalidArgumentException
-     *
-     * @return string
      */
-    public static function validateAdminClassBasename($adminClassBasename)
+    public static function validateAdminClassBasename(string $adminClassBasename): string
     {
         $adminClassBasename = str_replace('/', '\\', $adminClassBasename);
 
@@ -105,15 +65,9 @@ final class Validators
     }
 
     /**
-     * @static
-     *
-     * @param string $controllerClassBasename
-     *
      * @throws \InvalidArgumentException
-     *
-     * @return string
      */
-    public static function validateControllerClassBasename($controllerClassBasename)
+    public static function validateControllerClassBasename(string $controllerClassBasename): string
     {
         $controllerClassBasename = str_replace('/', '\\', $controllerClassBasename);
 
@@ -132,30 +86,17 @@ final class Validators
         return $controllerClassBasename;
     }
 
-    /**
-     * @static
-     *
-     * @param string $servicesFile
-     *
-     * @return string
-     */
-    public static function validateServicesFile($servicesFile)
+    public static function validateServicesFile(string $servicesFile): string
     {
         return trim($servicesFile, '/');
     }
 
     /**
-     * @static
-     *
-     * @param string $serviceId
-     *
      * @throws \InvalidArgumentException
-     *
-     * @return string
      */
-    public static function validateServiceId($serviceId)
+    public static function validateServiceId(string $serviceId): string
     {
-        if (preg_match('/[^A-Za-z\._0-9]/', $serviceId, $matches)) {
+        if (1 === preg_match('/[^A-Za-z\._0-9]/', $serviceId, $matches)) {
             throw new \InvalidArgumentException(sprintf(
                 'Service ID "%s" contains invalid character "%s".',
                 $serviceId,

@@ -17,11 +17,13 @@ use Symfony\Component\Form\FormView;
 
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ *
+ * @phpstan-implements \RecursiveIterator<int|string, FormView>
  */
 final class FormViewIterator implements \RecursiveIterator
 {
     /**
-     * @var \ArrayIterator
+     * @var \ArrayIterator<int|string, FormView>
      */
     private $iterator;
 
@@ -30,17 +32,17 @@ final class FormViewIterator implements \RecursiveIterator
         $this->iterator = $formView->getIterator();
     }
 
-    public function getChildren()
+    public function getChildren(): self
     {
         return new self($this->current());
     }
 
-    public function hasChildren()
+    public function hasChildren(): bool
     {
         return \count($this->current()->children) > 0;
     }
 
-    public function current()
+    public function current(): FormView
     {
         return $this->iterator->current();
     }
@@ -50,12 +52,14 @@ final class FormViewIterator implements \RecursiveIterator
         $this->iterator->next();
     }
 
-    public function key()
+    public function key(): string
     {
-        return $this->current()->vars['id'];
+        $current = $this->current();
+
+        return $current->vars['id'];
     }
 
-    public function valid()
+    public function valid(): bool
     {
         return $this->iterator->valid();
     }

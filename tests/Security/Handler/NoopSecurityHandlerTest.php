@@ -13,11 +13,12 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Security\Handler;
 
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Sonata\AdminBundle\Admin\AdminInterface;
 use Sonata\AdminBundle\Security\Handler\NoopSecurityHandler;
 
-class NoopSecurityHandlerTest extends TestCase
+final class NoopSecurityHandlerTest extends TestCase
 {
     /**
      * @var NoopSecurityHandler
@@ -31,32 +32,41 @@ class NoopSecurityHandlerTest extends TestCase
 
     public function testIsGranted(): void
     {
-        $this->assertTrue($this->handler->isGranted($this->getSonataAdminObject(), ['TOTO']));
-        $this->assertTrue($this->handler->isGranted($this->getSonataAdminObject(), 'TOTO'));
+        static::assertTrue($this->handler->isGranted($this->getSonataAdminObject(), ['TOTO']));
+        static::assertTrue($this->handler->isGranted($this->getSonataAdminObject(), 'TOTO'));
     }
 
     public function testBuildSecurityInformation(): void
     {
-        $this->assertSame([], $this->handler->buildSecurityInformation($this->getSonataAdminObject()));
+        static::assertSame([], $this->handler->buildSecurityInformation($this->getSonataAdminObject()));
     }
 
+    /**
+     * @doesNotPerformAssertions
+     */
     public function testCreateObjectSecurity(): void
     {
-        $this->assertNull($this->handler->createObjectSecurity($this->getSonataAdminObject(), new \stdClass()));
+        $this->handler->createObjectSecurity($this->getSonataAdminObject(), new \stdClass());
     }
 
+    /**
+     * @doesNotPerformAssertions
+     */
     public function testDeleteObjectSecurity(): void
     {
-        $this->assertNull($this->handler->deleteObjectSecurity($this->getSonataAdminObject(), new \stdClass()));
+        $this->handler->deleteObjectSecurity($this->getSonataAdminObject(), new \stdClass());
     }
 
     public function testGetBaseRole(): void
     {
-        $this->assertSame('', $this->handler->getBaseRole($this->getSonataAdminObject()));
+        static::assertSame('', $this->handler->getBaseRole($this->getSonataAdminObject()));
     }
 
+    /**
+     * @return AdminInterface<object>&MockObject
+     */
     private function getSonataAdminObject(): AdminInterface
     {
-        return $this->getMockForAbstractClass(AdminInterface::class);
+        return $this->createMock(AdminInterface::class);
     }
 }

@@ -13,40 +13,48 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Form\Type;
 
+use PHPUnit\Framework\MockObject\MockObject;
 use Sonata\AdminBundle\Form\Type\ModelReferenceType;
 use Sonata\AdminBundle\Model\ModelManagerInterface;
+use Symfony\Component\Form\FormExtensionInterface;
 use Symfony\Component\Form\PreloadedExtension;
 use Symfony\Component\Form\Test\TypeTestCase;
 
-class ModelReferenceTypeTest extends TypeTestCase
+final class ModelReferenceTypeTest extends TypeTestCase
 {
+    /**
+     * @var MockObject&ModelManagerInterface<object>
+     */
     private $modelManager;
 
     protected function setUp(): void
     {
-        $this->modelManager = $this->prophesize(ModelManagerInterface::class);
+        $this->modelManager = $this->createMock(ModelManagerInterface::class);
 
         parent::setUp();
     }
 
     public function testSubmitValidData(): void
     {
-        $formData = 42;
+        $formData = '42';
 
         $form = $this->factory->create(
             ModelReferenceType::class,
             null,
             [
-                'model_manager' => $this->modelManager->reveal(),
+                'model_manager' => $this->modelManager,
                 'class' => 'My\Entity',
             ]
         );
-        $this->modelManager->find('My\Entity', 42)->shouldBeCalled();
+        $this->modelManager->expects(static::once())->method('find')->with('My\Entity', '42');
         $form->submit($formData);
-        $this->assertTrue($form->isSynchronized());
+        static::assertTrue($form->isSynchronized());
     }
 
-    protected function getExtensions()
+    /**
+     * @phpstan-return array<FormExtensionInterface>
+     */
+    protected function getExtensions(): array
     {
         return [
             new PreloadedExtension([

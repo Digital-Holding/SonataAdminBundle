@@ -13,15 +13,17 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Block;
 
+use PHPUnit\Framework\MockObject\MockObject;
 use Sonata\AdminBundle\Admin\Pool;
 use Sonata\AdminBundle\Block\AdminListBlockService;
 use Sonata\AdminBundle\Templating\TemplateRegistryInterface;
 use Sonata\BlockBundle\Test\BlockServiceTestCase;
+use Symfony\Component\DependencyInjection\Container;
 
 /**
  * @author Sullivan Senechal <soullivaneuh@gmail.com>
  */
-class AdminListBlockServiceTest extends BlockServiceTestCase
+final class AdminListBlockServiceTest extends BlockServiceTestCase
 {
     /**
      * @var Pool
@@ -29,7 +31,7 @@ class AdminListBlockServiceTest extends BlockServiceTestCase
     private $pool;
 
     /**
-     * @var TemplateRegistryInterface
+     * @var TemplateRegistryInterface&MockObject
      */
     private $templateRegistry;
 
@@ -37,17 +39,16 @@ class AdminListBlockServiceTest extends BlockServiceTestCase
     {
         parent::setUp();
 
-        $this->pool = $this->createMock(Pool::class);
-
-        $this->templateRegistry = $this->prophesize(TemplateRegistryInterface::class);
+        $this->pool = new Pool(new Container());
+        $this->templateRegistry = $this->createMock(TemplateRegistryInterface::class);
     }
 
     public function testDefaultSettings(): void
     {
-        $blockService = new AdminListBlockService($this->twig, $this->pool, $this->templateRegistry->reveal());
+        $blockService = new AdminListBlockService($this->twig, $this->pool, $this->templateRegistry);
         $blockContext = $this->getBlockContext($blockService);
 
-        $this->assertSettings([
+        self::assertSettings([
             'groups' => false,
         ], $blockContext);
     }

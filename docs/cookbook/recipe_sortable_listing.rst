@@ -6,7 +6,7 @@ This is a full working example of how to implement a sortable feature in your So
 Background
 ----------
 
-A sortable behavior is already available for one-to-many relationships (https://sonata-project.org/bundles/doctrine-orm-admin/master/doc/reference/form_field_definition.html#advanced-usage-one-to-many).
+A sortable behavior is already available for one-to-many relationships (https://docs.sonata-project.org/projects/SonataDoctrineORMAdminBundle/en/4.x/reference/form_field_definition/#advanced-usage-one-to-many).
 However there is no packaged solution to have some up and down arrows to sort
 your records such as showed in the following screen
 
@@ -43,7 +43,7 @@ First of all we are going to add a position field in our ``Client`` entity::
 
 Then we need to inject the Sortable listener.
 If you only have the Gedmo bundle enabled, you only have to add the listener
-to your `services.yaml` file and skip this step.
+to your ``services.yaml`` file and skip this step.
 
 .. code-block:: yaml
 
@@ -72,8 +72,8 @@ feature in your configuration such as
 In our ``ClientAdmin`` we are going to add a custom action in the ``configureListFields`` method
 and use the default twig template provided in the ``pixSortableBehaviorBundle``::
 
-    $listMapper
-        ->add('_action', null, [
+    $list
+        ->add(ListMapper::NAME_ACTIONS, null, [
             'actions' => [
                 'move' => [
                     'template' => '@PixSortableBehavior/Default/_sort.html.twig'
@@ -85,11 +85,11 @@ In order to add new routes for these actions we are also adding the following me
 
     // src/Admin/ClientAdmin.php
 
-    namespace App/Admin;
+    namespace App\Admin;
 
-    use Sonata\AdminBundle\Route\RouteCollection;
+    use Sonata\AdminBundle\Route\RouteCollectionInterface;
 
-    protected function configureRoutes(RouteCollection $collection)
+    protected function configureRoutes(RouteCollectionInterface $collection): void
     {
         $collection->add('move', $this->getRouterIdParameter().'/move/{position}');
     }
@@ -103,12 +103,8 @@ Now you can update your ``services.yaml`` to use the handler provided by the ``p
     services:
         app.admin.client:
             class: App\Admin\ClientAdmin
-            arguments:
-                - ~
-                - App\Entity\Client
-                - 'PixSortableBehaviorBundle:SortableAdmin' # define the new controller via the third argument
             tags:
-                - { name: sonata.admin, manager_type: orm, label: 'Clients' }
+                - { name: sonata.admin, model_class: App\Entity\Client, controller: 'PixSortableBehaviorBundle:SortableAdmin', manager_type: orm, label: 'Clients' }
 
 Now we need to define the sort by field to be ``$position``::
 
@@ -117,6 +113,7 @@ Now we need to define the sort by field to be ``$position``::
     namespace App\Admin;
 
     use Sonata\AdminBundle\Admin\AbstractAdmin;
+    use Sonata\AdminBundle\Datagrid\DatagridInterface;
     use Sonata\AdminBundle\Datagrid\ListMapper;
     use Sonata\AdminBundle\Route\RouteCollection;
 
@@ -124,22 +121,22 @@ Now we need to define the sort by field to be ``$position``::
     {
         protected function configureDefaultSortValues(array &$sortValues): void
         {
-            $sortValues['_page'] = 1;
-            $sortValues['_sort_order'] = 'ASC';
-            $sortValues['_sort_by'] = 'position';
+            $sortValues[DatagridInterface::PAGE] = 1;
+            $sortValues[DatagridInterface::SORT_ORDER] = 'ASC';
+            $sortValues[DatagridInterface::SORT_BY] = 'position';
         }
 
-        protected function configureRoutes(RouteCollection $collection)
+        protected function configureRoutes(RouteCollectionInterface $collection): void
         {
             $collection->add('move', $this->getRouterIdParameter().'/move/{position}');
         }
 
-        protected function configureListFields(ListMapper $listMapper)
+        protected function configureListFields(ListMapper $list): void
         {
-            $listMapper
+            $list
                 ->addIdentifier('name')
                 ->add('enabled')
-                ->add('_action', null, [
+                ->add(ListMapper::NAME_ACTIONS, null, [
                     'actions' => [
                         'move' => [
                             'template' => '@App/Admin/_sort.html.twig'

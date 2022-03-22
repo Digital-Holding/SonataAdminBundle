@@ -13,7 +13,7 @@ For the rest of the tutorial, you'll need some sort of model. In this tutorial,
 
     // src/Entity/BlogPost.php
 
-    class BlogPost
+    final class BlogPost
     {
         // ...
 
@@ -49,8 +49,9 @@ For the rest of the tutorial, you'll need some sort of model. In this tutorial,
     // src/Entity/Category.php
 
     use Doctrine\Common\Collections\ArrayCollection;
+    use Doctrine\Common\Collections\Collection;
 
-    class Category
+    final class Category
     {
         // ...
 
@@ -62,6 +63,8 @@ For the rest of the tutorial, you'll need some sort of model. In this tutorial,
         private $name;
 
         /**
+         * @var Collection
+         *
          * @ORM\OneToMany(targetEntity="BlogPost", mappedBy="category")
          */
         private $blogPosts;
@@ -71,7 +74,7 @@ For the rest of the tutorial, you'll need some sort of model. In this tutorial,
             $this->blogPosts = new ArrayCollection();
         }
 
-        public function getBlogPosts()
+        public function getBlogPosts(): Collection
         {
             return $this->blogPosts;
         }
@@ -111,26 +114,32 @@ easiest way to do this is by extending ``Sonata\AdminBundle\Admin\AbstractAdmin`
     namespace App\Admin;
 
     use Sonata\AdminBundle\Admin\AbstractAdmin;
-    use Sonata\AdminBundle\Datagrid\ListMapper;
     use Sonata\AdminBundle\Datagrid\DatagridMapper;
+    use Sonata\AdminBundle\Datagrid\ListMapper;
     use Sonata\AdminBundle\Form\FormMapper;
+    use Sonata\AdminBundle\Show\ShowMapper;
     use Symfony\Component\Form\Extension\Core\Type\TextType;
 
     final class CategoryAdmin extends AbstractAdmin
     {
-        protected function configureFormFields(FormMapper $formMapper)
+        protected function configureFormFields(FormMapper $form): void
         {
-            $formMapper->add('name', TextType::class);
+            $form->add('name', TextType::class);
         }
 
-        protected function configureDatagridFilters(DatagridMapper $datagridMapper)
+        protected function configureDatagridFilters(DatagridMapper $datagrid): void
         {
-            $datagridMapper->add('name');
+            $datagrid->add('name');
         }
 
-        protected function configureListFields(ListMapper $listMapper)
+        protected function configureListFields(ListMapper $list): void
         {
-            $listMapper->addIdentifier('name');
+            $list->addIdentifier('name');
+        }
+
+        protected function configureShowFields(ShowMapper $show): void
+        {
+            $show->add('name');
         }
     }
 
@@ -141,14 +150,15 @@ So, what does this code do?
   of the Symfony Form component;
 * **configureDatagridFilters()**: This method configures the filters, used to filter and sort
   the list of models;
-* **configureListFields()**: Here you specify which fields are shown when all models are
+* **configureListFields()**: This method configures which fields are shown when all models are
   listed (the ``addIdentifier()`` method means that this field will link to the
-  show/edit page of this particular model).
+  show/edit page of this particular model);
+* **configureShowFields()**: This method configures which fields are displayed on the show action.
 
 This is the most basic example of the Admin class. You can configure a lot more
 with the Admin class. This will be covered by other, more advanced, articles.
 
-Step 3: Register the Admin class
+Step 2: Register the Admin class
 --------------------------------
 
 You've now created an Admin class, but there is currently no way for the
@@ -166,22 +176,31 @@ service and tag it with the ``sonata.admin`` tag:
             # ...
             admin.category:
                 class: App\Admin\CategoryAdmin
-                arguments: [~, App\Entity\Category, ~]
                 tags:
-                    - { name: sonata.admin, manager_type: orm, label: Category }
+                    - { name: sonata.admin, model_class: App\Entity\Category, manager_type: orm, label: Category }
+
++---------------------------------------+-----------------------------------------------------------------------------------------+
+| Tag option                            | Description                                                                             |
++=======================================+=========================================================================================+
+| name                                  | Service tag's name                                                                      |
++---------------------------------------+-----------------------------------------------------------------------------------------+
+| model_class                           | The entity class e.g: ``App\Entity\Category``                                           |
++---------------------------------------+-----------------------------------------------------------------------------------------+
+| manager_type                          | Manager type (``orm``, ``odm``)                                                         |
++---------------------------------------+-----------------------------------------------------------------------------------------+
+| label                                 | Label, e.g Category                                                                     |
++---------------------------------------+-----------------------------------------------------------------------------------------+
+| group (``optional``)                  | The admins group, it will be used to group in menu on the left side, e.g ``Category``   |
++---------------------------------------+-----------------------------------------------------------------------------------------+
+| controller (``optional``)             | In case you want to use a custom controller, pass the class name.                       |
++---------------------------------------+-----------------------------------------------------------------------------------------+
 
 The constructor of the base Admin class has many arguments. SonataAdminBundle
 provides a compiler pass which takes care of configuring it correctly for you.
 You can often tweak things using tag attributes. The code shown here is the
 shortest code needed to get it working.
 
-.. note::
-
-    If you don't like writing configuration and want to some more magic,
-    have a look at the [SonataAutoConfigureBundle](https://symfony.com/doc/master/bundles/SonataAdminBundle/cookbook/recipe_auto_configure_admin_classes.html)
-    described in chapter 24.
-
-Step 4: Register SonataAdmin custom Routes
+Step 3: Register SonataAdmin custom Routes
 ------------------------------------------
 
 SonataAdminBundle generates routes for the Admin classes on the fly. To load these
@@ -220,6 +239,6 @@ entity and learn more about this class.
     If you're not seeing the nice labels, but instead something like
     "link_add", you should make sure that you've `enabled the translator`_.
 
-.. _`enabled the translator`: https://symfony.com/doc/4.4/translation.html#configuration
+.. _`enabled the translator`: https://symfony.com/doc/5.4/translation.html#configuration
 
 In the :doc:`next chapter <the_form_view>`, you're going to look at the form view.

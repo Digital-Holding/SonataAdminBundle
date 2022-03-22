@@ -13,21 +13,24 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Filter\Persister;
 
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Prophecy\Prophecy\ObjectProphecy;
+use Sonata\AdminBundle\Datagrid\DatagridInterface;
 use Sonata\AdminBundle\Filter\Persister\SessionFilterPersister;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
-class SessionFilterPersisterTest extends TestCase
+final class SessionFilterPersisterTest extends TestCase
 {
     /**
-     * @var SessionInterface|ObjectProphecy
+     * @var SessionInterface&MockObject
      */
     private $session;
 
     protected function setUp(): void
     {
-        $this->session = $this->prophesize(SessionInterface::class);
+        $this->session = $this->createMock(SessionInterface::class);
     }
 
     protected function tearDown(): void
@@ -37,40 +40,38 @@ class SessionFilterPersisterTest extends TestCase
 
     public function testGetDefaultValueFromSessionIfNotDefined(): void
     {
-        $this->session->get('admin.customer.filter.parameters', [])
-            ->shouldBeCalledTimes(1)
+        $this->session->expects(static::once())->method('get')
+            ->with('admin.customer.filter.parameters', [])
             ->willReturn([]);
 
-        self::assertSame([], $this->createPersister()->get('admin.customer'));
+        static::assertSame([], $this->createPersister()->get('admin.customer'));
     }
 
     public function testGetValueFromSessionIfDefined(): void
     {
         $filters = [
-            'active' => true,
-            '_page' => 1,
-            '_sort_by' => 'firstName',
-            '_sort_order' => 'ASC',
-            '_per_page' => 25,
+            DatagridInterface::PAGE => 1,
+            DatagridInterface::SORT_BY => 'firstName',
+            DatagridInterface::SORT_ORDER => 'ASC',
+            DatagridInterface::PER_PAGE => 25,
         ];
-        $this->session->get('admin.customer.filter.parameters', [])
-            ->shouldBeCalledTimes(1)
+        $this->session->expects(static::once())->method('get')
+            ->with('admin.customer.filter.parameters', [])
             ->willReturn($filters);
 
-        self::assertSame($filters, $this->createPersister()->get('admin.customer'));
+        static::assertSame($filters, $this->createPersister()->get('admin.customer'));
     }
 
     public function testSetValueToSession(): void
     {
         $filters = [
-            'active' => true,
-            '_page' => 1,
-            '_sort_by' => 'firstName',
-            '_sort_order' => 'ASC',
-            '_per_page' => 25,
+            DatagridInterface::PAGE => 1,
+            DatagridInterface::SORT_BY => 'firstName',
+            DatagridInterface::SORT_ORDER => 'ASC',
+            DatagridInterface::PER_PAGE => 25,
         ];
-        $this->session->set('admin.customer.filter.parameters', $filters)
-            ->shouldBeCalledTimes(1)
+        $this->session->expects(static::once())->method('set')
+            ->with('admin.customer.filter.parameters', $filters)
             ->willReturn(null);
 
         $this->createPersister()->set('admin.customer', $filters);
@@ -78,8 +79,8 @@ class SessionFilterPersisterTest extends TestCase
 
     public function testResetValueToSession(): void
     {
-        $this->session->remove('admin.customer.filter.parameters')
-            ->shouldBeCalledTimes(1)
+        $this->session->expects(static::once())->method('remove')
+            ->with('admin.customer.filter.parameters')
             ->willReturn(null);
 
         $this->createPersister()->reset('admin.customer');
@@ -87,6 +88,11 @@ class SessionFilterPersisterTest extends TestCase
 
     private function createPersister(): SessionFilterPersister
     {
-        return new SessionFilterPersister($this->session->reveal());
+        $request = new Request();
+        $request->setSession($this->session);
+        $requestStack = new RequestStack();
+        $requestStack->push($request);
+
+        return new SessionFilterPersister($requestStack);
     }
 }

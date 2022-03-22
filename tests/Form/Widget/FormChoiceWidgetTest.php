@@ -16,7 +16,7 @@ namespace Sonata\AdminBundle\Tests\Form\Widget;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\FormTypeInterface;
 
-class FormChoiceWidgetTest extends BaseWidgetTest
+final class FormChoiceWidgetTest extends BaseWidgetTest
 {
     protected $type = 'form';
 
@@ -27,10 +27,7 @@ class FormChoiceWidgetTest extends BaseWidgetTest
 
     public function testLabelRendering(): void
     {
-        $choices = ['some', 'choices'];
-        if (!method_exists(FormTypeInterface::class, 'setDefaultOptions')) {
-            $choices = array_flip($choices);
-        }
+        $choices = array_flip(['some', 'choices']);
 
         $choice = $this->factory->create(
             $this->getChoiceClass(),
@@ -43,7 +40,7 @@ class FormChoiceWidgetTest extends BaseWidgetTest
 
         $html = $this->renderWidget($choice->createView());
 
-        $this->assertStringContainsString(
+        static::assertStringContainsString(
             '<li><div class="checkbox"><label><input type="checkbox" id="choice_0" name="choice[]" value="0" /><span class="control-label__text">[trans]some[/trans]</span></label></div></li>',
             $this->cleanHtmlWhitespace($html)
         );
@@ -59,7 +56,7 @@ class FormChoiceWidgetTest extends BaseWidgetTest
 
         $html = $this->renderWidget($choice->createView());
 
-        $this->assertStringContainsString(
+        static::assertStringContainsString(
             '<option value="" selected="selected">[trans]Choose an option[/trans]</option>',
             $this->cleanHtmlWhitespace($html)
         );
@@ -75,7 +72,7 @@ class FormChoiceWidgetTest extends BaseWidgetTest
 
         $html = $this->renderWidget($choice->createView());
 
-        $this->assertStringNotContainsString(
+        static::assertStringNotContainsString(
             'required="required"',
             $this->cleanHtmlWhitespace($html)
         );
@@ -91,23 +88,32 @@ class FormChoiceWidgetTest extends BaseWidgetTest
 
         $html = $this->renderWidget($choice->createView());
 
-        $this->assertStringContainsString(
+        static::assertStringContainsString(
             'required="required"',
             $this->cleanHtmlWhitespace($html)
         );
     }
 
-    protected function getRequiredOption()
+    /**
+     * @return array<string, mixed>
+     */
+    protected function getRequiredOption(): array
     {
         return ['required' => true];
     }
 
-    protected function getChoiceClass()
+    /**
+     * @return class-string<FormTypeInterface>
+     */
+    protected function getChoiceClass(): string
     {
         return ChoiceType::class;
     }
 
-    protected function getDefaultOption()
+    /**
+     * @return array<string, mixed>
+     */
+    protected function getDefaultOption(): array
     {
         return [
             'placeholder' => 'Choose an option',

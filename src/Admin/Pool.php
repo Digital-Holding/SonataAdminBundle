@@ -13,205 +13,195 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Admin;
 
-use InvalidArgumentException;
-use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\PropertyAccess\PropertyAccess;
-use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
+use Psr\Container\ContainerInterface;
+use Sonata\AdminBundle\Exception\AdminClassNotFoundException;
+use Sonata\AdminBundle\Exception\AdminCodeNotFoundException;
+use Sonata\AdminBundle\Exception\TooManyAdminClassException;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface;
 
 /**
- * @final since sonata-project/admin-bundle 3.52
- *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ *
+ * @phpstan-type Item = array{
+ *     label: string,
+ *     roles: list<string>,
+ *     route: string,
+ *     route_absolute: bool,
+ *     route_params: array<string, string>
+ * }|array{
+ *     admin: string,
+ *     roles: list<string>,
+ *     route_absolute: bool,
+ *     route_params: array<string, string>
+ * }
+ * NEXT_MAJOR: Remove the label_catalogue key.
+ * @phpstan-type Group = array{
+ *     label: string,
+ *     translation_domain: string,
+ *     label_catalogue?: string,
+ *     icon: string,
+ *     items: list<Item>,
+ *     keep_open: bool,
+ *     on_top: bool,
+ *     provider?: string,
+ *     roles: list<string>
+ * }
  */
-class Pool
+final class Pool
 {
+    public const DEFAULT_ADMIN_KEY = 'default';
+
     /**
      * @var ContainerInterface
      */
-    protected $container;
+    private $container;
 
     /**
      * @var string[]
      */
-    protected $adminServiceIds = [];
+    private $adminServiceIds = [];
 
     /**
-     * @var array
+     * @var array<string, array<string, mixed>>
+     * @phpstan-var array<string, Group>
      */
-    protected $adminGroups = [];
+    private $adminGroups = [];
 
     /**
-     * @var array
+     * @var array<string, string[]>
+     * @phpstan-var array<class-string, string[]>
      */
-    protected $adminClasses = [];
+    private $adminClasses = [];
 
     /**
-     * @var array
+     * @param string[]                            $adminServices
+     * @param array<string, array<string, mixed>> $adminGroups
+     * @param array<class-string, string[]>       $adminClasses
+     *
+     * @phpstan-param array<string, Group> $adminGroups
      */
-    protected $assets = [];
-
-    /**
-     * @var string
-     */
-    protected $title;
-
-    /**
-     * @var string
-     */
-    protected $titleLogo;
-
-    /**
-     * @var array
-     */
-    protected $options = [];
-
-    /**
-     * @var PropertyAccessorInterface
-     */
-    protected $propertyAccessor;
-
     public function __construct(
         ContainerInterface $container,
-        string $title,
-        string $logoTitle,
-        array $options = [],
-        ?PropertyAccessorInterface $propertyAccessor = null
+        array $adminServices = [],
+        array $adminGroups = [],
+        array $adminClasses = []
     ) {
         $this->container = $container;
-        $this->title = $title;
-        $this->titleLogo = $logoTitle;
-        $this->options = $options;
-        $this->propertyAccessor = $propertyAccessor;
-    }
-
-    public function getGroups(): array
-    {
-        $groups = $this->adminGroups;
-
-        foreach ($this->adminGroups as $name => $adminGroup) {
-            foreach ($adminGroup as $id => $options) {
-                $groups[$name][$id] = $this->getInstance($id);
-            }
-        }
-
-        return $groups;
+        $this->adminServiceIds = $adminServices;
+        $this->adminGroups = $adminGroups;
+        $this->adminClasses = $adminClasses;
     }
 
     /**
-     * Returns whether an admin group exists or not.
+     * @phpstan-return array<string, array{
+     *  label: string,
+     *  translation_domain: string,
+     *  icon: string,
+     *  items: list<AdminInterface<object>>,
+     *  keep_open: bool,
+     *  on_top: bool,
+     *  provider?: string,
+     *  roles: list<string>
+     * }>
      */
-    public function hasGroup(string $group): bool
-    {
-        return isset($this->adminGroups[$group]);
-    }
-
     public function getDashboardGroups(): array
     {
-        $groups = $this->adminGroups;
+        $groups = [];
 
         foreach ($this->adminGroups as $name => $adminGroup) {
-            if (isset($adminGroup['items'])) {
-                foreach ($adminGroup['items'] as $key => $item) {
-                    // Only Admin Group should be returned
-                    if ('' !== $item['admin']) {
-                        $admin = $this->getInstance($item['admin']);
+            $items = array_values(array_filter(array_map(function (array $item): ?AdminInterface {
+                // NEXT_MAJOR: Remove the '' check
+                if (!isset($item['admin']) || '' === $item['admin']) {
+                    return null;
+                }
 
-                        if ($admin->showIn(AbstractAdmin::CONTEXT_DASHBOARD)) {
-                            $groups[$name]['items'][$key] = $admin;
-                        } else {
-                            unset($groups[$name]['items'][$key]);
-                        }
-                    } else {
-                        unset($groups[$name]['items'][$key]);
+                $admin = $this->getInstance($item['admin']);
+
+                // NEXT_MAJOR: Keep the if part.
+                // @phpstan-ignore-next-line
+                if (method_exists($admin, 'showInDashboard')) {
+                    if (!$admin->showInDashboard()) {
+                        return null;
+                    }
+                } else {
+                    @trigger_error(sprintf(
+                        'Not implementing "%s::showInDashboard()" is deprecated since sonata-project/admin-bundle 4.7'
+                        .' and will fail in 5.0.',
+                        AdminInterface::class
+                    ), \E_USER_DEPRECATED);
+
+                    if (!$admin->showIn(AbstractAdmin::CONTEXT_DASHBOARD)) {
+                        return null;
                     }
                 }
-            }
 
-            if (empty($groups[$name]['items'])) {
-                unset($groups[$name]);
+                return $admin;
+            }, $adminGroup['items'])));
+
+            if ([] !== $items) {
+                $groups[$name] = ['items' => $items] + $adminGroup;
             }
         }
 
         return $groups;
-    }
-
-    /**
-     * Returns all admins related to the given $group.
-     *
-     * @throws \InvalidArgumentException
-     *
-     * @return AdminInterface[]
-     */
-    public function getAdminsByGroup(string $group): array
-    {
-        if (!isset($this->adminGroups[$group])) {
-            throw new \InvalidArgumentException(sprintf('Group "%s" not found in admin pool.', $group));
-        }
-
-        $admins = [];
-
-        if (!isset($this->adminGroups[$group]['items'])) {
-            return $admins;
-        }
-
-        foreach ($this->adminGroups[$group]['items'] as $item) {
-            $admins[] = $this->getInstance($item['admin']);
-        }
-
-        return $admins;
     }
 
     /**
      * Return the admin related to the given $class.
+     *
+     * @throws AdminClassNotFoundException if there is no admin class for the class provided
+     * @throws TooManyAdminClassException  if there is multiple admin class for the class provided
+     *
+     * @phpstan-param class-string $class
+     * @phpstan-return AdminInterface<object>
      */
     public function getAdminByClass(string $class): AdminInterface
     {
         if (!$this->hasAdminByClass($class)) {
-            throw new \LogicException(sprintf('Pool has no admin for the class %s.', $class));
+            throw new AdminClassNotFoundException(sprintf('Pool has no admin for the class %s.', $class));
         }
 
-        if (!\is_array($this->adminClasses[$class])) {
-            throw new \RuntimeException('Invalid format for the Pool::adminClass property');
+        if (isset($this->adminClasses[$class][self::DEFAULT_ADMIN_KEY])) {
+            return $this->getInstance($this->adminClasses[$class][self::DEFAULT_ADMIN_KEY]);
         }
 
-        if (\count($this->adminClasses[$class]) > 1) {
-            throw new \RuntimeException(sprintf(
-                'Unable to find a valid admin for the class: %s, there are too many registered: %s',
+        if (1 !== \count($this->adminClasses[$class])) {
+            throw new TooManyAdminClassException(sprintf(
+                'Unable to find a valid admin for the class: %s, there are too many registered: %s.'
+                .' Please define a default one with the tag attribute `default: true` in your admin configuration.',
                 $class,
                 implode(', ', $this->adminClasses[$class])
             ));
         }
 
-        return $this->getInstance($this->adminClasses[$class][0]);
+        return $this->getInstance(reset($this->adminClasses[$class]));
     }
 
+    /**
+     * @phpstan-param class-string $class
+     */
     public function hasAdminByClass(string $class): bool
     {
-        return isset($this->adminClasses[$class]);
+        return isset($this->adminClasses[$class]) && \count($this->adminClasses[$class]) > 0;
     }
 
     /**
      * Returns an admin class by its Admin code
      * ie : sonata.news.admin.post|sonata.news.admin.comment => return the child class of post.
      *
-     * @throws \InvalidArgumentException if the root admin code is an empty string
+     * @throws AdminCodeNotFoundException
+     *
+     * @return AdminInterface<object>
      */
     public function getAdminByAdminCode(string $adminCode): AdminInterface
     {
         $codes = explode('|', $adminCode);
-        $code = trim(array_shift($codes));
-
-        if ('' === $code) {
-            throw new \InvalidArgumentException(
-                'Root admin code must contain a valid admin reference, empty string given.'
-            );
-        }
-
-        $admin = $this->getInstance($code);
+        $rootCode = trim(array_shift($codes));
+        $admin = $this->getInstance($rootCode);
 
         foreach ($codes as $code) {
             if (!\in_array($code, $this->adminServiceIds, true)) {
-                throw new \InvalidArgumentException(sprintf(
+                throw new AdminCodeNotFoundException(sprintf(
                     'Argument 1 passed to %s() must contain a valid admin reference, "%s" found at "%s".',
                     __METHOD__,
                     $code,
@@ -220,8 +210,9 @@ class Pool
             }
 
             if (!$admin->hasChild($code)) {
-                throw new \InvalidArgumentException(sprintf(
-                    'Argument 1 passed to %s() must contain a valid admin hierarchy, "%s" is not a valid child for "%s"',
+                throw new AdminCodeNotFoundException(sprintf(
+                    'Argument 1 passed to %s() must contain a valid admin hierarchy,'
+                    .' "%s" is not a valid child for "%s"',
                     __METHOD__,
                     $code,
                     $admin->getCode()
@@ -237,7 +228,7 @@ class Pool
     /**
      * Checks if an admin with a certain admin code exists.
      */
-    final public function hasAdminByAdminCode(string $adminCode): bool
+    public function hasAdminByAdminCode(string $adminCode): bool
     {
         try {
             $this->getAdminByAdminCode($adminCode);
@@ -249,17 +240,49 @@ class Pool
     }
 
     /**
+     * @throws AdminClassNotFoundException if there is no admin for the field description target model
+     * @throws TooManyAdminClassException  if there is too many admin for the field description target model
+     * @throws AdminCodeNotFoundException  if the admin_code option is invalid
+     *
+     * @return AdminInterface<object>
+     */
+    public function getAdminByFieldDescription(FieldDescriptionInterface $fieldDescription): AdminInterface
+    {
+        $adminCode = $fieldDescription->getOption('admin_code');
+
+        if (\is_string($adminCode)) {
+            return $this->getAdminByAdminCode($adminCode);
+        }
+
+        $targetModel = $fieldDescription->getTargetModel();
+        if (null === $targetModel) {
+            throw new \InvalidArgumentException('The field description has no target model.');
+        }
+
+        return $this->getAdminByClass($targetModel);
+    }
+
+    /**
      * Returns a new admin instance depends on the given code.
      *
-     * @throws \InvalidArgumentException
+     * @throws AdminCodeNotFoundException if the code is not found in admin pool
+     *
+     * @return AdminInterface<object>
      */
     public function getInstance(string $id): AdminInterface
     {
+        if ('' === $id) {
+            throw new \InvalidArgumentException(
+                'Admin code must contain a valid admin reference, empty string given.'
+            );
+        }
+
         if (!\in_array($id, $this->adminServiceIds, true)) {
             $msg = sprintf('Admin service "%s" not found in admin pool.', $id);
             $shortest = -1;
             $closest = null;
             $alternatives = [];
+
             foreach ($this->adminServiceIds as $adminServiceId) {
                 $lev = levenshtein($id, $adminServiceId);
                 if ($lev <= $shortest || $shortest < 0) {
@@ -270,6 +293,7 @@ class Pool
                     $alternatives[$adminServiceId] = $lev;
                 }
             }
+
             if (null !== $closest) {
                 asort($alternatives);
                 unset($alternatives[$closest]);
@@ -280,83 +304,44 @@ class Pool
                     implode(', ', array_keys($alternatives))
                 );
             }
-            throw new \InvalidArgumentException($msg);
+
+            throw new AdminCodeNotFoundException($msg);
         }
 
         $admin = $this->container->get($id);
 
         if (!$admin instanceof AdminInterface) {
-            throw new InvalidArgumentException(sprintf('Found service "%s" is not a valid admin service', $id));
+            throw new \InvalidArgumentException(sprintf('Found service "%s" is not a valid admin service', $id));
         }
 
         return $admin;
     }
 
-    public function getContainer(): ContainerInterface
-    {
-        return $this->container;
-    }
-
-    public function setAdminGroups(array $adminGroups): void
-    {
-        $this->adminGroups = $adminGroups;
-    }
-
+    /**
+     * @return array<string, array<string, mixed>>
+     *
+     * @phpstan-return array<string, Group>
+     */
     public function getAdminGroups(): array
     {
         return $this->adminGroups;
     }
 
-    public function setAdminServiceIds(array $adminServiceIds): void
-    {
-        $this->adminServiceIds = $adminServiceIds;
-    }
-
+    /**
+     * @return string[]
+     */
     public function getAdminServiceIds(): array
     {
         return $this->adminServiceIds;
     }
 
-    public function setAdminClasses(array $adminClasses): void
-    {
-        $this->adminClasses = $adminClasses;
-    }
-
+    /**
+     * @return array<string, string[]>
+     *
+     * @phpstan-return array<class-string, string[]>
+     */
     public function getAdminClasses(): array
     {
         return $this->adminClasses;
-    }
-
-    public function getTitleLogo(): string
-    {
-        return $this->titleLogo;
-    }
-
-    public function getTitle(): string
-    {
-        return $this->title;
-    }
-
-    /**
-     * @param mixed $default
-     *
-     * @return mixed
-     */
-    public function getOption(string $name, $default = null)
-    {
-        if (isset($this->options[$name])) {
-            return $this->options[$name];
-        }
-
-        return $default;
-    }
-
-    public function getPropertyAccessor(): PropertyAccessorInterface
-    {
-        if (null === $this->propertyAccessor) {
-            $this->propertyAccessor = PropertyAccess::createPropertyAccessor();
-        }
-
-        return $this->propertyAccessor;
     }
 }

@@ -19,17 +19,20 @@ use Sonata\AdminBundle\Command\Validators;
 /**
  * @author Andrej Hudec <pulzarraider@gmail.com>
  */
-class ValidatorsTest extends TestCase
+final class ValidatorsTest extends TestCase
 {
     /**
      * @dataProvider getValidateUsernameTests
      */
     public function testValidateUsername(string $expected, string $value): void
     {
-        $this->assertSame($expected, Validators::validateUsername($value));
+        static::assertSame($expected, Validators::validateUsername($value));
     }
 
-    public function getValidateUsernameTests(): array
+    /**
+     * @phpstan-return iterable<array-key, array{string, string}>
+     */
+    public function getValidateUsernameTests(): iterable
     {
         return [
             ['Foo', 'Foo'],
@@ -45,54 +48,17 @@ class ValidatorsTest extends TestCase
     }
 
     /**
-     * @dataProvider getValidateEntityNameTests
-     */
-    public function testValidateEntityName(array $expected, string $value): void
-    {
-        $this->assertSame($expected, Validators::validateEntityName($value));
-    }
-
-    public function getValidateEntityNameTests(): array
-    {
-        return [
-            [['AcmeBlogBundle', 'Post'], 'AcmeBlogBundle:Post'],
-            [['Foo\Bar\BlogBundle', 'Post'], 'Foo/Bar/BlogBundle:Post'],
-            [['Foo\Bar\BlogBundle', 'Post'], 'Foo\Bar\BlogBundle:Post'],
-        ];
-    }
-
-    /**
-     * @dataProvider getValidateEntityNamesWithExceptionTests
-     */
-    public function testValidateEntityNameWithException(string $value): void
-    {
-        $this->expectException(\InvalidArgumentException::class);
-
-        Validators::validateEntityName($value);
-    }
-
-    public function getValidateEntityNamesWithExceptionTests(): array
-    {
-        return [
-            ['Sonata\AdminBundle\Admin\AbstractAdmin'],
-            ['Sonata/AdminBundle/Admin/Admin'],
-            ['Foo/Bar/Controller'],
-            ['Foo/BarController'],
-            ['Foo_Bar'],
-            ['FooBarController'],
-            ['FooBarAdmin'],
-        ];
-    }
-
-    /**
      * @dataProvider getValidateClassTests
      */
     public function testValidateClass(string $expected, string $value): void
     {
-        $this->assertSame($expected, Validators::validateClass($value));
+        static::assertSame($expected, Validators::validateClass($value));
     }
 
-    public function getValidateClassTests()
+    /**
+     * @phpstan-return iterable<array-key, array{string, string}>
+     */
+    public function getValidateClassTests(): iterable
     {
         return [
             ['Sonata\AdminBundle\Admin\AbstractAdmin', 'Sonata\AdminBundle\Admin\AbstractAdmin'],
@@ -110,7 +76,10 @@ class ValidatorsTest extends TestCase
         Validators::validateClass($value);
     }
 
-    public function getValidateClassWithExceptionTests()
+    /**
+     * @phpstan-return iterable<array-key, array{string}>
+     */
+    public function getValidateClassWithExceptionTests(): iterable
     {
         return [
             ['Foo:BarAdmin'],
@@ -124,10 +93,13 @@ class ValidatorsTest extends TestCase
      */
     public function testValidateAdminClassBasename(string $expected, string $value): void
     {
-        $this->assertSame($expected, Validators::validateAdminClassBasename($value));
+        static::assertSame($expected, Validators::validateAdminClassBasename($value));
     }
 
-    public function getValidateAdminClassBasenameTests()
+    /**
+     * @phpstan-return iterable<array-key, array{string, string}>
+     */
+    public function getValidateAdminClassBasenameTests(): iterable
     {
         return [
             ['FooBarAdmin', 'FooBarAdmin'],
@@ -146,7 +118,10 @@ class ValidatorsTest extends TestCase
         Validators::validateAdminClassBasename($value);
     }
 
-    public function getValidateAdminClassBasenameWithExceptionTests(): array
+    /**
+     * @phpstan-return iterable<array-key, array{string}>
+     */
+    public function getValidateAdminClassBasenameWithExceptionTests(): iterable
     {
         return [
             ['Foo:BarAdmin'],
@@ -160,10 +135,13 @@ class ValidatorsTest extends TestCase
      */
     public function testValidateControllerClassBasename(string $expected, string $value): void
     {
-        $this->assertSame($expected, Validators::validateControllerClassBasename($value));
+        static::assertSame($expected, Validators::validateControllerClassBasename($value));
     }
 
-    public function getValidateControllerClassBasenameTests()
+    /**
+     * @phpstan-return iterable<array-key, array{string, string}>
+     */
+    public function getValidateControllerClassBasenameTests(): iterable
     {
         return [
             ['FooBarController', 'FooBarController'],
@@ -182,7 +160,10 @@ class ValidatorsTest extends TestCase
         Validators::validateControllerClassBasename($value);
     }
 
-    public function getValidateControllerClassBasenameWithExceptionTests(): array
+    /**
+     * @phpstan-return iterable<array-key, array{string}>
+     */
+    public function getValidateControllerClassBasenameWithExceptionTests(): iterable
     {
         return [
             [' foobar '],
@@ -213,10 +194,13 @@ class ValidatorsTest extends TestCase
      */
     public function testValidateServicesFile(string $expected, string $value): void
     {
-        $this->assertSame($expected, Validators::validateServicesFile($value));
+        static::assertSame($expected, Validators::validateServicesFile($value));
     }
 
-    public function getValidateServicesFileTests(): array
+    /**
+     * @phpstan-return iterable<array-key, array{string, string}>
+     */
+    public function getValidateServicesFileTests(): iterable
     {
         return [
             ['foobar', 'foobar'],
@@ -234,10 +218,13 @@ class ValidatorsTest extends TestCase
      */
     public function testValidateServiceId(string $value): void
     {
-        $this->assertSame($value, Validators::validateServiceId($value));
+        static::assertSame($value, Validators::validateServiceId($value));
     }
 
-    public function getValidateServiceIdTests(): array
+    /**
+     * @phpstan-return iterable<array-key, array{string}>
+     */
+    public function getValidateServiceIdTests(): iterable
     {
         return [
             ['abcdefghijklmnopqrstuvwxyz.ABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789'],
@@ -256,7 +243,10 @@ class ValidatorsTest extends TestCase
         Validators::validateServiceId($value);
     }
 
-    public function getValidateServiceIdWithExceptionTests(): array
+    /**
+     * @phpstan-return iterable<array-key, array{string}>
+     */
+    public function getValidateServiceIdWithExceptionTests(): iterable
     {
         return [
             [' foobar '],

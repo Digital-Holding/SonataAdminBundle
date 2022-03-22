@@ -17,8 +17,9 @@ use PHPUnit\Framework\TestCase;
 use Sonata\AdminBundle\Admin\Pool;
 use Sonata\AdminBundle\Route\RoutesCache;
 use Sonata\AdminBundle\Route\RoutesCacheWarmUp;
+use Symfony\Component\DependencyInjection\Container;
 
-class RoutesCacheWarmUpTest extends TestCase
+final class RoutesCacheWarmUpTest extends TestCase
 {
     /**
      * @var RoutesCacheWarmUp
@@ -27,13 +28,13 @@ class RoutesCacheWarmUpTest extends TestCase
 
     protected function setUp(): void
     {
-        $pool = $this->getMockBuilder(Pool::class)->disableOriginalConstructor()->getMock();
+        $pool = new Pool(new Container());
 
         $this->routesCacheWarmUp = new RoutesCacheWarmUp(new RoutesCache('test', false), $pool);
     }
 
     public function testIsOptional(): void
     {
-        $this->assertTrue($this->routesCacheWarmUp->isOptional());
+        static::assertTrue($this->routesCacheWarmUp->isOptional());
     }
 }

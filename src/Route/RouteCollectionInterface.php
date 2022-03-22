@@ -20,6 +20,15 @@ use Symfony\Component\Routing\Route;
  */
 interface RouteCollectionInterface
 {
+    /**
+     * @param array<string, mixed>  $defaults
+     * @param array<string, string> $requirements
+     * @param array<string, mixed>  $options
+     * @param string[]              $schemes
+     * @param string[]              $methods
+     *
+     * @return static
+     */
     public function add(
         string $name,
         ?string $pattern = null,
@@ -34,10 +43,13 @@ interface RouteCollectionInterface
 
     public function getCode(string $name): string;
 
+    /**
+     * @return static
+     */
     public function addCollection(self $collection): self;
 
     /**
-     * @return Route[]
+     * @return array<string, Route>
      */
     public function getElements(): array;
 
@@ -50,10 +62,15 @@ interface RouteCollectionInterface
      */
     public function get(string $name): Route;
 
+    /**
+     * @return static
+     */
     public function remove(string $name): self;
 
     /**
      * @throws \InvalidArgumentException
+     *
+     * @return static
      */
     public function restore(string $name): self;
 
@@ -61,13 +78,20 @@ interface RouteCollectionInterface
      * Remove all routes except routes in $routeList.
      *
      * @param string[]|string $routeList
+     *
+     * @return static
      */
     public function clearExcept($routeList): self;
 
+    /**
+     * @return static
+     */
     public function clear(): self;
 
     /**
-     * Convert a word in to the format for a symfony action action_name => actionName.
+     * Converts a word into the format required for a controller action. By instance,
+     * the argument "list_something" returns "listSomething" if the associated controller is not an action itself,
+     * otherwise, it will return "listSomethingAction".
      */
     public function actionify(string $action): string;
 
@@ -76,6 +100,8 @@ interface RouteCollectionInterface
     public function getBaseControllerName(): string;
 
     public function getBaseRouteName(): string;
+
+    public function getRouteName(string $name): string;
 
     public function getBaseRoutePattern(): string;
 }

@@ -70,22 +70,15 @@ services:
         services:
             app.admin.post:
                 class: App\Admin\PostAdmin
-                arguments:
-                    - ~
-                    - App\Entity\Post
-                    - ~
                 tags:
-                    - { name: sonata.admin, manager_type: orm, group: 'Content', label: 'Post' }
+                    - { name: sonata.admin, model_class: App\Entity\Post, manager_type: orm, group: 'Content', label: 'Post' }
 
     .. code-block:: xml
 
         <!-- config/services.xml -->
 
         <service id="app.admin.post" class="App\Admin\PostAdmin">
-              <argument/>
-              <argument>App\Entity\Post</argument>
-              <argument/>
-              <tag name="sonata.admin" manager_type="orm" group="Content" label="Post"/>
+              <tag name="sonata.admin" model_class="App\Entity\Post" manager_type="orm" group="Content" label="Post"/>
           </service>
 
 In these examples, notice the ``group`` tag, stating that this particular ``Admin``
@@ -100,36 +93,31 @@ service belongs to the ``Content`` group.
         services:
             app.admin.post:
                 class: App\Admin\PostAdmin
-                arguments:
-                    - ~
-                    - App\Entity\Post
-                    - ~
                 tags:
                     - name: sonata.admin
+                      model_class: App\Entity\Post
                       manager_type: orm
                       group: 'app.admin.group.content'
+                      translation_domain: 'App'
                       label: 'app.admin.model.post'
-                      label_catalogue: 'App'
 
     .. code-block:: xml
 
         <!-- config/services.xml -->
 
         <service id="app.admin.post" class="App\Admin\PostAdmin">
-              <argument/>
-              <argument>App\Entity\Post</argument>
-              <argument/>
               <tag
                   name="sonata.admin"
+                  model_class="App\Entity\Post"
                   manager_type="orm"
                   group="app.admin.group.content"
+                  translation_domain="App"
                   label="app.admin.model.post"
-                  label_catalogue="App"
                   />
           </service>
 
-In this example, the labels are translated by ``App``, using the given
-``label_catalogue``. So, you can use the above examples to support multiple languages
+In this example, the label are translated by ``App``, using the given
+``translation_domain``. So, you can use the above examples to support multiple languages
 in your project.
 
 .. note::
@@ -155,13 +143,12 @@ declarations.
                 groups:
                     app.admin.group.content:
                         label: app.admin.group.content
-                        label_catalogue: App
+                        translation_domain: App
                         items:
                             - app.admin.post
 
                     app.admin.group.blog:
-                        items: ~
-                        item_adds:
+                        items:
                             - sonata.admin.page
                         roles: ['ROLE_ONE', 'ROLE_TWO']
 
@@ -175,7 +162,7 @@ declarations.
 
 This configuration specifies that the ``app.admin.group.content`` group uses the
 ``app.admin.group.content`` label, which is translated using the ``App``
-translation catalogue (the same label and translation configuration that we declared
+translation domain (the same label and translation configuration that we declared
 previously, in the service definition example).
 
 It also states that the ``app.admin.group.content`` group contains only the
@@ -295,10 +282,10 @@ suit this scenario.
 In this example, you would have two ``admin_list`` blocks on your dashboard, each
 of them containing the respectively configured groups.
 
-.. _`SonataBlock documentation page`:  https://sonata-project.org/bundles/block/master/doc/index.html
+.. _`SonataBlock documentation page`: https://docs.sonata-project.org/projects/SonataBlockBundle/en/3.x/
 
 Statistic Block
-~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^
 
 A statistic block can be used to display a simple counter with a color, an font awesome icon and a text. A
 counter is related to the filters from one admin
@@ -318,7 +305,7 @@ counter is related to the filters from one admin
                         type:     sonata.admin.block.stats   # block id
                         settings:
                             code:  sonata.page.admin.page    # admin code - service id
-                            icon:  fa-magic                  # font awesome icon
+                            icon:  fas fa-magic               # font awesome icon
                             text:  app.page.stats            # static text or translation message
                             color: bg-yellow                 # colors: bg-green, bg-red and bg-aqua
                             filters:                         # filter values
@@ -347,8 +334,35 @@ which could also have a pluralized translation target:
         <target>{count, plural, =0 {results} one {result} other {results}}</target>
     </trans-unit>
 
+Preview Block
+^^^^^^^^^^^^^
+
+A preview block can be used to display a brief of an admin list.
+
+.. configuration-block::
+
+    .. code-block:: yaml
+
+        # config/packages/sonata_admin.yaml
+
+        sonata_admin:
+            dashboard:
+                blocks:
+                    -
+                        position: top                              # zone in the dashboard
+                        type:     sonata.admin.block.admin_preview # block id
+                        settings:
+                            code:  sonata.page.admin.page          # admin code - service id
+                            icon:  fas fa-magic                     # font awesome icon
+                            limit: 10
+                            text:  Latest Edited Pages
+                            filters:                               # filter values
+                                edited:      { value: 1 }
+                                _sort_by:    updatedAt
+                                _sort_order: DESC
+
 Dashboard Layout
-~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^
 
 Supported positions right now are the following:
 
@@ -394,16 +408,14 @@ Configuring what actions are available for each item on the dashboard
 By default. A "list" and a "create" option are available for each item on the
 dashboard. If you created a custom action and want to display it along the
 other two on the dashboard, you can do so by overriding the
-``getDashboardActions()`` method of your admin class::
+``configureDashboardActions()`` method of your admin class::
 
     // src/Admin/PostAdmin.php
 
     final class PostAdmin extends AbstractAdmin
     {
-        public function getDashboardActions()
+        protected function configureDashboardActions(array $actions): array
         {
-            $actions = parent::getDashboardActions();
-
             $actions['import'] = [
                 'label'              => 'Import',
                 'url'                => $this->generateUrl('import'),
@@ -414,7 +426,6 @@ other two on the dashboard, you can do so by overriding the
 
             return $actions;
         }
-
     }
 
 You can also hide an action from the dashboard by unsetting it::
@@ -423,15 +434,14 @@ You can also hide an action from the dashboard by unsetting it::
 
     final class PostAdmin extends AbstractAdmin
     {
-        public function getDashboardActions()
+        protected function configureDashboardActions(array $actions): array
         {
-            $actions = parent::getDashboardActions();
+            $actions = parent::configureDashboardActions();
 
             unset($actions['list']);
 
             return $actions;
         }
-
     }
 
 If you do this, you need to be aware that the action is only hidden. it will

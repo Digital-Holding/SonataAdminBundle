@@ -17,21 +17,23 @@ use Sonata\AdminBundle\Exception\LockException;
 
 /**
  * @author Emmanuel Vella <vella.emmanuel@gmail.com>
+ *
+ * @phpstan-template T of object
+ * @phpstan-extends ModelManagerInterface<T>
  */
 interface LockInterface extends ModelManagerInterface
 {
     /**
-     * @param object $object
+     * @return mixed
      *
-     * @return mixed|null
+     * @phpstan-param T $object
      */
-    public function getLockVersion($object);
+    public function getLockVersion(object $object);
 
     /**
-     * @param object $object
-     * @param mixed  $expectedVersion
-     *
      * @throws LockException
+     *
+     * @phpstan-param T $object
      */
-    public function lock($object, $expectedVersion);
+    public function lock(object $object, ?int $expectedVersion): void;
 }

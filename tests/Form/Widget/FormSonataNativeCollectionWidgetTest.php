@@ -16,9 +16,11 @@ namespace Sonata\AdminBundle\Tests\Form\Widget;
 use Sonata\AdminBundle\Form\Extension\Field\Type\FormTypeFieldExtension;
 use Sonata\AdminBundle\Form\Type\CollectionType;
 use Sonata\AdminBundle\Tests\Fixtures\TestExtension;
+use Symfony\Component\Form\FormExtensionInterface;
 use Symfony\Component\Form\FormTypeGuesserInterface;
+use Symfony\Component\Form\FormTypeInterface;
 
-class FormSonataNativeCollectionWidgetTest extends BaseWidgetTest
+final class FormSonataNativeCollectionWidgetTest extends BaseWidgetTest
 {
     protected $type = 'form';
 
@@ -27,7 +29,10 @@ class FormSonataNativeCollectionWidgetTest extends BaseWidgetTest
         parent::setUp();
     }
 
-    public function prototypeRenderingProvider()
+    /**
+     * @phpstan-return array<array{array<string, mixed>}>
+     */
+    public function prototypeRenderingProvider(): array
     {
         return [
             'shrinkable collection' => [['allow_delete' => true]],
@@ -36,6 +41,8 @@ class FormSonataNativeCollectionWidgetTest extends BaseWidgetTest
     }
 
     /**
+     * @param array<string, mixed> $options
+     *
      * @dataProvider prototypeRenderingProvider
      */
     public function testPrototypeIsDeletableNoMatterTheShrinkability(array $options): void
@@ -48,16 +55,19 @@ class FormSonataNativeCollectionWidgetTest extends BaseWidgetTest
 
         $html = $this->renderWidget($choice->createView());
 
-        $this->assertStringContainsString(
+        static::assertStringContainsString(
             'sonata-collection-delete',
             $this->cleanHtmlWhitespace($html)
         );
     }
 
-    protected function getExtensions()
+    /**
+     * @phpstan-return array<FormExtensionInterface>
+     */
+    protected function getExtensions(): array
     {
         $extensions = parent::getExtensions();
-        $guesser = $this->getMockForAbstractClass(FormTypeGuesserInterface::class);
+        $guesser = $this->createMock(FormTypeGuesserInterface::class);
         $extension = new TestExtension($guesser);
 
         $extension->addTypeExtension(new FormTypeFieldExtension([], [
@@ -68,7 +78,10 @@ class FormSonataNativeCollectionWidgetTest extends BaseWidgetTest
         return $extensions;
     }
 
-    protected function getChoiceClass()
+    /**
+     * @return class-string<FormTypeInterface>
+     */
+    protected function getChoiceClass(): string
     {
         return CollectionType::class;
     }

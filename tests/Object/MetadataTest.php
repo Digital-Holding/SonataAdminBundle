@@ -16,32 +16,32 @@ namespace Sonata\AdminBundle\Tests\Object;
 use PHPUnit\Framework\TestCase;
 use Sonata\AdminBundle\Object\Metadata;
 
-class MetadataTest extends TestCase
+final class MetadataTest extends TestCase
 {
     public function testGetters(): void
     {
         $metadata = new Metadata('title', 'description', 'image', 'domain', ['key1' => 'value1']);
 
-        $this->assertSame('title', $metadata->getTitle());
-        $this->assertSame('description', $metadata->getDescription());
-        $this->assertSame('image', $metadata->getImage());
-        $this->assertSame('domain', $metadata->getDomain());
+        static::assertSame('title', $metadata->getTitle());
+        static::assertSame('description', $metadata->getDescription());
+        static::assertSame('image', $metadata->getImage());
+        static::assertSame('domain', $metadata->getDomain());
 
-        $this->assertSame('value1', $metadata->getOption('key1'));
-        $this->assertSame('valueDefault', $metadata->getOption('none', 'valueDefault'));
-        $this->assertNull($metadata->getOption('none'));
-        $this->assertSame(['key1' => 'value1'], $metadata->getOptions());
-        $this->assertSame('value1', $metadata->getOption('key1'));
+        static::assertSame('value1', $metadata->getOption('key1'));
+        static::assertSame('valueDefault', $metadata->getOption('none', 'valueDefault'));
+        static::assertNull($metadata->getOption('none'));
+        static::assertSame(['key1' => 'value1'], $metadata->getOptions());
+        static::assertSame('value1', $metadata->getOption('key1'));
 
         $metadata2 = new Metadata('title', 'description', 'image');
-        $this->assertNull($metadata2->getDomain());
-        $this->assertSame([], $metadata2->getOptions());
+        static::assertNull($metadata2->getDomain());
+        static::assertSame([], $metadata2->getOptions());
     }
 
     public function testImageNullGetDefaultImage(): void
     {
         $metadata = new Metadata('title', 'description');
-        $this->assertSame($metadata::DEFAULT_MOSAIC_BACKGROUND, $metadata->getImage());
+        static::assertSame($metadata::DEFAULT_MOSAIC_BACKGROUND, $metadata->getImage());
     }
 
     /**
@@ -49,13 +49,16 @@ class MetadataTest extends TestCase
      */
     public function testIsImageAvailable(bool $expected, ?string $image): void
     {
-        $this->assertSame(
+        static::assertSame(
             $expected,
             (new Metadata('title', 'description', $image))->isImageAvailable()
         );
     }
 
-    public function isImageAvailableProvider(): \Generator
+    /**
+     * @phpstan-return iterable<array-key, array{bool, string|null}>
+     */
+    public function isImageAvailableProvider(): iterable
     {
         yield 'image is null' => [false, null];
         yield 'image is available' => [true, 'image.png'];

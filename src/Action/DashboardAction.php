@@ -13,8 +13,6 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Action;
 
-use Sonata\AdminBundle\Admin\BreadcrumbsBuilderInterface;
-use Sonata\AdminBundle\Admin\Pool;
 use Sonata\AdminBundle\Templating\TemplateRegistryInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,14 +21,9 @@ use Twig\Environment;
 final class DashboardAction
 {
     /**
-     * @var array
+     * @var array<array<string, mixed>>
      */
     private $dashboardBlocks = [];
-
-    /**
-     * @var BreadcrumbsBuilderInterface
-     */
-    private $breadcrumbsBuilder;
 
     /**
      * @var TemplateRegistryInterface
@@ -38,26 +31,20 @@ final class DashboardAction
     private $templateRegistry;
 
     /**
-     * @var Pool
-     */
-    private $pool;
-
-    /**
      * @var Environment
      */
     private $twig;
 
+    /**
+     * @param array<array<string, mixed>> $dashboardBlocks
+     */
     public function __construct(
         array $dashboardBlocks,
-        BreadcrumbsBuilderInterface $breadcrumbsBuilder,
         TemplateRegistryInterface $templateRegistry,
-        Pool $pool,
         Environment $twig
     ) {
         $this->dashboardBlocks = $dashboardBlocks;
-        $this->breadcrumbsBuilder = $breadcrumbsBuilder;
         $this->templateRegistry = $templateRegistry;
-        $this->pool = $pool;
         $this->twig = $twig;
     }
 
@@ -79,13 +66,8 @@ final class DashboardAction
             'base_template' => $request->isXmlHttpRequest() ?
                 $this->templateRegistry->getTemplate('ajax') :
                 $this->templateRegistry->getTemplate('layout'),
-            'admin_pool' => $this->pool,
             'blocks' => $blocks,
         ];
-
-        if (!$request->isXmlHttpRequest()) {
-            $parameters['breadcrumbs_builder'] = $this->breadcrumbsBuilder;
-        }
 
         return new Response($this->twig->render($this->templateRegistry->getTemplate('dashboard'), $parameters));
     }

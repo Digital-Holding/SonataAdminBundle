@@ -13,24 +13,22 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Command;
 
-use Doctrine\Common\Persistence\ManagerRegistry;
 use PHPUnit\Framework\TestCase;
-use Prophecy\Argument;
 use Sonata\AdminBundle\Admin\AbstractAdmin;
 use Sonata\AdminBundle\Admin\Pool;
 use Sonata\AdminBundle\Command\GenerateObjectAclCommand;
+use Sonata\AdminBundle\Tests\Fixtures\Entity\Foo;
 use Sonata\AdminBundle\Util\ObjectAclManipulatorInterface;
-use Symfony\Bridge\Doctrine\RegistryInterface;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Output\StreamOutput;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\DependencyInjection\Container;
-use Symfony\Component\DependencyInjection\Exception\ServiceNotFoundException;
+use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
 
 /**
  * @author Javier Spagnoletti <phansys@gmail.com>
  */
-class GenerateObjectAclCommandTest extends TestCase
+final class GenerateObjectAclCommandTest extends TestCase
 {
     /**
      * @var Container
@@ -44,141 +42,126 @@ class GenerateObjectAclCommandTest extends TestCase
         $this->container = new Container();
     }
 
-    public function testExecuteWithoutDoctrineService(): void
-    {
-        $generateObjectAclCommand = new GenerateObjectAclCommand(new Pool($this->container, '', ''), []);
-
-        $application = new Application();
-        $application->add($generateObjectAclCommand);
-
-        $command = $application->find(GenerateObjectAclCommand::getDefaultName());
-        $commandTester = new CommandTester($command);
-
-        $this->assertFalse($this->container->has('doctrine'));
-
-        $this->expectException(ServiceNotFoundException::class);
-        $this->expectExceptionMessage(sprintf('The command "%s" has a dependency on a non-existent service "doctrine".', GenerateObjectAclCommand::getDefaultName()));
-
-        $commandTester->execute(['command' => GenerateObjectAclCommand::getDefaultName()]);
-    }
-
     public function testExecuteWithDeprecatedDoctrineService(): void
     {
-        $pool = new Pool($this->container, '', '');
+        $pool = new Pool($this->container);
 
-        $registry = $this->prophesize(RegistryInterface::class)->reveal();
-        $command = new GenerateObjectAclCommand($pool, [], $registry);
+        $command = new GenerateObjectAclCommand($pool, []);
 
         $application = new Application();
         $application->add($command);
 
-        $command = $application->find(GenerateObjectAclCommand::getDefaultName());
+        $command = $application->find('sonata:admin:generate-object-acl');
         $commandTester = new CommandTester($command);
         $commandTester->execute(['command' => $command->getName()]);
 
-        $this->assertRegExp('/No manipulators are implemented : ignoring/', $commandTester->getDisplay());
+        static::assertMatchesRegularExpression('/No manipulators are implemented : ignoring/', $commandTester->getDisplay());
     }
 
     public function testExecuteWithEmptyManipulators(): void
     {
-        $pool = new Pool($this->container, '', '');
+        $pool = new Pool($this->container);
 
-        $registry = $this->prophesize(ManagerRegistry::class)->reveal();
-        $command = new GenerateObjectAclCommand($pool, [], $registry);
+        $command = new GenerateObjectAclCommand($pool, []);
 
         $application = new Application();
         $application->add($command);
 
-        $command = $application->find(GenerateObjectAclCommand::getDefaultName());
+        $command = $application->find('sonata:admin:generate-object-acl');
         $commandTester = new CommandTester($command);
         $commandTester->execute(['command' => $command->getName()]);
 
-        $this->assertRegExp('/No manipulators are implemented : ignoring/', $commandTester->getDisplay());
+        static::assertMatchesRegularExpression('/No manipulators are implemented : ignoring/', $commandTester->getDisplay());
     }
 
     public function testExecuteWithManipulatorNotFound(): void
     {
-        $admin = $this->prophesize(AbstractAdmin::class);
-        $registry = $this->prophesize(ManagerRegistry::class);
-        $pool = $this->prophesize(Pool::class);
+        $admin = $this->createStub(AbstractAdmin::class);
+        $container = new Container();
+        $container->set('acme.admin.foo', $admin);
+        $pool = new Pool($container, ['acme.admin.foo']);
 
-        $admin->getManagerType(Argument::any())->willReturn('bar');
-
-        $pool->getAdminServiceIds()->willReturn(['acme.admin.foo']);
-
-        $pool->getInstance(Argument::any())->willReturn($admin->reveal());
+        $admin->setManagerType('bar');
 
         $aclObjectManipulators = [
-            'bar' => new \stdClass(),
+            'bar' => $this->createMock(ObjectAclManipulatorInterface::class),
         ];
 
-        $command = new GenerateObjectAclCommand($pool->reveal(), $aclObjectManipulators, $registry->reveal());
+        $command = new GenerateObjectAclCommand($pool, $aclObjectManipulators);
 
         $application = new Application();
         $application->add($command);
 
-        $command = $application->find(GenerateObjectAclCommand::getDefaultName());
+        $command = $application->find('sonata:admin:generate-object-acl');
         $commandTester = new CommandTester($command);
         $commandTester->execute(['command' => $command->getName()]);
 
-        $this->assertRegExp('/Admin class is using a manager type that has no manipulator implemented : ignoring/', $commandTester->getDisplay());
-    }
-
-    public function testExecuteWithManipulatorNotObjectAclManipulatorInterface(): void
-    {
-        $admin = $this->prophesize(AbstractAdmin::class);
-        $registry = $this->prophesize(ManagerRegistry::class);
-        $pool = $this->prophesize(Pool::class);
-
-        $admin->getManagerType(Argument::any())->willReturn('bar');
-
-        $pool->getAdminServiceIds()->willReturn(['acme.admin.foo']);
-        $pool->getInstance(Argument::any())->willReturn($admin->reveal());
-
-        $aclObjectManipulators = [
-            'sonata.admin.manipulator.acl.object.bar' => new \stdClass(),
-        ];
-
-        $command = new GenerateObjectAclCommand($pool->reveal(), $aclObjectManipulators, $registry->reveal());
-
-        $application = new Application();
-        $application->add($command);
-
-        $command = $application->find(GenerateObjectAclCommand::getDefaultName());
-        $commandTester = new CommandTester($command);
-        $commandTester->execute(['command' => $command->getName()]);
-
-        $this->assertRegExp('/The interface "ObjectAclManipulatorInterface" is not implemented for/', $commandTester->getDisplay());
+        static::assertMatchesRegularExpression('/Admin class is using a manager type that has no manipulator implemented : ignoring/', $commandTester->getDisplay());
     }
 
     public function testExecuteWithManipulator(): void
     {
-        $admin = $this->prophesize(AbstractAdmin::class);
-        $registry = $this->prophesize(ManagerRegistry::class);
-        $pool = $this->prophesize(Pool::class);
+        $admin = $this->createStub(AbstractAdmin::class);
+        $container = new Container();
+        $container->set('acme.admin.foo', $admin);
+        $pool = new Pool($container, ['acme.admin.foo']);
 
-        $admin->getManagerType(Argument::any())->willReturn('bar');
-        $admin = $admin->reveal();
+        $admin->setManagerType('bar');
 
-        $pool->getAdminServiceIds()->willReturn(['acme.admin.foo']);
-        $pool->getInstance(Argument::any())->willReturn($admin);
-
-        $manipulator = $this->prophesize(ObjectAclManipulatorInterface::class);
-        $manipulator
-            ->batchConfigureAcls(Argument::type(StreamOutput::class), Argument::is($admin), null)
-            ->shouldBeCalledTimes(1);
+        $manipulator = $this->createMock(ObjectAclManipulatorInterface::class);
+        $manipulator->expects(static::once())->method('batchConfigureAcls')
+            ->with(static::isInstanceOf(StreamOutput::class), $admin, null);
 
         $aclObjectManipulators = [
-            'sonata.admin.manipulator.acl.object.bar' => $manipulator->reveal(),
+            'sonata.admin.manipulator.acl.object.bar' => $manipulator,
         ];
 
-        $command = new GenerateObjectAclCommand($pool->reveal(), $aclObjectManipulators, $registry->reveal());
+        $command = new GenerateObjectAclCommand($pool, $aclObjectManipulators);
 
         $application = new Application();
         $application->add($command);
 
-        $command = $application->find(GenerateObjectAclCommand::getDefaultName());
+        $command = $application->find('sonata:admin:generate-object-acl');
         $commandTester = new CommandTester($command);
         $commandTester->execute(['command' => $command->getName()]);
+    }
+
+    public function testExecuteWithUserModel(): void
+    {
+        $admin = $this->createStub(AbstractAdmin::class);
+        $container = new Container();
+        $container->set('acme.admin.foo', $admin);
+        $pool = new Pool($container, ['acme.admin.foo']);
+
+        $admin->setManagerType('bar');
+
+        $manipulator = $this->createMock(ObjectAclManipulatorInterface::class);
+        $manipulator
+            ->expects(static::once())
+            ->method('batchConfigureAcls')
+            ->with(
+                static::isInstanceOf(StreamOutput::class),
+                $admin,
+                static::callback(static function (UserSecurityIdentity $userSecurityIdentity): bool {
+                    return Foo::class === $userSecurityIdentity->getClass();
+                })
+            );
+
+        $aclObjectManipulators = [
+            'sonata.admin.manipulator.acl.object.bar' => $manipulator,
+        ];
+
+        $command = new GenerateObjectAclCommand($pool, $aclObjectManipulators);
+
+        $application = new Application();
+        $application->add($command);
+
+        $command = $application->find('sonata:admin:generate-object-acl');
+        $commandTester = new CommandTester($command);
+        $commandTester->execute([
+            'command' => $command->getName(),
+            '--user_model' => Foo::class,
+            '--object_owner' => true,
+        ]);
     }
 }

@@ -16,7 +16,6 @@ namespace Sonata\AdminBundle\Form\Type\Filter;
 use Sonata\AdminBundle\Form\Type\Operator\ContainsOperatorType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType as FormChoiceType;
-use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
@@ -24,26 +23,21 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
  */
 final class ChoiceType extends AbstractType
 {
-    public function getBlockPrefix()
+    public function getBlockPrefix(): string
     {
         return 'sonata_type_filter_choice';
     }
 
-    public function buildForm(FormBuilderInterface $builder, array $options): void
+    public function getParent(): string
     {
-        $builder
-            ->add('type', $options['operator_type'], array_merge(['required' => false], $options['operator_options']))
-            ->add('value', $options['field_type'], array_merge(['required' => false], $options['field_options']))
-        ;
+        return FilterDataType::class;
     }
 
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
             'field_type' => FormChoiceType::class,
-            'field_options' => [],
             'operator_type' => ContainsOperatorType::class,
-            'operator_options' => [],
         ]);
     }
 }

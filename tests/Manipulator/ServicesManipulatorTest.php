@@ -14,31 +14,30 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Tests\Manipulator;
 
 use PHPUnit\Framework\TestCase;
+use Sonata\AdminBundle\Admin\AdminInterface;
 use Sonata\AdminBundle\Manipulator\ServicesManipulator;
 
 /**
  * @author Marek Stipek <mario.dweller@seznam.cz>
  */
-class ServicesManipulatorTest extends TestCase
+final class ServicesManipulatorTest extends TestCase
 {
-    /** @var ServicesManipulator */
+    /**
+     * @var ServicesManipulator
+     */
     private $servicesManipulator;
 
-    /** @var string */
+    /**
+     * @var string
+     */
     private $file;
 
-    /**
-     * {@inheritdoc}
-     */
     protected function setUp(): void
     {
         $this->file = sprintf('%s/%s.yml', sys_get_temp_dir(), lcg_value());
         $this->servicesManipulator = new ServicesManipulator($this->file);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function tearDown(): void
     {
         @unlink($this->file);
@@ -48,43 +47,37 @@ class ServicesManipulatorTest extends TestCase
     {
         $this->servicesManipulator->addResource(
             'service_id',
-            'class',
-            'admin_class',
+            \stdClass::class,
+            AdminInterface::class,
             'controller_name',
             'manager_type'
         );
-        $this->assertSame(
+        static::assertSame(
             "services:
     service_id:
-        class: admin_class
-        arguments: [~, class, controller_name]
+        class: Sonata\AdminBundle\Admin\AdminInterface
         tags:
-            - { name: sonata.admin, manager_type: manager_type, group: admin, label: class }
-        public: true\n",
+            - { name: sonata.admin, model_class: stdClass, controller: controller_name, manager_type: manager_type, group: admin, label: stdClass }\n",
             file_get_contents($this->file)
         );
         $this->servicesManipulator->addResource(
             'another_service_id',
-            'another_class',
-            'another_admin_class',
+            \stdClass::class,
+            AdminInterface::class,
             'another_controller_name',
             'another_manager_type'
         );
-        $this->assertSame(
+        static::assertSame(
             "services:
     service_id:
-        class: admin_class
-        arguments: [~, class, controller_name]
+        class: Sonata\AdminBundle\Admin\AdminInterface
         tags:
-            - { name: sonata.admin, manager_type: manager_type, group: admin, label: class }
-        public: true
+            - { name: sonata.admin, model_class: stdClass, controller: controller_name, manager_type: manager_type, group: admin, label: stdClass }
 
     another_service_id:
-        class: another_admin_class
-        arguments: [~, another_class, another_controller_name]
+        class: Sonata\AdminBundle\Admin\AdminInterface
         tags:
-            - { name: sonata.admin, manager_type: another_manager_type, group: admin, label: another_class }
-        public: true\n",
+            - { name: sonata.admin, model_class: stdClass, controller: another_controller_name, manager_type: another_manager_type, group: admin, label: stdClass }\n",
             file_get_contents($this->file)
         );
     }
@@ -96,15 +89,15 @@ class ServicesManipulatorTest extends TestCase
 
         $this->servicesManipulator->addResource(
             'service_id',
-            'class',
-            'admin_class',
+            \stdClass::class,
+            AdminInterface::class,
             'controller_name',
             'manager_type'
         );
         $this->servicesManipulator->addResource(
             'service_id',
-            'class',
-            'admin_class',
+            \stdClass::class,
+            AdminInterface::class,
             'controller_name',
             'manager_type'
         );
@@ -115,19 +108,17 @@ class ServicesManipulatorTest extends TestCase
         file_put_contents($this->file, 'services:');
         $this->servicesManipulator->addResource(
             'service_id',
-            'class',
-            'admin_class',
+            \stdClass::class,
+            AdminInterface::class,
             'controller_name',
             'manager_type'
         );
-        $this->assertSame(
+        static::assertSame(
             "services:
     service_id:
-        class: admin_class
-        arguments: [~, class, controller_name]
+        class: Sonata\AdminBundle\Admin\AdminInterface
         tags:
-            - { name: sonata.admin, manager_type: manager_type, group: admin, label: class }
-        public: true\n",
+            - { name: sonata.admin, model_class: stdClass, controller: controller_name, manager_type: manager_type, group: admin, label: stdClass }\n",
             file_get_contents($this->file)
         );
     }

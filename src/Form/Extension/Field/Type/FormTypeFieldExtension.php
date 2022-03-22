@@ -13,8 +13,8 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Form\Extension\Field\Type;
 
-use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
 use Sonata\AdminBundle\Exception\NoValueException;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface;
 use Symfony\Component\Form\AbstractTypeExtension;
 use Symfony\Component\Form\Extension\Core\Type\FormType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -29,26 +29,33 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 final class FormTypeFieldExtension extends AbstractTypeExtension
 {
     /**
-     * @var array
+     * @var array<string, string>
      */
     private $defaultClasses = [];
 
     /**
-     * @var array
+     * @var array<string, mixed>
      */
     private $options = [];
 
+    /**
+     * @param array<string, string> $defaultClasses
+     * @param array<string, mixed>  $options
+     */
     public function __construct(array $defaultClasses, array $options)
     {
         $this->defaultClasses = $defaultClasses;
         $this->options = $options;
     }
 
+    /**
+     * @param array<string, mixed> $options
+     */
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $sonataAdmin = [
-            'name' => null,
-            'admin' => null,
+            'name' => false,
+            'admin' => false,
             'value' => null,
             'edit' => 'standard',
             'inline' => 'natural',
@@ -76,6 +83,9 @@ final class FormTypeFieldExtension extends AbstractTypeExtension
         $builder->setAttribute('sonata_admin', $sonataAdmin);
     }
 
+    /**
+     * @param array<string, mixed> $options
+     */
     public function buildView(FormView $view, FormInterface $form, array $options): void
     {
         $sonataAdmin = $form->getConfig()->getAttribute('sonata_admin');
@@ -83,7 +93,12 @@ final class FormTypeFieldExtension extends AbstractTypeExtension
         /*
          * We have a child, so we need to upgrade block prefix
          */
-        if ($view->parent && $view->parent->vars['sonata_admin_enabled'] && !$sonataAdmin['admin']) {
+        if (
+            null !== $view->parent
+            && true === $view->parent->vars['sonata_admin_enabled']
+            && \is_array($sonataAdmin)
+            && false === $sonataAdmin['admin']
+        ) {
             $blockPrefixes = $view->vars['block_prefixes'];
             $baseName = str_replace('.', '_', $view->parent->vars['sonata_admin_code']);
 
@@ -112,7 +127,7 @@ final class FormTypeFieldExtension extends AbstractTypeExtension
         }
 
         // avoid to add extra information not required by non admin field
-        if ($sonataAdmin && $form->getConfig()->getAttribute('sonata_admin_enabled', true)) {
+        if (\is_array($sonataAdmin) && true === $form->getConfig()->getAttribute('sonata_admin_enabled', true)) {
             $sonataAdmin['value'] = $form->getData();
 
             // add a new block types, so the Admin Form element can be tweaked based on the admin code
@@ -133,6 +148,7 @@ final class FormTypeFieldExtension extends AbstractTypeExtension
             $view->vars['sonata_admin_enabled'] = true;
             $view->vars['sonata_admin'] = $sonataAdmin;
             $view->vars['sonata_admin_code'] = $sonataAdmin['admin']->getCode();
+            $view->vars['sonata_admin_translation_domain'] = $sonataAdmin['admin']->getTranslationDomain();
 
             $attr = $view->vars['attr'];
 
@@ -148,20 +164,19 @@ final class FormTypeFieldExtension extends AbstractTypeExtension
         $view->vars['sonata_admin'] = $sonataAdmin;
     }
 
-    public function getExtendedType()
-    {
-        return FormType::class;
-    }
-
-    public static function getExtendedTypes()
+    /**
+     * @return string[]
+     *
+     * @phpstan-return class-string<FormTypeInterface>[]
+     */
+    public static function getExtendedTypes(): iterable
     {
         return [FormType::class];
     }
 
     public function configureOptions(OptionsResolver $resolver): void
     {
-        $resolver
-            ->setDefaults([
+        $resolver->setDefaults([
             'sonata_admin' => null,
             'sonata_field_description' => null,
 
@@ -171,19 +186,26 @@ final class FormTypeFieldExtension extends AbstractTypeExtension
     }
 
     /**
+     * NEXT_MAJOR: Remove this method.
+     *
+     * @deprecated since sonata-project/admin-bundle version 4.3 and will be removed in 5.0.
+     *
      * return the value related to FieldDescription, if the associated object does no
      * exists => a temporary one is created.
      *
-     * @param object $object
-     *
      * @return mixed
      */
-    public function getValueFromFieldDescription($object, FieldDescriptionInterface $fieldDescription)
+    public function getValueFromFieldDescription(?object $object, FieldDescriptionInterface $fieldDescription)
     {
+        @trigger_error(sprintf(
+            'The method "%s()" is deprecated since sonata-project/admin-bundle 4.3 and will be removed in 5.0.',
+            __METHOD__
+        ), \E_USER_DEPRECATED);
+
         $value = null;
 
-        if (!$object) {
-            return $value;
+        if (null === $object) {
+            return null;
         }
 
         try {

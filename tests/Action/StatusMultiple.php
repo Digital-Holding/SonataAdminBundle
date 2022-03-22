@@ -13,7 +13,10 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Action;
 
-class StatusMultiple
+final class StatusMultiple
 {
+    /**
+     * @var mixed[]
+     */
     public $status = [];
 }

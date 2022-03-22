@@ -13,7 +13,10 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Form\Type;
 
+use Sonata\AdminBundle\BCLayer\BCDeprecation;
+use Sonata\AdminBundle\Datagrid\DatagridInterface;
 use Sonata\AdminBundle\Form\DataTransformer\ModelToIdPropertyTransformer;
+use Sonata\AdminBundle\Model\ModelManagerInterface;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\EventListener\ResizeFormListener;
 use Symfony\Component\Form\Extension\Core\Type\HiddenType;
@@ -31,6 +34,9 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
  */
 final class ModelAutocompleteType extends AbstractType
 {
+    /**
+     * @param array<string, mixed> $options
+     */
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder->addViewTransformer(new ModelToIdPropertyTransformer($options['model_manager'], $options['class'], $options['property'], $options['multiple'], $options['to_string_callback']), true);
@@ -47,13 +53,16 @@ final class ModelAutocompleteType extends AbstractType
         $builder->setAttribute('to_string_callback', $options['to_string_callback']);
         $builder->setAttribute('target_admin_access_action', $options['target_admin_access_action']);
 
-        if ($options['multiple']) {
+        if (true === $options['multiple']) {
             $resizeListener = new ResizeFormListener(HiddenType::class, [], true, true, true);
 
             $builder->addEventSubscriber($resizeListener);
         }
     }
 
+    /**
+     * @param array<string, mixed> $options
+     */
     public function buildView(FormView $view, FormInterface $form, array $options): void
     {
         foreach ([
@@ -70,7 +79,8 @@ final class ModelAutocompleteType extends AbstractType
             'req_param_name_search',
             'req_param_name_page_number',
             'req_param_name_items_per_page',
-            'quiet_millis',
+            'quiet_millis', // NEXT_MAJOR: Remove this line.
+            'delay',
             'cache',
             // CSS classes
             'container_css_class',
@@ -82,26 +92,32 @@ final class ModelAutocompleteType extends AbstractType
             'context',
             // add button
             'btn_add',
-            'btn_catalogue',
+            'btn_translation_domain',
             // allow HTML
             'safe_label',
             'property',
         ] as $passthroughOption) {
             $view->vars[$passthroughOption] = $options[$passthroughOption];
         }
+
+        // NEXT_MAJOR: Remove this BC-layer
+        $view->vars['btn_translation_domain'] =
+            'SonataAdminBundle' !== $options['btn_translation_domain']
+                ? $options['btn_translation_domain']
+                : $options['btn_catalogue'];
+        $view->vars['btn_catalogue'] = $options['btn_catalogue'];
     }
 
     public function configureOptions(OptionsResolver $resolver): void
     {
-        $compound = static function (Options $options) {
+        $compound = static function (Options $options): bool {
             return $options['multiple'];
         };
 
         $resolver->setDefaults([
             'attr' => [],
             'compound' => $compound,
-            'model_manager' => null,
-            'class' => null,
+            'error_bubbling' => false,
             'admin_code' => null,
             'callback' => null,
             'multiple' => false,
@@ -109,24 +125,27 @@ final class ModelAutocompleteType extends AbstractType
             'context' => '',
 
             'placeholder' => '',
-            'minimum_input_length' => 3, //minimum 3 chars should be typed to load ajax data
-            'items_per_page' => 10, //number of items per page
-            'quiet_millis' => 100,
+            'minimum_input_length' => 3, // minimum 3 chars should be typed to load ajax data
+            'items_per_page' => 10, // number of items per page
+            'quiet_millis' => 100, // NEXT_MAJOR: Remove this line.
+            'delay' => 100,
             'cache' => false,
 
             'to_string_callback' => null,
+            'response_item_callback' => null,
 
             // add button
             'btn_add' => 'link_add',
-            'btn_catalogue' => 'SonataAdminBundle',
+            'btn_catalogue' => 'SonataAdminBundle', // NEXT_MAJOR: Remove this option
+            'btn_translation_domain' => 'SonataAdminBundle',
 
             // ajax parameters
             'url' => '',
             'route' => ['name' => 'sonata_admin_retrieve_autocomplete_items', 'parameters' => []],
             'req_params' => [],
             'req_param_name_search' => 'q',
-            'req_param_name_page_number' => '_page',
-            'req_param_name_items_per_page' => '_per_page',
+            'req_param_name_page_number' => DatagridInterface::PAGE,
+            'req_param_name_items_per_page' => DatagridInterface::PER_PAGE,
 
             // security
             'target_admin_access_action' => 'list',
@@ -144,10 +163,40 @@ final class ModelAutocompleteType extends AbstractType
             'template' => '@SonataAdmin/Form/Type/sonata_type_model_autocomplete.html.twig',
         ]);
 
-        $resolver->setRequired(['property']);
+        $resolver->setRequired(['property', 'model_manager', 'class']);
+        $resolver->setAllowedTypes('model_manager', ModelManagerInterface::class);
+        $resolver->setAllowedTypes('class', 'string');
+        $resolver->setAllowedTypes('property', ['string', 'array']);
+        $resolver->setDeprecated(
+            'quiet_millis',
+            ...BCDeprecation::forOptionResolver(
+                static function (Options $options, $value): string {
+                    if (100 !== $value) {
+                        return 'Passing a value to option "quiet_millis" is deprecated! Use "delay" instead!';
+                    }
+
+                    return '';
+                },
+                '4.6',
+            )
+        ); // NEXT_MAJOR: Remove this deprecation notice.
+
+        $resolver->setDeprecated(
+            'btn_catalogue',
+            ...BCDeprecation::forOptionResolver(
+                static function (Options $options, $value): string {
+                    if ('SonataAdminBundle' !== $value) {
+                        return 'Passing a value to option "btn_catalogue" is deprecated! Use "btn_translation_domain" instead!';
+                    }
+
+                    return '';
+                },
+                '4.9',
+            )
+        ); // NEXT_MAJOR: Remove this deprecation notice.
     }
 
-    public function getBlockPrefix()
+    public function getBlockPrefix(): string
     {
         return 'sonata_type_model_autocomplete';
     }

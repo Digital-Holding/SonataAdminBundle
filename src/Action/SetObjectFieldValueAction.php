@@ -13,13 +13,17 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Action;
 
-use Sonata\AdminBundle\Admin\Pool;
-use Sonata\AdminBundle\Templating\TemplateRegistry;
-use Sonata\AdminBundle\Twig\Extension\SonataAdminExtension;
+use Sonata\AdminBundle\Exception\BadRequestParamHttpException;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface;
+use Sonata\AdminBundle\Form\DataTransformerResolverInterface;
+use Sonata\AdminBundle\Request\AdminFetcherInterface;
+use Sonata\AdminBundle\Twig\RenderElementRuntime;
+use Symfony\Component\Form\DataTransformerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
 use Symfony\Component\PropertyAccess\PropertyPath;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Twig\Environment;
@@ -27,9 +31,9 @@ use Twig\Environment;
 final class SetObjectFieldValueAction
 {
     /**
-     * @var Pool
+     * @var AdminFetcherInterface
      */
-    private $pool;
+    private $adminFetcher;
 
     /**
      * @var Environment
@@ -41,11 +45,45 @@ final class SetObjectFieldValueAction
      */
     private $validator;
 
-    public function __construct(Environment $twig, Pool $pool, ValidatorInterface $validator)
-    {
-        $this->pool = $pool;
+    /**
+     * @var DataTransformerResolverInterface
+     */
+    private $resolver;
+
+    /**
+     * @var PropertyAccessorInterface
+     */
+    private $propertyAccessor;
+
+    /**
+     * @var RenderElementRuntime
+     */
+    private $renderElementRuntime;
+
+    public function __construct(
+        Environment $twig,
+        AdminFetcherInterface $adminFetcher,
+        ValidatorInterface $validator,
+        DataTransformerResolverInterface $resolver,
+        PropertyAccessorInterface $propertyAccessor,
+        ?RenderElementRuntime $renderElementRuntime = null
+    ) {
+        $this->adminFetcher = $adminFetcher;
         $this->twig = $twig;
         $this->validator = $validator;
+        $this->resolver = $resolver;
+        $this->propertyAccessor = $propertyAccessor;
+
+        // NEXT_MAJOR: Remove the deprecation and restrict param constructor to RenderElementRuntime.
+        if (null === $renderElementRuntime) {
+            @trigger_error(sprintf(
+                'Passing null as argument 5 of "%s()" is deprecated since sonata-project/admin-bundle 4.7'
+                .' and will throw an error in 5.0. You MUST pass an instance of %s instead.',
+                __METHOD__,
+                RenderElementRuntime::class
+            ), \E_USER_DEPRECATED);
+        }
+        $this->renderElementRuntime = $renderElementRuntime ?? new RenderElementRuntime($propertyAccessor);
     }
 
     /**
@@ -53,14 +91,11 @@ final class SetObjectFieldValueAction
      */
     public function __invoke(Request $request): JsonResponse
     {
-        $field = $request->get('field');
-        $code = $request->get('code');
-        $objectId = $request->get('objectId');
-        $value = $originalValue = $request->get('value');
-        $context = $request->get('context');
-
-        $admin = $this->pool->getInstance($code);
-        $admin->setRequest($request);
+        try {
+            $admin = $this->adminFetcher->get($request);
+        } catch (\InvalidArgumentException $e) {
+            throw new NotFoundHttpException($e->getMessage());
+        }
 
         // alter should be done by using a post method
         if (!$request->isXmlHttpRequest()) {
@@ -75,9 +110,13 @@ final class SetObjectFieldValueAction
             ), Response::HTTP_METHOD_NOT_ALLOWED);
         }
 
-        $rootObject = $object = $admin->getObject($objectId);
+        $objectId = $request->get('objectId');
+        if (!\is_string($objectId) && !\is_int($objectId)) {
+            throw new BadRequestParamHttpException('objectId', ['string', 'int'], $objectId);
+        }
 
-        if (!$object) {
+        $object = $admin->getObject($objectId);
+        if (null === $object) {
             return new JsonResponse('Object does not exist', Response::HTTP_NOT_FOUND);
         }
 
@@ -86,71 +125,66 @@ final class SetObjectFieldValueAction
             return new JsonResponse('Invalid permissions', Response::HTTP_FORBIDDEN);
         }
 
-        if ('list' === $context) {
-            $fieldDescription = $admin->getListFieldDescription($field);
-        } else {
+        $context = $request->get('context');
+        if ('list' !== $context) {
             return new JsonResponse('Invalid context', Response::HTTP_BAD_REQUEST);
         }
 
-        if (!$fieldDescription) {
+        $field = $request->get('field');
+        if (!\is_string($field)) {
+            throw new BadRequestParamHttpException('field', 'string', $field);
+        }
+
+        if (!$admin->hasListFieldDescription($field)) {
             return new JsonResponse('The field does not exist', Response::HTTP_BAD_REQUEST);
         }
 
-        if (!$fieldDescription->getOption('editable')) {
+        $fieldDescription = $admin->getListFieldDescription($field);
+
+        if (true !== $fieldDescription->getOption('editable')) {
             return new JsonResponse('The field cannot be edited, editable option must be set to true', Response::HTTP_BAD_REQUEST);
         }
 
         $propertyPath = new PropertyPath($field);
+        $rootObject = $object;
 
         // If property path has more than 1 element, take the last object in order to validate it
-        if ($propertyPath->getLength() > 1) {
-            $object = $this->pool->getPropertyAccessor()->getValue($object, $propertyPath->getParent());
+        $parent = $propertyPath->getParent();
+        if (null !== $parent) {
+            $object = $this->propertyAccessor->getValue($object, $parent);
 
             $elements = $propertyPath->getElements();
             $field = end($elements);
+            \assert(\is_string($field));
+
             $propertyPath = new PropertyPath($field);
         }
 
-        // Handle date type has setter expect a DateTime object
-        if ('' !== $value && TemplateRegistry::TYPE_DATE === $fieldDescription->getType()) {
-            $inputTimezone = new \DateTimeZone(date_default_timezone_get());
-            $outputTimezone = $fieldDescription->getOption('timezone');
+        $value = $request->get('value');
 
-            if ($outputTimezone && !$outputTimezone instanceof \DateTimeZone) {
-                $outputTimezone = new \DateTimeZone($outputTimezone);
+        if ('' === $value) {
+            $this->propertyAccessor->setValue($object, $propertyPath, null);
+        } else {
+            $dataTransformer = $this->resolver->resolve($fieldDescription, $admin->getModelManager());
+
+            if ($dataTransformer instanceof DataTransformerInterface) {
+                $value = $dataTransformer->reverseTransform($value);
             }
 
-            $value = new \DateTime($value, $outputTimezone ?: $inputTimezone);
-            $value->setTimezone($inputTimezone);
-        }
-
-        // Handle boolean type transforming the value into a boolean
-        if ('' !== $value && TemplateRegistry::TYPE_BOOLEAN === $fieldDescription->getType()) {
-            $value = filter_var($value, FILTER_VALIDATE_BOOLEAN);
-        }
-
-        // Handle entity choice association type, transforming the value into entity
-        if ('' !== $value
-            && TemplateRegistry::TYPE_CHOICE === $fieldDescription->getType()
-            && null !== $fieldDescription->getOption('class')
-            && $fieldDescription->getOption('class') === $fieldDescription->getTargetModel()
-        ) {
-            $value = $admin->getModelManager()->find($fieldDescription->getOption('class'), $value);
-
-            if (!$value) {
+            if (null === $value && FieldDescriptionInterface::TYPE_CHOICE === $fieldDescription->getType()) {
                 return new JsonResponse(sprintf(
-                    'Edit failed, object with id: %s not found in association: %s.',
-                    $originalValue,
+                    'Edit failed, object with id "%s" not found in association "%s".',
+                    $objectId,
                     $field
                 ), Response::HTTP_NOT_FOUND);
             }
-        }
 
-        $this->pool->getPropertyAccessor()->setValue($object, $propertyPath, '' !== $value ? $value : null);
+            $this->propertyAccessor->setValue($object, $propertyPath, $value);
+        }
 
         $violations = $this->validator->validate($object);
 
-        if (\count($violations)) {
+        if (\count($violations) > 0) {
             $messages = [];
 
             foreach ($violations as $violation) {
@@ -163,11 +197,7 @@ final class SetObjectFieldValueAction
         $admin->update($object);
 
         // render the widget
-        // todo : fix this, the twig environment variable is not set inside the extension ...
-        $extension = $this->twig->getExtension(SonataAdminExtension::class);
-        \assert($extension instanceof SonataAdminExtension);
-
-        $content = $extension->renderListElement($this->twig, $rootObject, $fieldDescription);
+        $content = $this->renderElementRuntime->renderListElement($this->twig, $rootObject, $fieldDescription);
 
         return new JsonResponse($content, Response::HTTP_OK);
     }

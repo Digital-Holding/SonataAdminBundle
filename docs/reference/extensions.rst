@@ -14,9 +14,9 @@ created objects and other admin features::
 
     final class PublishStatusAdminExtension extends AbstractAdminExtension
     {
-        protected function configureFormFields(FormMapper $formMapper)
+        protected function configureFormFields(FormMapper $form): void
         {
-            $formMapper
+            $form
                 ->add('status', ChoiceType::class, [
                     'choices' => [
                         'draft' => 'Draft',
@@ -28,9 +28,9 @@ created objects and other admin features::
     }
 
 Configuration
-~~~~~~~~~~~~~
+^^^^^^^^^^^^^
 
-There are two ways to configure your extensions and connect them to an admin.
+There are three ways to configure your extensions and connect them to an admin.
 
 You can include this information in the service definition of your extension.
 Add the tag *sonata.admin.extension* and use the *target* attribute to point to
@@ -80,6 +80,9 @@ Using ``config/packages/sonata_admin.yaml`` file has some advantages, it allows 
 extra options you can use to wire your extensions in a more dynamic way. This means you can change the behavior of all
 admins that manage a class of a specific type.
 
+global:
+    adds the extension to all admins.
+
 admins:
     specify one or more admin service ids to which the Extension should be added
 
@@ -115,6 +118,7 @@ priority:
         sonata_admin:
             extensions:
                 app.publish.extension:
+                    global: true
                     admins:
                         - app.admin.article
                     implements:
@@ -125,6 +129,26 @@ priority:
                     extends:
                         - App\Document\Blog
                     instanceof:
-                        -  App\Document\Page
+                        - App\Document\Page
                     uses:
-                        -  App\Trait\Timestampable
+                        - App\Trait\Timestampable
+
+
+If those options doesn't fill your need, you can still dynamically add/remove
+an extensions in the `AdminInterface::configure()` method of your admin with
+the methods `addExtension` and `removeExtension`::
+
+    use App\AdminExtension\PublishStatusAdminExtension;
+    use Sonata\AdminBundle\Admin\AbstractAdmin;
+
+    final class PublishStatusAdmin extends AbstractAdmin
+    {
+        protected function configure(): void
+        {
+            // ...
+
+            if ($someCondition) {
+                $this->addExtension(new PublishStatusAdminExtension());
+            }
+        }
+    }

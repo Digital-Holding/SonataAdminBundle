@@ -13,36 +13,29 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Fixtures;
 
-use Symfony\Component\Translation\TranslatorInterface as LegacyTranslatorInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-if (interface_exists(TranslatorInterface::class)) {
-    final class StubTranslator implements TranslatorInterface
+final class StubTranslator implements TranslatorInterface
+{
+    /**
+     * @param string      $id
+     * @param mixed[]     $parameters
+     * @param string|null $domain
+     * @param string|null $locale
+     */
+    public function trans($id, array $parameters = [], $domain = null, $locale = null): string
     {
-        public function trans($id, array $parameters = [], $domain = null, $locale = null): string
-        {
-            return '[trans]'.strtr($id, $parameters).'[/trans]';
+        $transOpeningTag = '[trans]';
+
+        if (null !== $domain) {
+            $transOpeningTag = sprintf('[trans domain=%s]', $domain);
         }
+
+        return $transOpeningTag.strtr($id, $parameters).'[/trans]';
     }
-} else {
-    final class StubTranslator implements LegacyTranslatorInterface
+
+    public function getLocale(): string
     {
-        public function trans($id, array $parameters = [], $domain = null, $locale = null)
-        {
-            return '[trans]'.$id.'[/trans]';
-        }
-
-        public function transChoice($id, $number, array $parameters = [], $domain = null, $locale = null)
-        {
-            return '[trans]'.$id.'[/trans]';
-        }
-
-        public function setLocale($locale)
-        {
-        }
-
-        public function getLocale()
-        {
-        }
+        return 'en';
     }
 }

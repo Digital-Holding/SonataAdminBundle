@@ -14,8 +14,9 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Tests\Form\Widget;
 
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
+use Symfony\Component\Form\FormTypeInterface;
 
-class FilterChoiceWidgetTest extends BaseWidgetTest
+final class FilterChoiceWidgetTest extends BaseWidgetTest
 {
     protected $type = 'filter';
 
@@ -34,7 +35,7 @@ class FilterChoiceWidgetTest extends BaseWidgetTest
 
         $html = $this->renderWidget($choice->createView());
 
-        $this->assertStringContainsString(
+        static::assertStringContainsString(
             '<option value="" selected="selected">[trans]Choose an option[/trans]</option>',
             $this->cleanHtmlWhitespace($html)
         );
@@ -50,7 +51,7 @@ class FilterChoiceWidgetTest extends BaseWidgetTest
 
         $html = $this->renderWidget($choice->createView());
 
-        $this->assertStringNotContainsString(
+        static::assertStringNotContainsString(
             'required="required"',
             $this->cleanHtmlWhitespace($html)
         );
@@ -66,23 +67,32 @@ class FilterChoiceWidgetTest extends BaseWidgetTest
 
         $html = $this->renderWidget($choice->createView());
 
-        $this->assertStringContainsString(
+        static::assertStringContainsString(
             'required="required"',
             $this->cleanHtmlWhitespace($html)
         );
     }
 
-    protected function getRequiredOption()
+    /**
+     * @return array<string, mixed>
+     */
+    protected function getRequiredOption(): array
     {
         return ['required' => true];
     }
 
-    protected function getChoiceClass()
+    /**
+     * @return class-string<FormTypeInterface>
+     */
+    protected function getChoiceClass(): string
     {
         return ChoiceType::class;
     }
 
-    protected function getDefaultOption()
+    /**
+     * @return array<string, mixed>
+     */
+    protected function getDefaultOption(): array
     {
         return [
             'placeholder' => 'Choose an option',

@@ -13,9 +13,20 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Action;
 
-class Bar
+final class Bar
 {
-    public function setEnabled($value): void
+    /**
+     * @var bool
+     */
+    private $enabled = false;
+
+    public function getEnabled(): bool
     {
+        return $this->enabled;
+    }
+
+    public function setEnabled(bool $enabled): void
+    {
+        $this->enabled = $enabled;
     }
 }

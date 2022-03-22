@@ -1,12 +1,35 @@
 Search
 ======
 
-The admin comes with a basic global search available in the upper navigation menu. The search iterates over admin classes
-and look for filter with the option ``global_search`` set to true. If you are using the ``SonataDoctrineORMBundle``
-any text filter will be set to ``true`` by default.
+The admin comes with a basic global search available in the upper navigation menu. The search iterates over
+admin classes and looks for filters implementing the ``Sonata\AdminBundle\Search\SearchableFilterInterface`` interface with
+the method ``isSearchEnabled()`` returning true. If you are using ``SonataDoctrineORMBundle``, the
+``Sonata\DoctrineORMAdminBundle\Filter\StringFilter`` filter is searchable and relies on a ``global_search`` option.
+
+.. note::
+
+    The current implementation can be expensive if you have a lot of entities
+    as the resulting query does a ``LIKE %query% OR LIKE %query%``...
+
+Disabling the search by admin
+-----------------------------
+
+You can disable the search for a whole admin by setting the ``global_search`` attribute
+to ``false`` at your admin definition using the tag ``sonata.admin``.
+
+.. configuration-block::
+
+    .. code-block:: xml
+
+        <service id="app.admin.post" class="App\Admin\PostAdmin">
+            <tag name="sonata.admin" global_search="false" model_class="App\Entity\Post" manager_type="orm" group="Content" label="Post"/>
+        </service>
 
 Customization
 -------------
+
+Configure the search templates
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The main action is using the template ``@SonataAdmin/Core/search.html.twig``. And each search is handled by a
 ``block``, the template for the block is ``@SonataAdmin/Block/block_search_result.html.twig``.
@@ -45,42 +68,30 @@ You can also configure the block template per admin while defining the admin:
     .. code-block:: xml
 
         <service id="app.admin.post" class="App\Admin\PostAdmin">
-              <tag name="sonata.admin" manager_type="orm" group="Content" label="Post"/>
-              <argument/>
-              <argument>App\Entity\Post</argument>
-              <argument/>
+              <tag name="sonata.admin" model_class="App\Entity\Post" manager_type="orm" group="Content" label="Post"/>
               <call method="setTemplate">
                   <argument>search_result_block</argument>
                   <argument>@SonataPost/Block/block_search_result.html.twig</argument>
               </call>
           </service>
 
-Configure the default search result action
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Configure the default search result actions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In general the search result generates a link to the edit action of an item or is using the show action, if the edit
-route is disabled or you haven't the required permission. You can change this behavior by overriding the
-``searchResultActions`` property. The defined action list will we checked successive until a route with the required
-permissions exists. If no route is found, the item will be displayed as a text::
+In general the search result generates a link to the show action of an item or
+displayed as a text if the show route is disabled or you haven't the required
+permission. You can change this behavior by overriding the option
 
-    // src/Admin/PersonAdmin.php
+.. code-block:: yaml
 
-    final class PersonAdmin extends AbstractAdmin
-    {
-        protected $searchResultActions = ['edit', 'show'];
-    }
+    # config/packages/sonata_admin.yaml
 
-Performance
------------
-
-The current implementation can be expensive if you have a lot of entities as the resulting query does a ``LIKE %query% OR LIKE %query%``...
-
-.. note::
-
-    There is a work in progress to use an async JavaScript solution to better load data from the database.
+    sonata_admin:
+        global_search:
+            admin_route: edit
 
 Customize visibility of empty result boxes
-------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 By default all the admin boxes are shown in search results and it looks like this:
 
@@ -122,31 +133,3 @@ and it looks like this:
     :align: center
     :alt: Custom view
     :width: 700px
-
-Case sensitive/insensitive
---------------------------
-
-By default all searches are done case-sensitive.
-
-.. note::
-
-    This will support PostgreSQL out of the box, but unless you change the collation of MySQL, MSSQL or SQLite,
-    it will have no effect! They are case-insensitive by default.
-
-To search case-insensitive use the following option:
-
-.. code-block:: yaml
-
-    # config/packages/sonata_admin.yaml
-
-    sonata_admin:
-        global_search:
-            case_sensitive: false
-
-Using case-insensitivity might lead to performance issues. You can find some more information
-`here <https://use-the-index-luke.com/sql/where-clause/functions/case-insensitive-search>`_.
-
-Instead of searching **all** fields case-insensitive with PostgreSQL, you can use a dedicated
-`CITEXT type <https://www.postgresql.org/docs/9.1/citext.html>`_ via
-`opsway/doctrine-dbal-postgresql <https://github.com/opsway/doctrine-dbal-postgresql/blob/master/src/Doctrine/DBAL/Types/Citext.php>`_
-and keep the `case-sensitive` option with `true`.

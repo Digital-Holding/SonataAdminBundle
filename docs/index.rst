@@ -1,14 +1,11 @@
 Admin Bundle
 ============
 
-**SonataAdminBundle is split into 4 bundles:**
+**SonataAdminBundle is split into 3 bundles:**
 
 * `SonataAdminBundle <https://github.com/sonata-project/SonataAdminBundle>`_: contains core libraries and services
 * `SonataDoctrineORMAdminBundle <https://github.com/sonata-project/SonataDoctrineORMAdminBundle>`_: integrates Doctrine ORM project with the admin bundle
 * `SonataDoctrineMongoDBAdminBundle <https://github.com/sonata-project/SonataDoctrineMongoDBAdminBundle>`_: integrates MongoDB with the admin bundle
-* `SonataDoctrinePhpcrAdminBundle <https://github.com/sonata-project/SonataDoctrinePhpcrAdminBundle>`_: integrates PHPCR with the admin bundle
-
-The demo website can be found at https://demo.sonata-project.org.
 
 **Usage examples:**
 
@@ -27,6 +24,7 @@ The demo website can be found at https://demo.sonata-project.org.
     getting_started/creating_an_admin
     getting_started/the_form_view
     getting_started/the_list_view
+    getting_started/the_show_view
 
 .. toctree::
    :caption: Reference Guide
@@ -46,7 +44,6 @@ The demo website can be found at https://demo.sonata-project.org.
    reference/action_export
    reference/saving_hooks
    reference/form_types
-   reference/form_help_message
    reference/field_types
    reference/batch_actions
    reference/console
@@ -61,7 +58,6 @@ The demo website can be found at https://demo.sonata-project.org.
 
    reference/routing
    reference/translation
-   reference/conditional_validation
    reference/templates
    reference/security
    reference/extensions
@@ -77,6 +73,7 @@ The demo website can be found at https://demo.sonata-project.org.
 
    cookbook/recipe_select2
    cookbook/recipe_icheck
+   cookbook/recipe_jquery_ui
    cookbook/recipe_knp_menu
    cookbook/recipe_file_uploads
    cookbook/recipe_image_previews
@@ -84,6 +81,7 @@ The demo website can be found at https://demo.sonata-project.org.
    cookbook/recipe_sortable_listing
    cookbook/recipe_dynamic_form_modification
    cookbook/recipe_custom_action
+   cookbook/recipe_decouple_crud_controller
    cookbook/recipe_customizing_a_mosaic_list
    cookbook/recipe_overwrite_admin_configuration
    cookbook/recipe_improve_performance_large_datasets
@@ -94,7 +92,5 @@ The demo website can be found at https://demo.sonata-project.org.
    cookbook/recipe_delete_field_group
    cookbook/recipe_data_mapper
    cookbook/recipe_persisting_filters
-   cookbook/recipe_creating_an_admin_with_annotations
    cookbook/recipe_workflow_integration
    cookbook/recipe_sonata_admin_without_user_bundle
-   cookbook/recipe_auto_configure_admin_classes

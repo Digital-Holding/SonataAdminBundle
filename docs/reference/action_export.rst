@@ -15,8 +15,25 @@ from a lot of flexibility:
 
 See `the exporter bundle documentation`_ for more information.
 
+Routes
+------
+
+You can disable exporting entities by removing the corresponding routes in your Admin.
+For more detailed information about routes, see :doc:`routing`::
+
+    // src/Admin/PersonAdmin.php
+
+    final class PersonAdmin extends AbstractAdmin
+    {
+        protected function configureRoutes(RouteCollectionInterface $collection): void
+        {
+            // Removing the export route will disable exporting entities.
+            $collection->remove('export');
+        }
+    }
+
 Translation
-~~~~~~~~~~~
+-----------
 
 All field names are translated by default.
 An internal mechanism checks if a field matching the translator strategy
@@ -24,27 +41,27 @@ label exists in the current translation file and will use the field name
 as a fallback.
 
 Picking which fields to export
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------
 
 By default, all fields are exported. More accurately, it depends on the
 persistence backend you are using, but for instance, the doctrine ORM backend
 exports all fields (associations are not exported). If you want to change this
-behavior for a specific admin, you can override the ``getExportFields()`` method::
+behavior for a specific admin, you can override the ``configureExportFields()`` method::
 
-    public function getExportFields()
+    protected function configureExportFields(): array
     {
         return ['givenName', 'familyName', 'contact.phone', 'getAddress'];
     }
 
 .. note::
 
-    Note that you can use `contact.phone` to access the `phone` property
+    Note that you can use ``contact.phone`` to access the ``phone`` property
     of `Contact` entity. Or use a getter if you have some virtual field.
 
 You can also tweak the list by creating an admin extension that implements the
 ``configureExportFields()`` method::
 
-    public function configureExportFields(AdminInterface $admin, array $fields)
+    public function configureExportFields(AdminInterface $admin, array $fields): array
     {
         unset($fields['updatedAt']);
 
@@ -52,37 +69,30 @@ You can also tweak the list by creating an admin extension that implements the
     }
 
 Overriding the export formats for a specific admin
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------------------------
 
 Changing the export formats can be done by defining a ``getExportFormats()``
 method in your admin class::
 
-    public function getExportFormats()
+    public function getExportFormats(): array
     {
         return ['pdf', 'html'];
     }
 
 Customizing the query used to fetch the results
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------------------------
+
 If you want to customize the query used to fetch the results for a specific admin,
-you can override the ``getDataSourceIterator()`` method::
+you can override the ``DataSourceInterface`` class::
 
-    // src/Admin/PersonAdmin.php
-
-    final class PersonAdmin extends AbstractAdmin
+    final class DataSource implements DataSourceInterface
     {
-        public function getDataSourceIterator()
+        public function createIterator(ProxyQueryInterface $query, array $fields): SourceIteratorInterface
         {
-            $iterator = parent::getDataSourceIterator();
-            $iterator->setDateTimeFormat('d/m/Y'); //change this to suit your needs
-            return $iterator;
+            // Custom implementation
         }
     }
 
-.. note::
+And then you can override the datasource set to the admin class.
 
-    **TODO**:
-    * customising the templates used to render the output
-    * publish the exporter documentation on the project's website and update the link
-
-.. _`the exporter bundle documentation`: https://github.com/sonata-project/exporter/blob/2.x/docs/reference/symfony.rst
+.. _`the exporter bundle documentation`: https://docs.sonata-project.org/projects/exporter/en/2.x/

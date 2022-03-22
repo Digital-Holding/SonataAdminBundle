@@ -13,9 +13,9 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Fixtures\Entity;
 
-class FooToString
+final class FooToString
 {
-    public function __toString()
+    public function __toString(): string
     {
         return 'salut';
     }

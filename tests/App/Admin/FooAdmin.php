@@ -13,27 +13,55 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\App\Admin;
 
+use Knp\Menu\ItemInterface as MenuItemInterface;
 use Sonata\AdminBundle\Admin\AbstractAdmin;
+use Sonata\AdminBundle\Admin\AdminInterface;
 use Sonata\AdminBundle\Datagrid\ListMapper;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface;
 use Sonata\AdminBundle\Form\FormMapper;
+use Sonata\AdminBundle\Form\Type\TemplateType;
 use Sonata\AdminBundle\Show\ShowMapper;
-use Sonata\AdminBundle\Templating\TemplateRegistry;
+use Sonata\AdminBundle\Tests\App\Model\Foo;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 
-final class FooAdmin extends AbstractAdmin
+/**
+ * @phpstan-extends AbstractAdmin<Foo>
+ */
+class FooAdmin extends AbstractAdmin
 {
+    protected function createNewInstance(): object
+    {
+        return new Foo('test_id', 'foo_name');
+    }
+
     protected function configureListFields(ListMapper $list): void
     {
-        $list->add('name', TemplateRegistry::TYPE_STRING);
+        $list
+            ->add('name', FieldDescriptionInterface::TYPE_STRING, [
+                'sortable' => true,
+            ])
+            // Check for https://github.com/sonata-project/SonataAdminBundle/issues/7447
+            ->add('elements', FieldDescriptionInterface::TYPE_ARRAY);
     }
 
     protected function configureFormFields(FormMapper $form): void
     {
-        $form->add('name', TextType::class, ['help' => 'Help me!']);
+        $form
+            ->add('name', TextType::class, ['help' => 'Help me!'])
+            ->add('customField', TemplateType::class, [
+                'template' => 'foo/custom_field.html.twig',
+                'parameters' => ['number' => 42],
+            ]);
     }
 
     protected function configureShowFields(ShowMapper $show): void
     {
-        $show->add('name', TemplateRegistry::TYPE_STRING);
+        $show->add('name', FieldDescriptionInterface::TYPE_STRING);
+    }
+
+    protected function configureTabMenu(MenuItemInterface $menu, string $action, ?AdminInterface $childAdmin = null): void
+    {
+        // Check conflict between `MenuItemInterface::getLabel()` method and menu item with a child with the key `label`
+        $menu->addChild('label')->addChild('label');
     }
 }

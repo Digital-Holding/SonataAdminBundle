@@ -13,100 +13,92 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Datagrid;
 
-use Sonata\AdminBundle\Admin\FieldDescriptionCollection;
-use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionCollection;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface;
 use Sonata\AdminBundle\Filter\FilterInterface;
 use Symfony\Component\Form\FormInterface;
 
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ *
+ * @phpstan-template T of ProxyQueryInterface
  */
 interface DatagridInterface
 {
-    /**
-     * @return PagerInterface
-     */
-    public function getPager();
+    public const SORT_ORDER = '_sort_order';
+    public const SORT_BY = '_sort_by';
+    public const PAGE = '_page';
+    public const PER_PAGE = '_per_page';
 
     /**
-     * @return ProxyQueryInterface
+     * @phpstan-return PagerInterface<T>
      */
-    public function getQuery();
+    public function getPager(): PagerInterface;
 
     /**
-     * @return array
+     * @phpstan-return T
      */
-    public function getResults();
-
-    public function buildPager();
+    public function getQuery(): ProxyQueryInterface;
 
     /**
-     * @return FilterInterface
+     * @return iterable<object>
      */
-    public function addFilter(FilterInterface $filter);
+    public function getResults(): iterable;
+
+    public function buildPager(): void;
+
+    public function addFilter(FilterInterface $filter): FilterInterface;
 
     /**
-     * @return array
+     * @return array<string, FilterInterface>
      */
-    public function getFilters();
+    public function getFilters(): array;
 
     /**
      * Reorder filters.
-     */
-    public function reorderFilters(array $keys);
-
-    /**
-     * @return array
-     */
-    public function getValues();
-
-    /**
-     * @return FieldDescriptionCollection
-     */
-    public function getColumns();
-
-    /**
-     * @param string      $name
-     * @param string|null $operator
-     * @param mixed       $value
-     */
-    public function setValue($name, $operator, $value);
-
-    /**
-     * @return FormInterface
-     */
-    public function getForm();
-
-    /**
-     * @param string $name
      *
-     * @return FilterInterface
+     * @param string[] $keys
      */
-    public function getFilter($name);
+    public function reorderFilters(array $keys): void;
 
     /**
-     * @param string $name
+     * @return array<string, mixed>
+     */
+    public function getValues(): array;
+
+    /**
+     * @return FieldDescriptionCollection<FieldDescriptionInterface>
+     */
+    public function getColumns(): FieldDescriptionCollection;
+
+    /**
+     * @param mixed $value
+     */
+    public function setValue(string $name, ?string $operator, $value): void;
+
+    public function getForm(): FormInterface;
+
+    public function getFilter(string $name): FilterInterface;
+
+    public function hasFilter(string $name): bool;
+
+    public function removeFilter(string $name): void;
+
+    public function hasActiveFilters(): bool;
+
+    public function hasDisplayableFilters(): bool;
+
+    /**
+     * NEXT_MAJOR: avoid returning an array with one element and return its contents instead.
      *
-     * @return bool
+     * @return array{filter: array<string, mixed>}
      */
-    public function hasFilter($name);
-
-    /**
-     * @param string $name
-     */
-    public function removeFilter($name);
-
-    /**
-     * @return bool
-     */
-    public function hasActiveFilters();
-
-    /**
-     * @return bool
-     */
-    public function hasDisplayableFilters();
-
     public function getSortParameters(FieldDescriptionInterface $fieldDescription): array;
 
+    /**
+     * NEXT_MAJOR: avoid returning an array with one element and return its contents instead.
+     *
+     * @return array{filter: array<string, mixed>}
+     */
     public function getPaginationParameters(int $page): array;
 }

@@ -16,6 +16,7 @@ namespace Sonata\AdminBundle\Menu\Matcher\Voter;
 use Knp\Menu\ItemInterface;
 use Knp\Menu\Matcher\Voter\VoterInterface;
 use Sonata\AdminBundle\Admin\AdminInterface;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
@@ -39,7 +40,8 @@ final class AdminVoter implements VoterInterface
     {
         $admin = $item->getExtra('admin');
 
-        $request = $this->requestStack->getMasterRequest();
+        // TODO: Use $this->requestStack->getMainRequest() when dropping support of Symfony < 5.3
+        $request = $this->getMainRequest();
 
         if ($admin instanceof AdminInterface
             && $admin->hasRoute('list') && $admin->hasAccess('list')
@@ -59,10 +61,24 @@ final class AdminVoter implements VoterInterface
         }
 
         $route = $item->getExtra('route');
-        if ($route && $request && $route === $request->get('_route')) {
+        if (null !== $route && null !== $request && $route === $request->get('_route')) {
             return true;
         }
 
         return null;
+    }
+
+    /**
+     * TODO: Remove it when dropping support of Symfony < 5.3.
+     */
+    private function getMainRequest(): ?Request
+    {
+        // @phpstan-ignore-next-line
+        if (method_exists($this->requestStack, 'getMainRequest')) {
+            return $this->requestStack->getMainRequest();   // symfony 5.3+
+        }
+
+        // @phpstan-ignore-next-line
+        return $this->requestStack->getMasterRequest();
     }
 }

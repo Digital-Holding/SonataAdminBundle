@@ -13,11 +13,14 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\DependencyInjection;
 
+use Sonata\AdminBundle\DependencyInjection\Compiler\AddAuditReadersCompilerPass;
 use Sonata\AdminBundle\DependencyInjection\Compiler\ModelManagerCompilerPass;
+use Sonata\AdminBundle\Model\AuditReaderInterface;
 use Sonata\AdminBundle\Model\ModelManagerInterface;
+use Sonata\AdminBundle\Util\AdminAclUserManagerInterface;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\Loader\XmlFileLoader;
+use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType as SymfonyChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\DateTimeType as SymfonyDateTimeType;
@@ -31,12 +34,15 @@ use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  * @author Michael Williams <michael.williams@funsational.com>
+ *
+ * @phpstan-import-type SonataAdminConfiguration from \Sonata\AdminBundle\DependencyInjection\Configuration
  */
 final class SonataAdminExtension extends Extension
 {
     public function load(array $configs, ContainerBuilder $container): void
     {
         $bundles = $container->getParameter('kernel.bundles');
+        \assert(\is_array($bundles));
 
         if (isset($bundles['SonataUserBundle'])) {
             // integrate the SonataUserBundle / FOSUserBundle if the bundle exists
@@ -56,27 +62,29 @@ final class SonataAdminExtension extends Extension
             ]);
         }
 
-        $loader = new XmlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
-        $loader->load('actions.xml');
-        $loader->load('block.xml');
-        $loader->load('commands.xml');
-        $loader->load('core.xml');
-        $loader->load('event_listener.xml');
-        $loader->load('form_types.xml');
-        $loader->load('menu.xml');
-        $loader->load('route.xml');
-        $loader->load('twig.xml');
-        $loader->load('validator.xml');
+        $loader = new PhpFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
+        $loader->load('actions.php');
+        $loader->load('block.php');
+        $loader->load('commands.php');
+        $loader->load('core.php');
+        $loader->load('event_listener.php');
+        $loader->load('form_types.php');
+        $loader->load('menu.php');
+        $loader->load('route.php');
+        $loader->load('twig.php');
 
         if (isset($bundles['MakerBundle'])) {
-            $loader->load('makers.xml');
+            $loader->load('makers.php');
         }
 
         if (isset($bundles['SonataExporterBundle'])) {
-            $loader->load('exporter.xml');
+            $loader->load('exporter.php');
         }
 
         $configuration = $this->getConfiguration($configs, $container);
+        \assert(null !== $configuration);
+
+        /** @phpstan-var SonataAdminConfiguration $config */
         $config = $this->processConfiguration($configuration, $configs);
 
         $config['options']['javascripts'] = $this->buildJavascripts($config);
@@ -85,19 +93,20 @@ final class SonataAdminExtension extends Extension
         $config['options']['role_super_admin'] = $config['security']['role_super_admin'];
         $config['options']['search'] = $config['search'];
 
-        $pool = $container->getDefinition('sonata.admin.pool');
-        $pool->replaceArgument(1, $config['title']);
-        $pool->replaceArgument(2, $config['title_logo']);
-        $pool->replaceArgument(3, $config['options']);
+        $sonataConfiguration = $container->getDefinition('sonata.admin.configuration');
+        $sonataConfiguration->replaceArgument(0, $config['title']);
+        $sonataConfiguration->replaceArgument(1, $config['title_logo']);
+        $sonataConfiguration->replaceArgument(2, $config['options']);
 
         if (false === $config['options']['lock_protection']) {
             $container->removeDefinition('sonata.admin.lock.extension');
         }
 
         $container->setParameter('sonata.admin.configuration.global_search.empty_boxes', $config['global_search']['empty_boxes']);
-        $container->setParameter('sonata.admin.configuration.global_search.case_sensitive', $config['global_search']['case_sensitive']);
+        $container->setParameter('sonata.admin.configuration.global_search.admin_route', $config['global_search']['admin_route']);
         $container->setParameter('sonata.admin.configuration.templates', $config['templates']);
-        $container->setParameter('sonata.admin.configuration.admin_services', $config['admin_services']);
+        $container->setParameter('sonata.admin.configuration.default_admin_services', $config['default_admin_services']);
+        $container->setParameter('sonata.admin.configuration.default_controller', $config['default_controller']);
         $container->setParameter('sonata.admin.configuration.dashboard_groups', $config['dashboard']['groups']);
         $container->setParameter('sonata.admin.configuration.dashboard_blocks', $config['dashboard']['blocks']);
         $container->setParameter('sonata.admin.configuration.sort_admins', $config['options']['sort_admins']);
@@ -106,14 +115,15 @@ final class SonataAdminExtension extends Extension
             $config['options']['mosaic_background']
         );
         $container->setParameter('sonata.admin.configuration.default_group', $config['options']['default_group']);
+        // NEXT_MAJOR: Remove the following line.
         $container->setParameter('sonata.admin.configuration.default_label_catalogue', $config['options']['default_label_catalogue']);
+        $container->setParameter('sonata.admin.configuration.default_translation_domain', $config['options']['default_translation_domain']);
         $container->setParameter('sonata.admin.configuration.default_icon', $config['options']['default_icon']);
         $container->setParameter('sonata.admin.configuration.breadcrumbs', $config['breadcrumbs']);
 
-        if (null === $config['security']['acl_user_manager'] && isset($bundles['FOSUserBundle'])) {
-            $container->setParameter('sonata.admin.security.acl_user_manager', 'fos_user.user_manager');
-        } else {
-            $container->setParameter('sonata.admin.security.acl_user_manager', $config['security']['acl_user_manager']);
+        if (null !== $config['security']['acl_user_manager']) {
+            $container->setAlias('sonata.admin.security.acl_user_manager', $config['security']['acl_user_manager']);
+            $container->setAlias(AdminAclUserManagerInterface::class, 'sonata.admin.security.acl_user_manager');
         }
 
         $container->setAlias('sonata.admin.security.handler', $config['security']['handler']);
@@ -134,6 +144,13 @@ final class SonataAdminExtension extends Extension
 
                 break;
             case 'sonata.admin.security.handler.acl':
+                if (!isset($bundles['AclBundle'])) {
+                    throw new \RuntimeException(
+                        'The "symfony/acl-bundle" is needed to use ACL as security handler.'
+                        .' You MUST install and enable the "symfony/acl-bundle" bundle.'
+                    );
+                }
+
                 if (0 === \count($config['security']['information'])) {
                     $config['security']['information'] = [
                         'GUEST' => ['VIEW', 'LIST'],
@@ -152,7 +169,7 @@ final class SonataAdminExtension extends Extension
         $container->setParameter('sonata.admin.configuration.security.admin_permissions', $config['security']['admin_permissions']);
         $container->setParameter('sonata.admin.configuration.security.object_permissions', $config['security']['object_permissions']);
 
-        $loader->load('security.xml');
+        $loader->load('security.php');
 
         $container->setParameter('sonata.admin.extension.map', $config['extensions']);
 
@@ -189,15 +206,31 @@ final class SonataAdminExtension extends Extension
         $container
             ->registerForAutoconfiguration(ModelManagerInterface::class)
             ->addTag(ModelManagerCompilerPass::MANAGER_TAG);
+
+        $container
+            ->registerForAutoconfiguration(AuditReaderInterface::class)
+            ->addTag(AddAuditReadersCompilerPass::AUDIT_READER_TAG);
     }
 
-    public function getNamespace()
+    public function getNamespace(): string
     {
         return 'https://sonata-project.org/schema/dic/admin';
     }
 
+    /**
+     * @param array<string, mixed> $config
+     *
+     * @return string[]
+     *
+     * @phpstan-param SonataAdminConfiguration $config
+     */
     private function buildStylesheets(array $config): array
     {
+        $config['assets']['stylesheets'][] = sprintf(
+            'bundles/sonataadmin/admin-lte-skins/%s.min.css',
+            $config['options']['skin']
+        );
+
         return $this->mergeArray(
             $config['assets']['stylesheets'],
             $config['assets']['extra_stylesheets'],
@@ -205,6 +238,13 @@ final class SonataAdminExtension extends Extension
         );
     }
 
+    /**
+     * @param array<string, mixed> $config
+     *
+     * @return string[]
+     *
+     * @phpstan-param SonataAdminConfiguration $config
+     */
     private function buildJavascripts(array $config): array
     {
         return $this->mergeArray(
@@ -214,14 +254,22 @@ final class SonataAdminExtension extends Extension
         );
     }
 
+    /**
+     * @param array<int, string> $array
+     * @param array<int, string> $addArray
+     * @param array<int, string> $removeArray
+     *
+     * @return array<int, string>
+     */
     private function mergeArray(array $array, array $addArray, array $removeArray = []): array
     {
         foreach ($addArray as $toAdd) {
-            array_push($array, $toAdd);
+            $array[] = $toAdd;
         }
         foreach ($removeArray as $toRemove) {
-            if (\in_array($toRemove, $array, true)) {
-                array_splice($array, array_search($toRemove, $array, true), 1);
+            $key = array_search($toRemove, $array, true);
+            if (false !== $key) {
+                array_splice($array, $key, 1);
             }
         }
 

@@ -1,42 +1,30 @@
 Translation
 ===========
 
-There are two main catalogue names in an Admin class:
+There are two main translation domains in an Admin class:
 
-* ``SonataAdminBundle``: this catalogue is used to translate shared messages
+* ``SonataAdminBundle``: this domain is used to translate shared messages
   across different Admins
-* ``messages``: this catalogue is used to translate the messages for the current
+* ``messages``: this domain is used to translate the messages for the current
   Admin
 
-Ideally the ``messages`` catalogue should be changed to avoid any issues with
+Ideally the ``messages`` domain should be changed to avoid any issues with
 other Admin classes.
 
-You have two options to configure the catalogue for the Admin class:
+You can configure the translation domain for the Admin class by injecting the value through the container:
 
-* override the ``$translationDomain`` property::
+.. configuration-block::
 
-      final class PageAdmin extends AbstractAdmin
-      {
-          protected $translationDomain = 'SonataPageBundle'; // default is 'messages'
-      }
+    .. code-block:: xml
 
-* inject the value through the container
+        <!-- config/services.xml -->
 
-    .. configuration-block::
-
-        .. code-block:: xml
-
-            <!-- config/services.xml -->
-
-            <service id="sonata.page.admin.page" class="Sonata\PageBundle\Admin\PageAdmin">
-                <tag name="sonata.admin" manager_type="orm" group="sonata_page" label="Page"/>
-                <argument/>
-                <argument>Application\Sonata\PageBundle\Entity\Page</argument>
-                <argument/>
-                <call method="setTranslationDomain">
-                    <argument>SonataPageBundle</argument>
-                </call>
-            </service>
+        <service id="sonata.page.admin.page" class="Sonata\PageBundle\Admin\PageAdmin">
+            <tag name="sonata.admin" model_class="Application\Sonata\PageBundle\Entity\Page" manager_type="orm" group="sonata_page" label="Page"/>
+            <call method="setTranslationDomain">
+                <argument>SonataPageBundle</argument>
+            </call>
+        </service>
 
 An Admin instance always gets the ``translator`` instance, so it can be used to
 translate messages within the ``configureFields`` method or in templates.
@@ -46,13 +34,13 @@ translate messages within the ``configureFields`` method or in templates.
     {# the classical call by using the twig trans helper #}
     {{ 'message_create_snapshots'|trans({}, 'SonataPageBundle') }}
 
-    {# by using the admin trans method with hardcoded catalogue #}
+    {# by using the admin trans method with hardcoded translation domain #}
     {{ 'message_create_snapshots'|trans({}, 'SonataPageBundle') }}
 
-    {# by using the admin trans with the configured catalogue #}
+    {# by using the admin trans with the configured translation domain #}
     {{ 'message_create_snapshots'|trans({}, admin.translationdomain) }}
 
-The last solution is most flexible, as no catalogue parameters are hardcoded, and is the recommended one to use.
+The last solution is most flexible, as no translation parameters are hardcoded, and is the recommended one to use.
 
 Translate field labels
 ----------------------
@@ -64,7 +52,7 @@ either the Admin instance or the field description to translate labels.
 Overriding the translation domain
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The translation domain (message catalog) can be overridden at either the form
+The translation domain can be overridden at either the form
 group or individual field level.
 
 If a translation domain is set at the group level it will cascade down to all
@@ -78,7 +66,7 @@ Setting the translation domain on an individual field::
 
     use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 
-    $formMapper
+    $form
         ->with('form.my_group')
             ->add('publishable', CheckboxType::class, [], [
                 'translation_domain' => 'MyTranslationDomain',
@@ -92,7 +80,7 @@ over-rides that setting for one of the fields::
     use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
     use Symfony\Component\Form\Extension\Core\Type\DateType;
 
-    $formMapper
+    $form
         ->with('form.my_group', ['translation_domain' => 'MyDomain'])
             ->add('publishable', CheckboxType::class, [], [
                 'translation_domain' => 'AnotherDomain',
@@ -114,9 +102,9 @@ label can be defined as the third argument of the ``add`` method::
 
     final class PageAdmin extends AbstractAdmin
     {
-        protected function configureFormFields(FormMapper $formMapper)
+        protected function configureFormFields(FormMapper $form): void
         {
-            $formMapper
+            $form
                 ->add('isValid', null, [
                     'required' => false,
                     'label' => 'label.is_valid',
@@ -164,14 +152,12 @@ the Container:
         <service id="app.admin.project" class="App\Admin\ProjectAdmin">
             <tag
                 name="sonata.admin"
+                model_class="App\Entity\Project"
                 manager_type="orm"
                 group="Project"
                 label="Project"
                 label_translator_strategy="sonata.admin.label.strategy.native"
              />
-            <argument/>
-            <argument>App\Entity\Project</argument>
-            <argument/>
         </service>
 
 .. note::

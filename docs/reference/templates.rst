@@ -147,8 +147,10 @@ You can specify your templates in the config file:
                 button_history:             '@SonataAdmin/Button/history_button.html.twig'
                 button_list:                '@SonataAdmin/Button/list_button.html.twig'
                 button_show:                '@SonataAdmin/Button/show_button.html.twig'
+                form_theme:                 []
+                filter_theme:               []
 
-.. important::
+.. warning::
 
     Notice that this is a global change, meaning it will affect all model mappings
     automatically, both for ``Admin`` mappings defined by you and by other bundles.
@@ -167,24 +169,17 @@ can specify the templates to use in the ``Admin`` service definition:
         services:
             app.admin.post:
                 class: App\Admin\PostAdmin
-                arguments:
-                    - ~
-                    - App\Entity\Post
-                    - ~
                 calls:
                     - [setTemplate, ['edit', 'PostAdmin/edit.html.twig']]
                 tags:
-                    - { name: sonata.admin, manager_type: orm, group: 'Content', label: 'Post' }
+                    - { name: sonata.admin, model_class: App\Entity\Post, manager_type: orm, group: 'Content', label: 'Post' }
 
     .. code-block:: xml
 
        <!-- config/services.xml -->
 
         <service id="app.admin.post" class="App\Admin\PostAdmin">
-            <tag name="sonata.admin" manager_type="orm" group="Content" label="Post"/>
-            <argument/>
-            <argument>App\Entity\Post</argument>
-            <argument/>
+            <tag name="sonata.admin" model_class="App\Entity\Post" manager_type="orm" group="Content" label="Post"/>
             <call method="setTemplate">
                 <argument>edit</argument>
                 <argument>PostAdmin/edit.html.twig</argument>
@@ -194,11 +189,7 @@ can specify the templates to use in the ``Admin`` service definition:
 .. note::
 
     A ``setTemplates(array $templates)`` (notice the plural) method also
-    exists, that allows you to set multiple templates at once. Notice that,
-    if used outside of the service definition context,
-    ``setTemplates(array $templates)`` will replace the whole template list
-    for that ``Admin`` class, meaning you have to explicitly pass the full
-    template list in the ``$templates`` argument.
+    exists, that allows you to set multiple templates at once.
 
 Changes made using the ``setTemplate()`` and ``setTemplates()`` methods
 override the customizations made in the configuration file, so you can specify

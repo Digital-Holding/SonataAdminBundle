@@ -19,40 +19,57 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * BatchAdminController is used to test relevant batch action.
+ *
+ * @psalm-suppress MissingConstructor
+ *
+ * @see ConfigureCRUDControllerListener
+ *
+ * @phpstan-extends CRUDController<object>
  */
-class BatchAdminController extends CRUDController
+final class BatchAdminController extends CRUDController
 {
     /**
      * Returns true if $idx contains 123 and 456.
+     *
+     * @param string[] $idx
+     *
+     * @return bool|string
      */
-    public function batchActionFooIsRelevant(array $idx, $allElements)
+    public function batchActionFooIsRelevant(array $idx, bool $allElements)
     {
-        if (isset($idx[0], $idx[1]) && 123 === $idx[0] && 456 === $idx[1]) {
+        if (isset($idx[0], $idx[1]) && '123' === $idx[0] && '456' === $idx[1]) {
             return true;
         }
 
-        if (isset($idx[0]) && 999 === $idx[0]) {
+        if (isset($idx[0]) && '999' === $idx[0]) {
             return 'flash_foo_error';
         }
 
         return false;
     }
 
-    public function batchActionFoo(ProxyQueryInterface $query): void
+    public function batchActionFoo(ProxyQueryInterface $query): Response
     {
+        return new Response();
     }
 
-    public function batchActionBarIsRelevant(array $idx, $allElements)
+    /**
+     * @param string[] $idx
+     */
+    public function batchActionBarIsRelevant(array $idx, bool $allElements): bool
     {
         return true;
     }
 
-    public function batchActionBar(ProxyQueryInterface $query = null)
+    public function batchActionBar(?ProxyQueryInterface $query = null): Response
     {
-        if (null === $query) {
-            return new Response('batchActionBar executed');
-        }
+        return new Response();
+    }
 
-        return false;
+    /**
+     * @param string[] $idx
+     */
+    public function batchActionFooBarIsRelevant(array $idx, bool $allElements): void
+    {
     }
 }

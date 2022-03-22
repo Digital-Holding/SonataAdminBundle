@@ -1,9 +1,15 @@
 services:
-    # Under real conditions, this service is registered by "doctrine/doctrine-bundle"
-    database_connection:
-        class: Sonata\AdminBundle\Tests\Fixtures\DoctrineBundle\Connection
+    _defaults:
+        autowire: true
+        autoconfigure: true
 
-    Sonata\AdminBundle\Tests\App\Model\FooRepository: ~
+    Sonata\AdminBundle\Tests\App\:
+        resource: ../*
+        exclude: ../{Entity,config,AppKernel.php}
+
+    Sonata\AdminBundle\Tests\App\Controller\:
+        resource: ../Controller
+        tags: [controller.service_arguments]
 
     sonata.admin.manager.test:
         class: Sonata\AdminBundle\Tests\App\Model\ModelManager
@@ -12,10 +18,18 @@ services:
         tags:
             - {name: sonata.admin.manager}
 
+    sonata.admin.manager.bar:
+        class: Sonata\AdminBundle\Tests\App\Model\ModelManager
+        arguments:
+            - '@Sonata\AdminBundle\Tests\App\Model\BarRepository'
+        tags:
+            - {name: sonata.admin.manager}
+
     sonata.admin.builder.test_form:
         class: Sonata\AdminBundle\Tests\App\Builder\FormContractor
         arguments:
             - '@form.factory'
+            - '@form.registry'
 
     sonata.admin.builder.test_show:
         class: Sonata\AdminBundle\Tests\App\Builder\ShowBuilder
@@ -33,18 +47,45 @@ services:
         arguments:
             - '@form.factory'
             - '@sonata.admin.pager.test'
+            - '@sonata.admin.datagrid.proxy_query'
 
-    Sonata\AdminBundle\Tests\App\Admin\FooAdmin:
-        arguments: [~, Sonata\AdminBundle\Tests\App\Model\Foo, ~]
+    sonata.admin.data_source.test:
+        class: Sonata\AdminBundle\Tests\App\Exporter\DataSource
+
+    sonata.admin.datagrid.proxy_query:
+        class: Sonata\AdminBundle\Tests\App\Datagrid\ProxyQuery
+
+    sonata.admin.field_description_factory.test:
+        class: Sonata\AdminBundle\Tests\App\FieldDescription\FieldDescriptionFactory
+
+    sonata_foo_admin:
+        class: Sonata\AdminBundle\Tests\App\Admin\FooAdmin
         tags:
-            - {name: sonata.admin, manager_type: test, label: Foo}
+            - {name: sonata.admin, model_class: Sonata\AdminBundle\Tests\App\Model\Foo, controller: 'sonata.admin.controller.crud', manager_type: test, label: Foo}
+        calls:
+            - [addChild, ['@sonata_bar_admin', 'foo']]
+
+    Sonata\AdminBundle\Tests\App\Admin\FooAdminWithCustomController:
+        tags:
+            - {name: sonata.admin, model_class: Sonata\AdminBundle\Tests\App\Model\Foo, controller: Sonata\AdminBundle\Tests\App\Controller\CustomCRUDController, manager_type: test, label: Foo}
+
+    Sonata\AdminBundle\Tests\App\Admin\AdminAsParameterAdmin:
+        tags:
+            - {name: sonata.admin, model_class: Sonata\AdminBundle\Tests\App\Model\Foo, manager_type: test}
 
     Sonata\AdminBundle\Tests\App\Admin\EmptyAdmin:
-        arguments: [~, Sonata\AdminBundle\Tests\App\Model\Foo, ~]
         tags:
-            - {name: sonata.admin, manager_type: test, label: Empty}
+            - {name: sonata.admin, model_class: Sonata\AdminBundle\Tests\App\Model\Foo, manager_type: test, label: Empty}
 
     Sonata\AdminBundle\Tests\App\Admin\TranslatedAdmin:
-        arguments: [~, Sonata\AdminBundle\Tests\App\Model\Translated, ~]
         tags:
-            - {name: sonata.admin, manager_type: test, group: 'group_label', label: 'admin_label'}
+            - {name: sonata.admin, model_class: Sonata\AdminBundle\Tests\App\Model\Translated, manager_type: test, group: 'group_label', label: 'admin_label'}
+
+    sonata_bar_admin:
+        class: Sonata\AdminBundle\Tests\App\Admin\BarAdmin
+        tags:
+            - {name: sonata.admin, model_class: Sonata\AdminBundle\Tests\App\Model\Bar, manager_type: test, model_manager: sonata.admin.manager.bar, label: Bar}
+
+    Sonata\AdminBundle\Tests\App\Admin\Extension\CustomAdminExtension:
+        tags:
+            - {name: sonata.admin.extension, target: sonata_foo_admin}

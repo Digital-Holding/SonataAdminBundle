@@ -13,26 +13,30 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Fixtures\Entity;
 
-class FooArrayAccess implements \ArrayAccess
+/**
+ * @phpstan-implements \ArrayAccess<string, string|null>
+ */
+final class FooArrayAccess implements \ArrayAccess
 {
+    /**
+     * @var string|null
+     */
     private $bar;
 
-    private $baz;
-
-    public function __toString()
+    public function __toString(): string
     {
         return (string) $this->bar;
     }
 
     // methods to enable ArrayAccess
-    public function offsetExists($offset)
+    public function offsetExists($offset): bool
     {
         $value = $this->offsetGet($offset);
 
         return null !== $value;
     }
 
-    public function offsetGet($offset)
+    public function offsetGet($offset): ?string
     {
         $offset = str_replace('_', '', $offset); // method names always use camels, field names can use snakes
         $methodName = "get$offset";
@@ -45,31 +49,21 @@ class FooArrayAccess implements \ArrayAccess
 
     public function offsetSet($offset, $value): void
     {
-        throw new \BadMethodCallException(sprintf('Array access of class %s is read-only!', \get_class($this)));
+        throw new \BadMethodCallException(sprintf('Array access of class %s is read-only!', static::class));
     }
 
     public function offsetUnset($offset): void
     {
-        throw new \BadMethodCallException(sprintf('Array access of class %s is read-only!', \get_class($this)));
+        throw new \BadMethodCallException(sprintf('Array access of class %s is read-only!', static::class));
     }
 
-    public function getBar()
+    public function getBar(): ?string
     {
         return $this->bar;
     }
 
-    public function setBar($bar): void
+    public function setBar(string $bar): void
     {
         $this->bar = $bar;
-    }
-
-    public function getBaz()
-    {
-        return $this->baz;
-    }
-
-    public function setBaz($baz): void
-    {
-        $this->baz = $baz;
     }
 }

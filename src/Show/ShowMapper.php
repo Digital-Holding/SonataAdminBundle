@@ -14,91 +14,108 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Show;
 
 use Sonata\AdminBundle\Admin\AdminInterface;
-use Sonata\AdminBundle\Admin\FieldDescriptionCollection;
-use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
 use Sonata\AdminBundle\Builder\ShowBuilderInterface;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionCollection;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface;
 use Sonata\AdminBundle\Mapper\BaseGroupedMapper;
 
 /**
  * This class is used to simulate the Form API.
  *
- * @final since sonata-project/admin-bundle 3.52
- *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ *
+ * @phpstan-import-type FieldDescriptionOptions from \Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface
+ *
+ * @phpstan-template T of object
+ * @phpstan-extends BaseGroupedMapper<T>
  */
-class ShowMapper extends BaseGroupedMapper
+final class ShowMapper extends BaseGroupedMapper
 {
-    protected $list;
-
     /**
      * @var ShowBuilderInterface
      */
-    protected $builder;
+    private $builder;
 
+    /**
+     * @var FieldDescriptionCollection<FieldDescriptionInterface>
+     */
+    private $list;
+
+    /**
+     * @var AdminInterface<object>
+     * @phpstan-var AdminInterface<T>
+     */
+    private $admin;
+
+    /**
+     * @param FieldDescriptionCollection<FieldDescriptionInterface> $list
+     *
+     * @phpstan-param AdminInterface<T> $admin
+     */
     public function __construct(
         ShowBuilderInterface $showBuilder,
         FieldDescriptionCollection $list,
         AdminInterface $admin
     ) {
-        parent::__construct($showBuilder, $admin);
+        $this->admin = $admin;
+        $this->builder = $showBuilder;
         $this->list = $list;
     }
 
+    public function getAdmin(): AdminInterface
+    {
+        return $this->admin;
+    }
+
     /**
-     * @param FieldDescriptionInterface|string $name
-     *
      * @throws \LogicException
+     *
+     * @return static
+     *
+     * @phpstan-param FieldDescriptionOptions $fieldDescriptionOptions
      */
-    public function add($name, ?string $type = null, array $fieldDescriptionOptions = []): self
+    public function add(string $name, ?string $type = null, array $fieldDescriptionOptions = []): self
     {
         if (!$this->shouldApply()) {
             return $this;
         }
 
-        if ($name instanceof FieldDescriptionInterface) {
-            $fieldDescription = $name;
-            $fieldDescription->mergeOptions($fieldDescriptionOptions);
-        } elseif (\is_string($name)) {
-            if (!$this->admin->hasShowFieldDescription($name)) {
-                $fieldDescription = $this->admin->getModelManager()->getNewFieldDescriptionInstance(
-                    $this->admin->getClass(),
-                    $name,
-                    $fieldDescriptionOptions
-                );
-            } else {
-                throw new \LogicException(sprintf(
-                    'Duplicate field name "%s" in show mapper. Names should be unique.',
-                    $name
-                ));
-            }
-        } else {
-            throw new \TypeError(
-                'Unknown field name in show mapper.'
-                .' Field name should be either of FieldDescriptionInterface interface or string.'
-            );
+        if (
+            isset($fieldDescriptionOptions['role'])
+            && \is_string($fieldDescriptionOptions['role'])
+            && !$this->getAdmin()->isGranted($fieldDescriptionOptions['role'])
+        ) {
+            return $this;
         }
 
-        $fieldKey = ($name instanceof FieldDescriptionInterface) ? $name->getName() : $name;
+        if (!$this->getAdmin()->hasShowFieldDescription($name)) {
+            $fieldDescription = $this->getAdmin()->createFieldDescription(
+                $name,
+                $fieldDescriptionOptions
+            );
+        } else {
+            throw new \LogicException(sprintf(
+                'Duplicate field name "%s" in show mapper. Names should be unique.',
+                $name
+            ));
+        }
 
-        $this->addFieldToCurrentGroup($fieldKey);
+        $this->addFieldToCurrentGroup($name);
 
         if (null === $fieldDescription->getLabel()) {
-            $fieldDescription->setOption('label', $this->admin->getLabelTranslatorStrategy()->getLabel($fieldDescription->getName(), 'show', 'label'));
+            $fieldDescription->setOption('label', $this->getAdmin()->getLabelTranslatorStrategy()->getLabel($fieldDescription->getName(), 'show', 'label'));
         }
 
         $fieldDescription->setOption('safe', $fieldDescription->getOption('safe', false));
 
-        if (!isset($fieldDescriptionOptions['role']) || $this->admin->isGranted($fieldDescriptionOptions['role'])) {
-            // add the field with the FormBuilder
-            $this->builder->addField($this->list, $type, $fieldDescription, $this->admin);
-        }
+        $this->builder->addField($this->list, $type, $fieldDescription);
 
         return $this;
     }
 
-    public function get(string $name): FieldDescriptionInterface
+    public function get(string $key): FieldDescriptionInterface
     {
-        return $this->list->get($name);
+        return $this->list->get($key);
     }
 
     public function has(string $key): bool
@@ -106,84 +123,51 @@ class ShowMapper extends BaseGroupedMapper
         return $this->list->has($key);
     }
 
+    /**
+     * @return static
+     */
     public function remove(string $key): self
     {
-        $this->admin->removeShowFieldDescription($key);
+        $this->getAdmin()->removeShowFieldDescription($key);
+        $this->getAdmin()->removeFieldFromShowGroup($key);
         $this->list->remove($key);
 
         return $this;
     }
 
-    /**
-     * Removes a group.
-     *
-     * @param string $group          The group to delete
-     * @param string $tab            The tab the group belongs to, defaults to 'default'
-     * @param bool   $deleteEmptyTab Whether or not the parent Tab should be deleted too,
-     *                               when the deleted group leaves the tab empty after deletion
-     */
-    public function removeGroup(string $group, string $tab = 'default', bool $deleteEmptyTab = false): self
-    {
-        $groups = $this->getGroups();
-
-        // When the default tab is used, the tabname is not prepended to the index in the group array
-        if ('default' !== $tab) {
-            $group = sprintf('%s.%s', $tab, $group);
-        }
-
-        if (isset($groups[$group])) {
-            foreach ($groups[$group]['fields'] as $field) {
-                $this->remove($field);
-            }
-        }
-        unset($groups[$group]);
-
-        $tabs = $this->getTabs();
-        $key = array_search($group, $tabs[$tab]['groups'], true);
-
-        if (false !== $key) {
-            unset($tabs[$tab]['groups'][$key]);
-        }
-        if ($deleteEmptyTab && 0 === \count($tabs[$tab]['groups'])) {
-            unset($tabs[$tab]);
-        }
-
-        $this->setTabs($tabs);
-        $this->setGroups($groups);
-
-        return $this;
-    }
-
-    final public function keys(): array
+    public function keys(): array
     {
         return array_keys($this->list->getElements());
     }
 
+    /**
+     * @return static
+     */
     public function reorder(array $keys): self
     {
-        $this->admin->reorderShowGroup($this->getCurrentGroupName(), $keys);
+        $this->getAdmin()->reorderShowGroup($this->getCurrentGroupName(), $keys);
 
         return $this;
     }
 
     protected function getGroups(): array
     {
-        return $this->admin->getShowGroups();
+        return $this->getAdmin()->getShowGroups();
     }
 
     protected function setGroups(array $groups): void
     {
-        $this->admin->setShowGroups($groups);
+        $this->getAdmin()->setShowGroups($groups);
     }
 
     protected function getTabs(): array
     {
-        return $this->admin->getShowTabs();
+        return $this->getAdmin()->getShowTabs();
     }
 
     protected function setTabs(array $tabs): void
     {
-        $this->admin->setShowTabs($tabs);
+        $this->getAdmin()->setShowTabs($tabs);
     }
 
     protected function getName(): string

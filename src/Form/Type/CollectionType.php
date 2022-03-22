@@ -15,6 +15,7 @@ namespace Sonata\AdminBundle\Form\Type;
 
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CollectionType as SymfonyCollectionType;
+use Symfony\Component\Form\FormTypeInterface;
 
 /**
  * This type wrap native `collection` form type and render `add` and `delete`
@@ -24,12 +25,15 @@ use Symfony\Component\Form\Extension\Core\Type\CollectionType as SymfonyCollecti
  */
 final class CollectionType extends AbstractType
 {
-    public function getParent()
+    /**
+     * @phpstan-return class-string<FormTypeInterface>
+     */
+    public function getParent(): string
     {
         return SymfonyCollectionType::class;
     }
 
-    public function getBlockPrefix()
+    public function getBlockPrefix(): string
     {
         return 'sonata_type_native_collection';
     }

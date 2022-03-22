@@ -13,12 +13,36 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\DependencyInjection\Compiler;
 
+use Sonata\AdminBundle\DependencyInjection\Admin\TaggedAdminInterface;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
+use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
 use Symfony\Component\DependencyInjection\Reference;
 
 /**
+ * @internal
+ *
+ * @phpstan-type ExtensionMap = array<string, array{
+ *     global: bool,
+ *     excludes: array<string, string>,
+ *     admins: array<string, string>,
+ *     implements: array<class-string, string>,
+ *     extends: array<class-string, string>,
+ *     instanceof: array<class-string, string>,
+ *     uses: array<class-string, string>,
+ *     priority: int,
+ * }>
+ * @phpstan-type FlattenExtensionMap = array{
+ *     global: array<string, array<string, array{priority: int}>>,
+ *     excludes: array<string, array<string, array{priority: int}>>,
+ *     admins: array<string, array<string, array{priority: int}>>,
+ *     implements: array<string, array<class-string, array{priority: int}>>,
+ *     extends: array<string, array<class-string, array{priority: int}>>,
+ *     instanceof: array<string, array<class-string, array{priority: int}>>,
+ *     uses: array<string, array<class-string, array{priority: int}>>,
+ * }
+ *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
 final class ExtensionCompilerPass implements CompilerPassInterface
@@ -48,10 +72,13 @@ final class ExtensionCompilerPass implements CompilerPassInterface
             }
         }
 
+        /**
+         * @phpstan-var ExtensionMap $extensionConfig
+         */
         $extensionConfig = $container->getParameter('sonata.admin.extension.map');
         $extensionMap = $this->flattenExtensionConfiguration($extensionConfig);
 
-        foreach ($container->findTaggedServiceIds('sonata.admin') as $id => $attributes) {
+        foreach ($container->findTaggedServiceIds(TaggedAdminInterface::ADMIN_TAG) as $id => $tags) {
             $admin = $container->getDefinition($id);
 
             if (!isset($targets[$id])) {
@@ -62,7 +89,7 @@ final class ExtensionCompilerPass implements CompilerPassInterface
                 $this->addExtension($targets, $id, $extension, $extensionAttributes);
             }
 
-            $extensions = $this->getExtensionsForAdmin($id, $admin, $container, $extensionMap);
+            $extensions = $this->getExtensionsForAdmin($id, $tags, $admin, $container, $extensionMap);
 
             foreach ($extensions as $extension => $attributes) {
                 if (!$container->has($extension)) {
@@ -88,14 +115,16 @@ final class ExtensionCompilerPass implements CompilerPassInterface
     }
 
     /**
-     * @param string $id
+     * @param array<string, mixed>                                              $tags
+     * @param array<string, array<string, array<string, array<string, mixed>>>> $extensionMap
      *
-     * @return array
+     * @return array<string, array<string, mixed>>
+     *
+     * @phpstan-param FlattenExtensionMap $extensionMap
      */
-    private function getExtensionsForAdmin($id, Definition $admin, ContainerBuilder $container, array $extensionMap)
+    private function getExtensionsForAdmin(string $id, array $tags, Definition $admin, ContainerBuilder $container, array $extensionMap): array
     {
         $extensions = [];
-        $classReflection = $subjectReflection = null;
 
         $excludes = $extensionMap['excludes'];
         unset($extensionMap['excludes']);
@@ -106,35 +135,33 @@ final class ExtensionCompilerPass implements CompilerPassInterface
                     if ($id === $subject) {
                         $extensions = array_merge($extensions, $extensionList);
                     }
-                } else {
-                    $class = $this->getManagedClass($admin, $container);
+
+                    continue;
+                }
+
+                // NEXT_MAJOR: Remove this line.
+                $defaultModelClass = $admin->getArguments()[1] ?? null;
+                foreach ($tags as $attributes) {
+                    // NEXT_MAJOR: Remove the fallback to $defaultModelClass and use null instead.
+                    $modelClass = $attributes['model_class'] ?? $defaultModelClass;
+                    if (null === $modelClass) {
+                        throw new InvalidArgumentException(sprintf('Missing tag attribute "model_class" on service "%s".', $id));
+                    }
+
+                    $class = $container->getParameterBag()->resolveValue($modelClass);
+                    if (!\is_string($class)) {
+                        throw new \TypeError(sprintf(
+                            'Tag attribute "model_class" for service "%s" must be of type string, %s given.',
+                            $id,
+                            \is_object($class) ? \get_class($class) : \gettype($class)
+                        ));
+                    }
+
                     if (!class_exists($class)) {
                         continue;
                     }
-                    $classReflection = new \ReflectionClass($class);
-                    $subjectReflection = new \ReflectionClass($subject);
-                }
 
-                if ('instanceof' === $type) {
-                    if ($subjectReflection->getName() === $classReflection->getName() || $classReflection->isSubclassOf($subject)) {
-                        $extensions = array_merge($extensions, $extensionList);
-                    }
-                }
-
-                if ('implements' === $type) {
-                    if ($classReflection->implementsInterface($subject)) {
-                        $extensions = array_merge($extensions, $extensionList);
-                    }
-                }
-
-                if ('extends' === $type) {
-                    if ($classReflection->isSubclassOf($subject)) {
-                        $extensions = array_merge($extensions, $extensionList);
-                    }
-                }
-
-                if ('uses' === $type) {
-                    if ($this->hasTrait($classReflection, $subject)) {
+                    if ($this->isSubtypeOf($type, $subject, $class)) {
                         $extensions = array_merge($extensions, $extensionList);
                     }
                 }
@@ -149,30 +176,18 @@ final class ExtensionCompilerPass implements CompilerPassInterface
     }
 
     /**
-     * Resolves the class argument of the admin to an actual class (in case of %parameter%).
+     * @param array<string, array<string, array<string, string>|int|bool>> $config
      *
-     * @return string
-     */
-    private function getManagedClass(Definition $admin, ContainerBuilder $container)
-    {
-        return $container->getParameterBag()->resolveValue($admin->getArgument(1));
-    }
-
-    /**
-     * @return array an array with the following structure.
+     * @return array<string, array<string, array<string, array<string, int>>>> an array with the following structure
      *
-     * [
-     *     'excludes'   => ['<admin_id>'  => ['<extension_id>' => ['priority' => <int>]]],
-     *     'admins'     => ['<admin_id>'  => ['<extension_id>' => ['priority' => <int>]]],
-     *     'implements' => ['<interface>' => ['<extension_id>' => ['priority' => <int>]]],
-     *     'extends'    => ['<class>'     => ['<extension_id>' => ['priority' => <int>]]],
-     *     'instanceof' => ['<class>'     => ['<extension_id>' => ['priority' => <int>]]],
-     *     'uses'       => ['<trait>'     => ['<extension_id>' => ['priority' => <int>]]],
-     * ]
+     * @phpstan-param ExtensionMap $config
+     * @phpstan-return FlattenExtensionMap
      */
-    private function flattenExtensionConfiguration(array $config)
+    private function flattenExtensionConfiguration(array $config): array
     {
+        /** @phpstan-var FlattenExtensionMap $extensionMap */
         $extensionMap = [
+            'global' => [],
             'excludes' => [],
             'admins' => [],
             'implements' => [],
@@ -182,14 +197,28 @@ final class ExtensionCompilerPass implements CompilerPassInterface
         ];
 
         foreach ($config as $extension => $options) {
+            if (true === $options['global']) {
+                $options['global'] = [$extension];
+            } else {
+                $options['global'] = [];
+            }
+
+            /**
+             * @phpstan-var array{
+             *     global: array<string, string>,
+             *     excludes: array<string, string>,
+             *     admins: array<string, string>,
+             *     implements: array<class-string, string>,
+             *     extends: array<class-string, string>,
+             *     instanceof: array<class-string, string>,
+             *     uses: array<class-string, string>,
+             * } $optionsMap
+             */
             $optionsMap = array_intersect_key($options, $extensionMap);
 
-            foreach ($optionsMap as $key => $value) {
-                foreach ($value as $source) {
-                    if (!isset($extensionMap[$key][$source])) {
-                        $extensionMap[$key][$source] = [];
-                    }
-                    $extensionMap[$key][$source][$extension]['priority'] = $options['priority'];
+            foreach ($extensionMap as $key => &$value) {
+                foreach ($optionsMap[$key] as $source) {
+                    $value[$source][$extension]['priority'] = $options['priority'];
                 }
             }
         }
@@ -198,15 +227,16 @@ final class ExtensionCompilerPass implements CompilerPassInterface
     }
 
     /**
-     * @return bool
+     * @param \ReflectionClass<object> $class
      */
-    private function hasTrait(\ReflectionClass $class, $traitName)
+    private function hasTrait(\ReflectionClass $class, string $traitName): bool
     {
         if (\in_array($traitName, $class->getTraitNames(), true)) {
             return true;
         }
 
-        if (!$parentClass = $class->getParentClass()) {
+        $parentClass = $class->getParentClass();
+        if (false === $parentClass) {
             return false;
         }
 
@@ -214,7 +244,39 @@ final class ExtensionCompilerPass implements CompilerPassInterface
     }
 
     /**
+     * @phpstan-param class-string $class
+     */
+    private function isSubtypeOf(string $type, string $subject, string $class): bool
+    {
+        $classReflection = new \ReflectionClass($class);
+
+        switch ($type) {
+            case 'global':
+                return true;
+            case 'instanceof':
+                if (!class_exists($subject)) {
+                    return false;
+                }
+
+                $subjectReflection = new \ReflectionClass($subject);
+
+                return $classReflection->isSubclassOf($subject) || $subjectReflection->getName() === $classReflection->getName();
+            case 'implements':
+                return interface_exists($subject) && $classReflection->implementsInterface($subject);
+            case 'extends':
+                return class_exists($subject) && $classReflection->isSubclassOf($subject);
+            case 'uses':
+                return trait_exists($subject) && $this->hasTrait($classReflection, $subject);
+        }
+
+        return false;
+    }
+
+    /**
      * Add extension configuration to the targets array.
+     *
+     * @param array<string, \SplPriorityQueue<int, Reference>> $targets
+     * @param array<string, mixed>                             $attributes
      */
     private function addExtension(
         array &$targets,
@@ -223,7 +285,9 @@ final class ExtensionCompilerPass implements CompilerPassInterface
         array $attributes
     ): void {
         if (!isset($targets[$target])) {
-            $targets[$target] = new \SplPriorityQueue();
+            /** @phpstan-var \SplPriorityQueue<int, Reference> $queue */
+            $queue = new \SplPriorityQueue();
+            $targets[$target] = $queue;
         }
 
         $priority = $attributes['priority'] ?? 0;

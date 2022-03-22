@@ -19,9 +19,12 @@ use Sonata\AdminBundle\Bridge\Exporter\AdminExporter;
 use Sonata\Exporter\Exporter;
 use Sonata\Exporter\Writer\TypedWriterInterface;
 
-class AdminExporterTest extends TestCase
+final class AdminExporterTest extends TestCase
 {
-    public function provideExportFormats()
+    /**
+     * @phpstan-return iterable<array-key, array{string[], string[], string[]}>
+     */
+    public function provideExportFormats(): iterable
     {
         return [
             'no override' => [['xls'], [], ['xls']],
@@ -30,14 +33,18 @@ class AdminExporterTest extends TestCase
     }
 
     /**
+     * @param string[] $expectedFormats
+     * @param string[] $adminFormats
+     * @param string[] $globalFormats
+     *
      * @dataProvider provideExportFormats
      */
-    public function testAdminHasPriorityOverGlobalSettings(array $expectedFormats, ?array $adminFormats, array $globalFormats): void
+    public function testAdminHasPriorityOverGlobalSettings(array $expectedFormats, array $adminFormats, array $globalFormats): void
     {
         $writers = [];
         foreach ($globalFormats as $exportFormat) {
             $writer = $this->createMock(TypedWriterInterface::class);
-            $writer->expects($this->once())
+            $writer->expects(static::once())
                 ->method('getFormat')
                 ->willReturn($exportFormat);
             $writers[] = $writer;
@@ -45,21 +52,21 @@ class AdminExporterTest extends TestCase
 
         $exporter = new Exporter($writers);
         $admin = $this->createMock(AdminInterface::class);
-        $admin->expects($this->once())
+        $admin->expects(static::once())
             ->method('getExportFormats')
             ->willReturn($adminFormats);
         $adminExporter = new AdminExporter($exporter);
-        $this->assertSame($expectedFormats, $adminExporter->getAvailableFormats($admin));
+        static::assertSame($expectedFormats, $adminExporter->getAvailableFormats($admin));
     }
 
     public function testGetExportFilename(): void
     {
         $admin = $this->createMock(AdminInterface::class);
-        $admin->expects($this->once())
+        $admin->expects(static::once())
             ->method('getClass')
             ->willReturn('MyProject\AppBundle\Model\MyClass');
         $adminExporter = new AdminExporter(new Exporter());
-        $this->assertRegExp(
+        static::assertMatchesRegularExpression(
             '#export_myclass_\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}.csv#',
             $adminExporter->getExportFilename($admin, 'csv')
         );

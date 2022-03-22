@@ -14,9 +14,11 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Form\Type;
 
 use Sonata\AdminBundle\Form\DataTransformer\ModelToIdTransformer;
+use Sonata\AdminBundle\Model\ModelManagerInterface;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\HiddenType;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormTypeInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
@@ -26,30 +28,37 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
  */
 final class ModelHiddenType extends AbstractType
 {
+    /**
+     * @param array<string, mixed> $options
+     */
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
-            ->addViewTransformer(new ModelToIdTransformer($options['model_manager'], $options['class']), true)
-        ;
+            ->addViewTransformer(new ModelToIdTransformer($options['model_manager'], $options['class']), true);
     }
 
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
-            'model_manager' => null,
-            'class' => null,
             'attr' => [
                 'hidden' => true,
             ],
         ]);
+
+        $resolver->setRequired(['model_manager', 'class']);
+        $resolver->setAllowedTypes('model_manager', ModelManagerInterface::class);
+        $resolver->setAllowedTypes('class', 'string');
     }
 
-    public function getParent()
+    /**
+     * @phpstan-return class-string<FormTypeInterface>
+     */
+    public function getParent(): string
     {
         return HiddenType::class;
     }
 
-    public function getBlockPrefix()
+    public function getBlockPrefix(): string
     {
         return 'sonata_type_model_hidden';
     }

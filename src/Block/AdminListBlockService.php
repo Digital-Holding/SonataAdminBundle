@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Block;
 
 use Sonata\AdminBundle\Admin\Pool;
-use Sonata\AdminBundle\Templating\TemplateRegistry;
 use Sonata\AdminBundle\Templating\TemplateRegistryInterface;
 use Sonata\BlockBundle\Block\BlockContextInterface;
 use Sonata\BlockBundle\Block\Service\AbstractBlockService;
@@ -40,12 +39,12 @@ final class AdminListBlockService extends AbstractBlockService
     public function __construct(
         Environment $twig,
         Pool $pool,
-        ?TemplateRegistryInterface $templateRegistry = null
+        TemplateRegistryInterface $templateRegistry
     ) {
         parent::__construct($twig);
 
         $this->pool = $pool;
-        $this->templateRegistry = $templateRegistry ?: new TemplateRegistry();
+        $this->templateRegistry = $templateRegistry;
     }
 
     public function execute(BlockContextInterface $blockContext, ?Response $response = null): Response
@@ -56,7 +55,7 @@ final class AdminListBlockService extends AbstractBlockService
 
         $visibleGroups = [];
         foreach ($dashboardGroups as $name => $dashboardGroup) {
-            if (!$settings['groups'] || \in_array($name, $settings['groups'], true)) {
+            if (false === $settings['groups'] || \in_array($name, $settings['groups'], true)) {
                 $visibleGroups[] = $dashboardGroup;
             }
         }
@@ -64,7 +63,6 @@ final class AdminListBlockService extends AbstractBlockService
         return $this->renderPrivateResponse($this->templateRegistry->getTemplate('list_block'), [
             'block' => $blockContext->getBlock(),
             'settings' => $settings,
-            'admin_pool' => $this->pool,
             'groups' => $visibleGroups,
         ], $response);
     }

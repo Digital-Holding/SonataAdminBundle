@@ -13,31 +13,38 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Form\DataTransformer;
 
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\Common\Util\ClassUtils;
 use Sonata\AdminBundle\Model\ModelManagerInterface;
-use Sonata\Doctrine\Adapter\AdapterInterface;
 use Symfony\Component\Form\DataTransformerInterface;
-use Symfony\Component\Form\Exception\RuntimeException;
 use Symfony\Component\Form\Exception\TransformationFailedException;
 use Symfony\Component\Form\Exception\UnexpectedTypeException;
 
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ *
+ * @phpstan-template T of object
+ * @phpstan-implements DataTransformerInterface<\Traversable<T>, array<int|string>>
  */
 final class ModelsToArrayTransformer implements DataTransformerInterface
 {
     /**
      * @var ModelManagerInterface
+     * @phpstan-var ModelManagerInterface<T>
      */
     private $modelManager;
 
     /**
      * @var string
+     *
+     * @phpstan-var class-string<T>
      */
     private $class;
 
     /**
-     * @throws RuntimeException
+     * @phpstan-param ModelManagerInterface<T> $modelManager
+     * @phpstan-param class-string<T>          $class
      */
     public function __construct(ModelManagerInterface $modelManager, string $class)
     {
@@ -45,62 +52,87 @@ final class ModelsToArrayTransformer implements DataTransformerInterface
         $this->class = $class;
     }
 
-    public function transform($collection)
+    /**
+     * @param \Traversable<object>|null $value
+     *
+     * @return string[]
+     *
+     * @phpstan-param \Traversable<T>|null $value
+     */
+    public function transform($value): array
     {
-        if (null === $collection) {
+        if (null === $value) {
             return [];
         }
 
         $array = [];
-        foreach ($collection as $key => $model) {
-            $id = implode(AdapterInterface::ID_SEPARATOR, $this->getIdentifierValues($model));
+        foreach ($value as $model) {
+            $identifier = $this->modelManager->getNormalizedIdentifier($model);
+            if (null === $identifier) {
+                throw new TransformationFailedException(sprintf(
+                    'No identifier was found for the model "%s".',
+                    ClassUtils::getClass($model)
+                ));
+            }
 
-            $array[] = $id;
+            $array[] = $identifier;
         }
 
         return $array;
     }
 
-    public function reverseTransform($keys)
-    {
-        if (!\is_array($keys)) {
-            throw new UnexpectedTypeException($keys, 'array');
-        }
-
-        $collection = $this->modelManager->getModelCollectionInstance($this->class);
-        $notFound = [];
-
-        // optimize this into a SELECT WHERE IN query
-        foreach ($keys as $key) {
-            if ($model = $this->modelManager->find($this->class, $key)) {
-                $collection[] = $model;
-            } else {
-                $notFound[] = $key;
-            }
-        }
-
-        if (\count($notFound) > 0) {
-            throw new TransformationFailedException(sprintf(
-                'The entities with keys "%s" could not be found',
-                implode('", "', $notFound)
-            ));
-        }
-
-        return $collection;
-    }
-
     /**
-     * @param object $model
+     * @param array<int|string>|null $value
+     *
+     * @throws UnexpectedTypeException
+     *
+     * @return Collection<int|string, object>|null
+     *
+     * @phpstan-return Collection<array-key, T>|null
      */
-    private function getIdentifierValues($model): array
+    public function reverseTransform($value)
     {
-        try {
-            return $this->modelManager->getIdentifierValues($model);
-        } catch (\Exception $e) {
-            throw new \InvalidArgumentException(sprintf(
-                'Unable to retrieve the identifier values for entity %s',
-                ClassUtils::getClass($model)
-            ), 0, $e);
+        if (null === $value) {
+            return null;
         }
+
+        if (!\is_array($value)) {
+            throw new UnexpectedTypeException($value, 'array');
+        }
+
+        if ([] === $value) {
+            return new ArrayCollection();
+        }
+
+        $query = $this->modelManager->createQuery($this->class);
+        $this->modelManager->addIdentifiersToQuery($this->class, $query, $value);
+        $queryResult = $this->modelManager->executeQuery($query);
+
+        $modelsById = [];
+        foreach ($queryResult as $model) {
+            $identifier = $this->modelManager->getNormalizedIdentifier($model);
+            if (null === $identifier) {
+                throw new TransformationFailedException(sprintf(
+                    'No identifier was found for the model "%s".',
+                    ClassUtils::getClass($model)
+                ));
+            }
+
+            $modelsById[$identifier] = $model;
+        }
+
+        $result = [];
+        foreach ($value as $identifier) {
+            if (!isset($modelsById[$identifier])) {
+                throw new TransformationFailedException(sprintf(
+                    'No model was found for the identifier "%s".',
+                    $identifier,
+                ));
+            }
+
+            $result[] = $modelsById[$identifier];
+        }
+
+        return new ArrayCollection($result);
     }
 }

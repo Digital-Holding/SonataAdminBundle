@@ -46,9 +46,9 @@ solve the issue by using the ``preUpdate`` saving hook::
 
     final class UserAdmin extends AbstractAdmin
     {
-        protected function configureFormFields(FormMapper $formMapper)
+        protected function configureFormFields(FormMapper $form): void
         {
-            $formMapper
+            $form
                 ->with('General')
                     ->add('username')
                     ->add('email')
@@ -67,21 +67,18 @@ solve the issue by using the ``preUpdate`` saving hook::
             ;
         }
 
-        public function preUpdate($user)
+        public function preUpdate(object $user): void
         {
             $this->getUserManager()->updateCanonicalFields($user);
             $this->getUserManager()->updatePassword($user);
         }
 
-        public function setUserManager(UserManagerInterface $userManager)
+        public function setUserManager(UserManagerInterface $userManager): void
         {
             $this->userManager = $userManager;
         }
 
-        /**
-         * @return UserManagerInterface
-         */
-        public function getUserManager()
+        public function getUserManager(): UserManagerInterface
         {
             return $this->userManager;
         }
@@ -94,13 +91,10 @@ The service declaration where the ``UserManager`` is injected into the Admin cla
     .. code-block:: xml
 
         <service id="fos.user.admin.user" class="%fos.user.admin.user.class%">
-            <argument/>
-            <argument>%fos.user.admin.user.entity%</argument>
-            <argument/>
             <call method="setUserManager">
                 <argument type="service" id="fos_user.user_manager"/>
             </call>
-            <tag name="sonata.admin" manager_type="orm" group="fos_user"/>
+            <tag name="sonata.admin" model_class="%fos.user.admin.user.entity%" manager_type="orm" group="fos_user"/>
         </service>
 
 Hooking in the Controller

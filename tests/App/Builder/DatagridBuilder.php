@@ -14,13 +14,19 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Tests\App\Builder;
 
 use Sonata\AdminBundle\Admin\AdminInterface;
-use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
 use Sonata\AdminBundle\Builder\DatagridBuilderInterface;
+use Sonata\AdminBundle\Datagrid\Datagrid;
 use Sonata\AdminBundle\Datagrid\DatagridInterface;
 use Sonata\AdminBundle\Datagrid\PagerInterface;
-use Sonata\AdminBundle\Tests\App\Datagrid\Datagrid;
+use Sonata\AdminBundle\Datagrid\ProxyQueryInterface;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionCollection;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface;
+use Symfony\Component\Form\Extension\Core\Type\FormType;
 use Symfony\Component\Form\FormFactoryInterface;
 
+/**
+ * @phpstan-implements DatagridBuilderInterface<\Sonata\AdminBundle\Datagrid\ProxyQueryInterface>
+ */
 final class DatagridBuilder implements DatagridBuilderInterface
 {
     /**
@@ -29,26 +35,43 @@ final class DatagridBuilder implements DatagridBuilderInterface
     private $formFactory;
 
     /**
-     * @var PagerInterface
+     * @var PagerInterface<ProxyQueryInterface>
      */
     private $pager;
 
-    public function __construct(FormFactoryInterface $formFactory, PagerInterface $pager)
-    {
+    /**
+     * @var ProxyQueryInterface
+     */
+    private $proxyQuery;
+
+    /**
+     * @param PagerInterface<ProxyQueryInterface> $pager
+     */
+    public function __construct(
+        FormFactoryInterface $formFactory,
+        PagerInterface $pager,
+        ProxyQueryInterface $proxyQuery
+    ) {
         $this->formFactory = $formFactory;
         $this->pager = $pager;
+        $this->proxyQuery = $proxyQuery;
     }
 
-    public function fixFieldDescription(AdminInterface $admin, FieldDescriptionInterface $fieldDescription): void
+    public function fixFieldDescription(FieldDescriptionInterface $fieldDescription): void
     {
     }
 
-    public function addFilter(DatagridInterface $datagrid, $type, FieldDescriptionInterface $fieldDescription, AdminInterface $admin): void
+    public function addFilter(DatagridInterface $datagrid, ?string $type, FieldDescriptionInterface $fieldDescription): void
     {
     }
 
     public function getBaseDatagrid(AdminInterface $admin, array $values = []): DatagridInterface
     {
-        return new Datagrid($this->formFactory, $this->pager);
+        return new Datagrid(
+            $this->proxyQuery,
+            new FieldDescriptionCollection(),
+            $this->pager,
+            $this->formFactory->createNamedBuilder('filter', FormType::class, [])
+        );
     }
 }

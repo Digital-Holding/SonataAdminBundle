@@ -17,42 +17,32 @@ use Symfony\Component\Form\FormBuilderInterface;
 
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ *
+ * @phpstan-extends \RecursiveArrayIterator<string|int, FormBuilderInterface>
  */
 final class FormBuilderIterator extends \RecursiveArrayIterator
 {
-    /**
-     * @var \ReflectionProperty
-     */
-    private static $reflection;
-
     /**
      * @var FormBuilderInterface
      */
     private $formBuilder;
 
     /**
-     * @var array
-     */
-    private $keys = [];
-
-    /**
-     * @var bool|string
+     * @var string
      */
     private $prefix;
 
     /**
-     * @var \ArrayIterator
+     * @var \ArrayIterator<string|int, string>
      */
     private $iterator;
 
-    /**
-     * @param bool $prefix
-     */
-    public function __construct(FormBuilderInterface $formBuilder, $prefix = false)
+    public function __construct(FormBuilderInterface $formBuilder, ?string $prefix = null)
     {
         parent::__construct();
+
         $this->formBuilder = $formBuilder;
-        $this->prefix = $prefix ? $prefix : $formBuilder->getName();
+        $this->prefix = $prefix ?? $formBuilder->getName();
         $this->iterator = new \ArrayIterator(self::getKeys($formBuilder));
     }
 
@@ -61,12 +51,12 @@ final class FormBuilderIterator extends \RecursiveArrayIterator
         $this->iterator->rewind();
     }
 
-    public function valid()
+    public function valid(): bool
     {
         return $this->iterator->valid();
     }
 
-    public function key()
+    public function key(): string
     {
         $name = $this->iterator->current();
 
@@ -78,27 +68,25 @@ final class FormBuilderIterator extends \RecursiveArrayIterator
         $this->iterator->next();
     }
 
-    public function current()
+    public function current(): FormBuilderInterface
     {
         return $this->formBuilder->get($this->iterator->current());
     }
 
-    public function getChildren()
+    public function getChildren(): self
     {
-        return new self($this->formBuilder->get($this->iterator->current()), $this->current());
+        return new self($this->current(), $this->key());
     }
 
-    public function hasChildren()
+    public function hasChildren(): bool
     {
         return \count(self::getKeys($this->current())) > 0;
     }
 
     /**
-     * @static
-     *
-     * @return array
+     * @return array<string|int, string>
      */
-    private static function getKeys(FormBuilderInterface $formBuilder)
+    private static function getKeys(FormBuilderInterface $formBuilder): array
     {
         return array_keys($formBuilder->all());
     }

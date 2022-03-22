@@ -12,12 +12,14 @@ To add a custom controller entry in the admin menu:
 
 Create your controller::
 
-    class BlogController
+    use Symfony\Component\HttpFoundation\Response;
+
+    final class BlogController
     {
         /**
          * @Route("/blog", name="blog_home")
          */
-        public function blogAction()
+        public function blogAction(): Response
         {
             // ...
         }
@@ -25,7 +27,7 @@ Create your controller::
         /**
          * @Route("/blog/article/{articleId}", name="blog_article")
          */
-        public function ArticleAction($articleId)
+        public function ArticleAction(string $articleId): Response
         {
             // ...
         }
@@ -44,7 +46,7 @@ Add the controller route as an item of the menu:
                 groups:
                     news:
                         label:                ~
-                        label_catalogue:      ~
+                        translation_domain:   ~
                         items:
                             - sonata.news.admin.post
                             - route:        blog_home
@@ -67,7 +69,7 @@ group roles will be checked.
                 groups:
                     news:
                         label:                ~
-                        label_catalogue:      ~
+                        translation_domain:   ~
                         items:
                             - sonata.news.admin.post
                             - route:        blog_home
@@ -115,7 +117,7 @@ The following configuration uses a menu provider to populate the menu group ``my
                 groups:
                     my_group:
                         provider:        'MyBundle:MyMenuProvider:getMyMenu'
-                        icon:            '<i class="fa fa-edit"></i>'
+                        icon:            'fas fa-edit' # html is also supported
 
 With KnpMenuBundle you can create a custom menu by using a builder class
 or by declaring it as a service. Please see the `Knp documentation`_ for
@@ -151,9 +153,9 @@ name ``sonata.admin.event.configure.menu.sidebar``::
 
     use Sonata\AdminBundle\Event\ConfigureMenuEvent;
 
-    class MenuBuilderListener
+    final class MenuBuilderListener
     {
-        public function addMenuItems(ConfigureMenuEvent $event)
+        public function addMenuItems(ConfigureMenuEvent $event): void
         {
             $menu = $event->getMenu();
 
@@ -161,7 +163,7 @@ name ``sonata.admin.event.configure.menu.sidebar``::
                 'label' => 'Daily and monthly reports',
                 'route' => 'app_reports_index',
             ])->setExtras([
-                'icon' => '<i class="fa fa-bar-chart"></i>',
+                'icon' => 'fas fa-bar-chart', // html is also supported
             ]);
         }
     }
@@ -192,9 +194,8 @@ your admin services or remove menu items from the ``sonata_admin`` dashboard gro
 
     sonata_admin.admin.post:
         class: Sonata\AdminBundle\Admin\PostAdmin
-        arguments: [~, Sonata\AdminBundle\Entity\Post, Sonata\AdminBundle\Controller\CRUDController]
         tags:
-            - { name: sonata.admin, manager_type: orm, group: admin, label: Post, show_in_dashboard: false }
+            - { name: sonata.admin, model_class: Sonata\AdminBundle\Entity\Post, controller: Sonata\AdminBundle\Controller\CRUDController, manager_type: orm, group: admin, label: Post, show_in_dashboard: false }
 
 .. code-block:: yaml
 
@@ -205,7 +206,7 @@ your admin services or remove menu items from the ``sonata_admin`` dashboard gro
             groups:
                 news:
                     label:                ~
-                    label_catalogue:      ~
+                    translation_domain:   ~
                     items:
                       # comment or remove the sonata.news.admin.post declaration to hide it from the menu.
                       #  - sonata.news.admin.post
@@ -227,10 +228,10 @@ open and ignore open/close effects:
         dashboard:
             groups:
                 sonata.admin.group.content:
-                    keep_open:       true
-                    label:           sonata_media
-                    label_catalogue: SonataMediaBundle
-                    icon:            '<i class="fa fa-image"></i>'
+                    keep_open:          true
+                    label:              sonata_media
+                    translation_domain: SonataMediaBundle
+                    icon:               'fas fa-image' # html is also supported
                     items:
                         - sonata.media.admin.media
                         - sonata.media.admin.gallery
@@ -251,9 +252,8 @@ or in sonata_admin dashboard group configuration:
 
     sonata_admin.admin.post:
         class: Sonata\AdminBundle\Admin\PostAdmin
-        arguments: [~, Sonata\AdminBundle\Entity\Post, Sonata\AdminBundle\Controller\CRUDController]
         tags:
-            - { name: sonata.admin, manager_type: orm, group: admin, label: Post, on_top: true }
+            - { name: sonata.admin, model_class: Sonata\AdminBundle\Entity\Post, controller: Sonata\AdminBundle\Controller\CRUDController, manager_type: orm, group: admin, label: Post, on_top: true }
 
 .. code-block:: yaml
 
@@ -263,9 +263,9 @@ or in sonata_admin dashboard group configuration:
         dashboard:
             groups:
                 news:
-                    on_top:          true
-                    label:           ~
-                    label_catalogue: ~
+                    on_top:             true
+                    label:              ~
+                    translation_domain: ~
                     items:
                         - sonata.news.admin.post
 
@@ -286,9 +286,9 @@ Your can't use this option for two or more items at the same time:
         dashboard:
             groups:
                 news:
-                    on_top:          true
-                    label:           ~
-                    label_catalogue: ~
+                    on_top:            true
+                    label:              ~
+                    translation_domain: ~
                     items:
                         - sonata.news.admin.post
                         - route:        blog_home

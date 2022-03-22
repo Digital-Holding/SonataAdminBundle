@@ -20,19 +20,23 @@ use Sonata\AdminBundle\Datagrid\ListMapper;
 use Sonata\AdminBundle\Datagrid\ProxyQueryInterface;
 use Sonata\AdminBundle\Form\FormMapper;
 use Sonata\AdminBundle\Show\ShowMapper;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\EventDispatcher\LegacyEventDispatcherProxy;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ *
+ * @phpstan-extends AbstractAdminExtension<object>
  */
 final class AdminEventExtension extends AbstractAdminExtension
 {
+    /**
+     * @var EventDispatcherInterface
+     */
     private $eventDispatcher;
 
     public function __construct(EventDispatcherInterface $eventDispatcher)
     {
-        $this->eventDispatcher = LegacyEventDispatcherProxy::decorate($eventDispatcher);
+        $this->eventDispatcher = $eventDispatcher;
     }
 
     public function configureFormFields(FormMapper $form): void
@@ -67,7 +71,7 @@ final class AdminEventExtension extends AbstractAdminExtension
         );
     }
 
-    public function configureQuery(AdminInterface $admin, ProxyQueryInterface $query, $context = 'list'): void
+    public function configureQuery(AdminInterface $admin, ProxyQueryInterface $query, string $context = 'list'): void
     {
         $this->eventDispatcher->dispatch(
             new ConfigureQueryEvent($admin, $query, $context),
@@ -75,7 +79,7 @@ final class AdminEventExtension extends AbstractAdminExtension
         );
     }
 
-    public function preUpdate(AdminInterface $admin, $object): void
+    public function preUpdate(AdminInterface $admin, object $object): void
     {
         $this->eventDispatcher->dispatch(
             new PersistenceEvent($admin, $object, PersistenceEvent::TYPE_PRE_UPDATE),
@@ -83,7 +87,7 @@ final class AdminEventExtension extends AbstractAdminExtension
         );
     }
 
-    public function postUpdate(AdminInterface $admin, $object): void
+    public function postUpdate(AdminInterface $admin, object $object): void
     {
         $this->eventDispatcher->dispatch(
             new PersistenceEvent($admin, $object, PersistenceEvent::TYPE_POST_UPDATE),
@@ -91,7 +95,7 @@ final class AdminEventExtension extends AbstractAdminExtension
         );
     }
 
-    public function prePersist(AdminInterface $admin, $object): void
+    public function prePersist(AdminInterface $admin, object $object): void
     {
         $this->eventDispatcher->dispatch(
             new PersistenceEvent($admin, $object, PersistenceEvent::TYPE_PRE_PERSIST),
@@ -99,7 +103,7 @@ final class AdminEventExtension extends AbstractAdminExtension
         );
     }
 
-    public function postPersist(AdminInterface $admin, $object): void
+    public function postPersist(AdminInterface $admin, object $object): void
     {
         $this->eventDispatcher->dispatch(
             new PersistenceEvent($admin, $object, PersistenceEvent::TYPE_POST_PERSIST),
@@ -107,7 +111,7 @@ final class AdminEventExtension extends AbstractAdminExtension
         );
     }
 
-    public function preRemove(AdminInterface $admin, $object): void
+    public function preRemove(AdminInterface $admin, object $object): void
     {
         $this->eventDispatcher->dispatch(
             new PersistenceEvent($admin, $object, PersistenceEvent::TYPE_PRE_REMOVE),
@@ -115,11 +119,19 @@ final class AdminEventExtension extends AbstractAdminExtension
         );
     }
 
-    public function postRemove(AdminInterface $admin, $object): void
+    public function postRemove(AdminInterface $admin, object $object): void
     {
         $this->eventDispatcher->dispatch(
             new PersistenceEvent($admin, $object, PersistenceEvent::TYPE_POST_REMOVE),
             'sonata.admin.event.persistence.post_remove'
+        );
+    }
+
+    public function preBatchAction(AdminInterface $admin, string $actionName, ProxyQueryInterface $query, array &$idx, bool $allElements): void
+    {
+        $this->eventDispatcher->dispatch(
+            new BatchActionEvent($admin, BatchActionEvent::TYPE_PRE_BATCH_ACTION, $actionName, $query, $idx, $allElements),
+            'sonata.admin.event.batch_action.pre_batch_action'
         );
     }
 }

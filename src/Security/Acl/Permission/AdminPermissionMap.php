@@ -26,6 +26,7 @@ final class AdminPermissionMap implements PermissionMapInterface
 {
     public const PERMISSION_VIEW = 'VIEW';
     public const PERMISSION_EDIT = 'EDIT';
+    public const PERMISSION_HISTORY = 'HISTORY';
     public const PERMISSION_CREATE = 'CREATE';
     public const PERMISSION_DELETE = 'DELETE';
     public const PERMISSION_UNDELETE = 'UNDELETE';
@@ -39,7 +40,7 @@ final class AdminPermissionMap implements PermissionMapInterface
      * Map each permission to the permissions it should grant access for
      * fe. grant access for the view permission if the user has the edit permission.
      *
-     * @var array
+     * @var array<string, int[]>
      */
     private $map = [
         self::PERMISSION_VIEW => [
@@ -53,6 +54,13 @@ final class AdminPermissionMap implements PermissionMapInterface
 
         self::PERMISSION_EDIT => [
             MaskBuilder::MASK_EDIT,
+            MaskBuilder::MASK_OPERATOR,
+            MaskBuilder::MASK_MASTER,
+            MaskBuilder::MASK_OWNER,
+        ],
+
+        self::PERMISSION_HISTORY => [
+            MaskBuilder::MASK_HISTORY,
             MaskBuilder::MASK_OPERATOR,
             MaskBuilder::MASK_MASTER,
             MaskBuilder::MASK_OWNER,
@@ -109,7 +117,13 @@ final class AdminPermissionMap implements PermissionMapInterface
         ],
     ];
 
-    public function getMasks($permission, $object)
+    /**
+     * @param string $permission
+     * @param object $object
+     *
+     * @return int[]|null
+     */
+    public function getMasks($permission, $object): ?array
     {
         if (!isset($this->map[$permission])) {
             return null;
@@ -118,7 +132,7 @@ final class AdminPermissionMap implements PermissionMapInterface
         return $this->map[$permission];
     }
 
-    public function contains($permission)
+    public function contains($permission): bool
     {
         return isset($this->map[$permission]);
     }

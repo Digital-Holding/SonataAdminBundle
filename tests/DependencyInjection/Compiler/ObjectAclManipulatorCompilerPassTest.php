@@ -18,12 +18,13 @@ use Sonata\AdminBundle\Admin\Pool;
 use Sonata\AdminBundle\Command\GenerateObjectAclCommand;
 use Sonata\AdminBundle\DependencyInjection\Compiler\ObjectAclManipulatorCompilerPass;
 use Sonata\AdminBundle\Util\ObjectAclManipulator;
+use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 /**
  * @author Olivier Rey <olivier.rey@gmail.com>
  */
-class ObjectAclManipulatorCompilerPassTest extends TestCase
+final class ObjectAclManipulatorCompilerPassTest extends TestCase
 {
     /**
      * @dataProvider containerDataProvider
@@ -34,11 +35,15 @@ class ObjectAclManipulatorCompilerPassTest extends TestCase
 
         $objectAclManipulatorCompilerPass->process($containerBuilder);
 
-        $availableManagers = $containerBuilder->getDefinition(GenerateObjectAclCommand::class)->getArgument(1);
+        $availableManagers = $containerBuilder->getDefinition('sonata.admin.command.generate_object_acl')->getArgument(1);
 
-        $this->assertArrayHasKey($serviceId, $availableManagers);
+        static::assertIsArray($availableManagers);
+        static::assertArrayHasKey($serviceId, $availableManagers);
     }
 
+    /**
+     * @phpstan-return iterable<array-key, array{ContainerBuilder, string}>
+     */
     public function containerDataProvider(): iterable
     {
         $serviceId = 'sonata.admin.manipulator.acl.object.orm';
@@ -62,10 +67,10 @@ class ObjectAclManipulatorCompilerPassTest extends TestCase
 
     private function createContainer(): ContainerBuilder
     {
-        $pool = $this->createStub(Pool::class);
+        $pool = new Pool(new Container());
         $container = new ContainerBuilder();
         $container
-            ->register(GenerateObjectAclCommand::class)
+            ->register('sonata.admin.command.generate_object_acl')
             ->setClass(GenerateObjectAclCommand::class)
             ->setArguments([$pool, []]);
 

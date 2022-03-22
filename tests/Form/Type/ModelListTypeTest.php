@@ -13,18 +13,22 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Form\Type;
 
+use PHPUnit\Framework\MockObject\MockObject;
 use Sonata\AdminBundle\Form\Type\ModelListType;
 use Sonata\AdminBundle\Model\ModelManagerInterface;
 use Symfony\Component\Form\Test\TypeTestCase;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
-class ModelListTypeTest extends TypeTestCase
+final class ModelListTypeTest extends TypeTestCase
 {
+    /**
+     * @var MockObject&ModelManagerInterface<object>
+     */
     private $modelManager;
 
     protected function setUp(): void
     {
-        $this->modelManager = $this->prophesize(ModelManagerInterface::class);
+        $this->modelManager = $this->createMock(ModelManagerInterface::class);
 
         parent::setUp();
     }
@@ -32,36 +36,36 @@ class ModelListTypeTest extends TypeTestCase
     public function testGetDefaultOptions(): void
     {
         $type = new ModelListType();
-
+        $modelManager = $this->createMock(ModelManagerInterface::class);
         $optionResolver = new OptionsResolver();
 
         $type->configureOptions($optionResolver);
 
-        $options = $optionResolver->resolve();
+        $options = $optionResolver->resolve(['model_manager' => $modelManager, 'class' => '\Foo']);
 
-        $this->assertNull($options['model_manager']);
-        $this->assertNull($options['class']);
-        $this->assertSame('link_add', $options['btn_add']);
-        $this->assertSame('link_edit', $options['btn_edit']);
-        $this->assertSame('link_list', $options['btn_list']);
-        $this->assertSame('link_delete', $options['btn_delete']);
-        $this->assertSame('SonataAdminBundle', $options['btn_catalogue']);
+        static::assertInstanceOf(ModelManagerInterface::class, $options['model_manager']);
+        static::assertSame('\Foo', $options['class']);
+        static::assertSame('link_add', $options['btn_add']);
+        static::assertSame('link_edit', $options['btn_edit']);
+        static::assertSame('link_list', $options['btn_list']);
+        static::assertSame('link_delete', $options['btn_delete']);
+        static::assertSame('SonataAdminBundle', $options['btn_catalogue']);
+        static::assertSame('SonataAdminBundle', $options['btn_translation_domain']);
     }
 
     public function testSubmitValidData(): void
     {
-        $formData = 42;
-
         $form = $this->factory->create(
             ModelListType::class,
             null,
             [
-                'model_manager' => $this->modelManager->reveal(),
+                'model_manager' => $this->modelManager,
                 'class' => 'My\Entity',
             ]
         );
-        $this->modelManager->find('My\Entity', 42)->shouldBeCalled();
-        $form->submit($formData);
-        $this->assertTrue($form->isSynchronized());
+
+        $this->modelManager->expects(static::once())->method('find')->with('My\Entity', '42');
+        $form->submit('42');
+        static::assertTrue($form->isSynchronized());
     }
 }

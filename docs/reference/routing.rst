@@ -152,11 +152,11 @@ explicitly this defaults to the action name::
 
     // src/Admin/MediaAdmin.php
 
-    use Sonata\AdminBundle\Route\RouteCollection;
+    use Sonata\AdminBundle\Route\RouteCollectionInterface;
 
     final class MediaAdmin extends AbstractAdmin
     {
-        protected function configureRoutes(RouteCollection $collection)
+        protected function configureRoutes(RouteCollectionInterface $collection): void
         {
             $collection->add('myCustom'); // Action gets added automatically
             $collection->add('view', $this->getRouterIdParameter().'/view');
@@ -171,11 +171,11 @@ in the ``add`` method to set additional settings like this::
 
     // src/Admin/MediaAdmin.php
 
-    use Sonata\AdminBundle\Route\RouteCollection;
+    use Sonata\AdminBundle\Route\RouteCollectionInterface;
 
     final class MediaAdmin extends AbstractAdmin
     {
-        protected function configureRoutes(RouteCollection $collection)
+        protected function configureRoutes(RouteCollectionInterface $collection): void
         {
             $collection->add(
                 'custom_action',
@@ -207,12 +207,8 @@ For example, lets change the Controller for our MediaAdmin class to ``App\Contro
 
         app.admin.media:
             class: App\Admin\MediaAdmin
-            arguments:
-                - ~
-                - App\Entity\Page
-                - App\Controller\MediaCRUDController # define the new controller via the third argument
             tags:
-                - { name: sonata.admin, manager_type: orm, label: 'Media' }
+                - { name: sonata.admin, model_class: App\Entity\Page, controller: App\Controller\MediaCRUDController, manager_type: orm, label: 'Media' }
 
 We now need to create our Controller, the easiest way is to extend the
 basic Sonata CRUD controller::
@@ -222,10 +218,11 @@ basic Sonata CRUD controller::
     namespace App\Controller;
 
     use Sonata\AdminBundle\Controller\CRUDController;
+    use Symfony\Component\HttpFoundation\Response;
 
     class MediaCRUDController extends CRUDController
     {
-        public function myCustomAction()
+        public function myCustomAction(): Response
         {
             // your code here ...
         }
@@ -268,11 +265,11 @@ Any single registered route can be removed by name::
 
     // src/Admin/MediaAdmin.php
 
-    use Sonata\AdminBundle\Route\RouteCollection;
+    use Sonata\AdminBundle\Route\RouteCollectionInterface;
 
     final class MediaAdmin extends AbstractAdmin
     {
-        protected function configureRoutes(RouteCollection $collection)
+        protected function configureRoutes(RouteCollectionInterface $collection): void
         {
             $collection->remove('delete');
         }
@@ -281,16 +278,16 @@ Any single registered route can be removed by name::
 Removing all routes except named ones
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you want to disable all default Sonata routes except few whitelisted ones, you can use
+If you want to disable all default Sonata routes except few allowed ones, you can use
 the ``clearExcept()`` method. This method accepts an array of routes you want to keep active::
 
     // src/Admin/MediaAdmin.php
 
-    use Sonata\AdminBundle\Route\RouteCollection;
+    use Sonata\AdminBundle\Route\RouteCollectionInterface;
 
     final class MediaAdmin extends AbstractAdmin
     {
-        protected function configureRoutes(RouteCollection $collection)
+        protected function configureRoutes(RouteCollectionInterface $collection): void
         {
             // Only `list` and `edit` route will be active
             $collection->clearExcept(['list', 'edit']);
@@ -307,11 +304,11 @@ If you want to remove all default routes, you can use ``clear()`` method::
 
     // src/Admin/MediaAdmin.php
 
-    use Sonata\AdminBundle\Route\RouteCollection;
+    use Sonata\AdminBundle\Route\RouteCollectionInterface;
 
     final class MediaAdmin extends AbstractAdmin
     {
-        protected function configureRoutes(RouteCollection $collection)
+        protected function configureRoutes(RouteCollectionInterface $collection): void
         {
             // All routes are removed
             $collection->clear();
@@ -327,11 +324,11 @@ can use ``hasParentFieldDescription()`` to detect this case and remove the route
 
     // src/Admin/TagAdmin.php
 
-    use Sonata\AdminBundle\Route\RouteCollection;
+    use Sonata\AdminBundle\Route\RouteCollectionInterface;
 
     final class TagAdmin extends AbstractAdmin
     {
-        protected function configureRoutes(RouteCollection $collection)
+        protected function configureRoutes(RouteCollectionInterface $collection): void
         {
             // prevent display of "Add new" when embedding this form
             if ($this->hasParentFieldDescription()) {
@@ -347,11 +344,11 @@ Any previously removed route can be restored by name::
 
     // src/Admin/DeletableMediaAdmin.php
 
-    use Sonata\AdminBundle\Route\RouteCollection;
+    use Sonata\AdminBundle\Route\RouteCollectionInterface;
 
     final class DeletableMediaAdmin extends MediaAdmin
     {
-        protected function configureRoutes(RouteCollection $collection)
+        protected function configureRoutes(RouteCollectionInterface $collection): void
         {
             $collection->restore('delete');
         }
@@ -363,14 +360,14 @@ Persistent parameters
 
 In some cases, the interface might be required to pass the same parameters
 across the different ``Admin``'s actions. Instead of setting them in the
-template or doing other weird hacks, you can define a ``getPersistentParameters``
+template or doing other weird hacks, you can define a ``configurePersistentParameters()``
 method. This method will be used when a link is being generated::
 
     // src/Admin/MediaAdmin.php
 
     final class MediaAdmin extends AbstractAdmin
     {
-        public function getPersistentParameters()
+        protected function configurePersistentParameters(): array
         {
             if (!$this->getRequest()) {
                 return [];
@@ -397,9 +394,9 @@ list action's links to point to a different action, set the ``route`` option in 
 
     final class PostAdmin extends AbstractAdmin
     {
-        protected function configureListFields(ListMapper $listMapper)
+        protected function configureListFields(ListMapper $list): void
         {
-            $listMapper
+            $list
                 ->addIdentifier('name', null, [
                     'route' => [
                         'name' => 'show'

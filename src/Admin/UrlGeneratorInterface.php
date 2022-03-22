@@ -21,6 +21,8 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface as RoutingUrlGener
  * Contains url generation logic related to an admin.
  *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ *
+ * @phpstan-template T of object
  */
 interface UrlGeneratorInterface
 {
@@ -34,7 +36,7 @@ interface UrlGeneratorInterface
      */
     public function getRouterIdParameter(): string;
 
-    public function setRouteGenerator(RouteGeneratorInterface $routeGenerator);
+    public function setRouteGenerator(RouteGeneratorInterface $routeGenerator): void;
 
     /**
      * Generates the object url with the given $name.
@@ -42,6 +44,8 @@ interface UrlGeneratorInterface
      * @param array<string, mixed> $parameters
      *
      * @return string return a complete url
+     *
+     * @phpstan-param T $object
      */
     public function generateObjectUrl(
         string $name,
@@ -64,14 +68,12 @@ interface UrlGeneratorInterface
      *
      * @param array<string, mixed> $parameters
      *
-     * @return array return url parts: 'route', 'routeParameters', 'routeAbsolute'
+     * @return array{route: string, routeParameters: array<string, mixed>, routeAbsolute: bool}
      */
     public function generateMenuUrl(string $name, array $parameters = [], int $referenceType = RoutingUrlGeneratorInterface::ABSOLUTE_PATH): array;
 
     /**
-     * @param mixed $model
-     *
-     * @return string|null a string representation of the id that is safe to use in a url
+     * @phpstan-param T $model
      */
-    public function getUrlSafeIdentifier($model): ?string;
+    public function getUrlSafeIdentifier(object $model): ?string;
 }

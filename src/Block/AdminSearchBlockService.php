@@ -13,10 +13,10 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Block;
 
-use Sonata\AdminBundle\Admin\AdminInterface;
 use Sonata\AdminBundle\Admin\Pool;
+use Sonata\AdminBundle\Filter\FilterInterface;
+use Sonata\AdminBundle\Search\SearchableFilterInterface;
 use Sonata\AdminBundle\Search\SearchHandler;
-use Sonata\AdminBundle\Templating\TemplateRegistry;
 use Sonata\AdminBundle\Templating\TemplateRegistryInterface;
 use Sonata\BlockBundle\Block\BlockContextInterface;
 use Sonata\BlockBundle\Block\Service\AbstractBlockService;
@@ -45,52 +45,79 @@ final class AdminSearchBlockService extends AbstractBlockService
      */
     private $templateRegistry;
 
+    /**
+     * @var string
+     */
+    private $emptyBoxesOption;
+
+    /**
+     * @var string
+     */
+    private $adminRoute;
+
+    /**
+     * @phpstan-param 'show'|'hide'|'fade' $emptyBoxesOption
+     * @phpstan-param 'show'|'edit'        $adminRoute
+     */
     public function __construct(
         Environment $twig,
         Pool $pool,
         SearchHandler $searchHandler,
-        ?TemplateRegistryInterface $templateRegistry = null
+        TemplateRegistryInterface $templateRegistry,
+        string $emptyBoxesOption,
+        string $adminRoute
     ) {
         parent::__construct($twig);
 
         $this->pool = $pool;
         $this->searchHandler = $searchHandler;
-        $this->templateRegistry = $templateRegistry ?: new TemplateRegistry();
+        $this->templateRegistry = $templateRegistry;
+        $this->emptyBoxesOption = $emptyBoxesOption;
+        $this->adminRoute = $adminRoute;
     }
 
     public function execute(BlockContextInterface $blockContext, ?Response $response = null): Response
     {
         try {
             $admin = $this->pool->getAdminByAdminCode($blockContext->getSetting('admin_code'));
-        } catch (ServiceNotFoundException $e) {
-            throw new \RuntimeException('Unable to find the Admin instance', $e->getCode(), $e);
-        }
-
-        if (!$admin instanceof AdminInterface) {
-            throw new \RuntimeException('The requested service is not an Admin instance');
+        } catch (ServiceNotFoundException $exception) {
+            throw new \RuntimeException(
+                'Unable to find the Admin instance',
+                $exception->getCode(),
+                $exception
+            );
         }
 
         $admin->checkAccess('list');
 
+        $term = $blockContext->getSetting('query');
+
         $pager = $this->searchHandler->search(
             $admin,
-            $blockContext->getSetting('query'),
+            $term,
             $blockContext->getSetting('page'),
             $blockContext->getSetting('per_page')
         );
 
-        if (false === $pager) {
-            $response = $response ?: new Response();
+        if (null === $pager) {
+            $response = $response ?? new Response();
 
             return $response->setContent('')->setStatusCode(204);
         }
 
+        $filters = array_filter($admin->getDatagrid()->getFilters(), static function (FilterInterface $filter): bool {
+            return $filter instanceof SearchableFilterInterface && $filter->isSearchEnabled();
+        });
+
         return $this->renderPrivateResponse($this->templateRegistry->getTemplate('search_result_block'), [
             'block' => $blockContext->getBlock(),
             'settings' => $blockContext->getSettings(),
-            'admin_pool' => $this->pool,
             'pager' => $pager,
+            'term' => $term,
+            'filters' => $filters,
             'admin' => $admin,
+            'show_empty_boxes' => $this->emptyBoxesOption,
+            'admin_route' => $this->adminRoute,
         ], $response);
     }
 
@@ -102,7 +129,7 @@ final class AdminSearchBlockService extends AbstractBlockService
                 'query' => '',
                 'page' => 0,
                 'per_page' => 10,
-                'icon' => '<i class="fa fa-list"></i>',
+                'icon' => 'fas fa-list',
             ])
             ->setRequired('admin_code')
             ->setAllowedTypes('admin_code', ['string']);

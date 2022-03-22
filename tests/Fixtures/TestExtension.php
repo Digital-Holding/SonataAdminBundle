@@ -19,15 +19,15 @@ use Symfony\Component\Form\FormTypeExtensionInterface;
 use Symfony\Component\Form\FormTypeGuesserInterface;
 use Symfony\Component\Form\FormTypeInterface;
 
-class TestExtension implements FormExtensionInterface
+final class TestExtension implements FormExtensionInterface
 {
     /**
-     * @var array
+     * @var array<string, FormTypeInterface>
      */
     private $types = [];
 
     /**
-     * @var array
+     * @var array<string, array<FormTypeExtensionInterface>>
      */
     private $extensions = [];
 

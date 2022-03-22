@@ -37,15 +37,15 @@ abstract class XliffValidatorTestCase extends TestCase
     /**
      * @dataProvider getXliffPaths
      */
-    public function testXliff($path): void
+    public function testXliff(string $path): void
     {
         $this->validatePath($path);
 
         if (\count($this->errors) > 0) {
-            $this->fail(sprintf('Unable to parse xliff files: %s', implode(', ', $this->errors)));
+            static::fail(sprintf('Unable to parse xliff files: %s', implode(', ', $this->errors)));
         }
 
-        $this->assertCount(
+        static::assertCount(
             0,
             $this->errors,
             sprintf('Unable to parse xliff files: %s', implode(', ', $this->errors))
@@ -53,29 +53,24 @@ abstract class XliffValidatorTestCase extends TestCase
     }
 
     /**
-     * @return array List all path to validate xliff
+     * @phpstan-return array<array{string}>
      */
-    abstract public function getXliffPaths();
+    abstract public function getXliffPaths(): array;
 
-    /**
-     * @param string $file The path to the xliff file
-     */
-    protected function validateXliff($file): void
+    protected function validateXliff(string $file): void
     {
         try {
             $this->loader->load($file, 'en');
-            $this->assertTrue(true, sprintf('Successful loading file: %s', $file));
+            static::assertTrue(true, sprintf('Successful loading file: %s', $file));
         } catch (InvalidResourceException $e) {
             $this->errors[] = sprintf('%s => %s', $file, $e->getMessage());
         }
     }
 
-    /**
-     * @param string $path The path to lookup for Xliff file
-     */
-    protected function validatePath($path): void
+    protected function validatePath(string $path): void
     {
         $files = glob(sprintf('%s/*.xliff', $path));
+        static::assertIsArray($files);
 
         foreach ($files as $file) {
             $this->validateXliff($file);

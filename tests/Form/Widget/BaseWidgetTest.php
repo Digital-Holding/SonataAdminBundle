@@ -15,8 +15,11 @@ namespace Sonata\AdminBundle\Tests\Form\Widget;
 
 use Sonata\AdminBundle\Tests\Fixtures\StubTranslator;
 use Sonata\Form\Test\AbstractWidgetTestCase;
+use Symfony\Bridge\Twig\Extension\HttpKernelExtension;
+use Symfony\Bridge\Twig\Extension\RoutingExtension;
 use Symfony\Bridge\Twig\Extension\TranslationExtension;
 use Symfony\Bridge\Twig\Form\TwigRendererEngine;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Twig\Environment;
 
 /**
@@ -34,7 +37,7 @@ abstract class BaseWidgetTest extends AbstractWidgetTestCase
     protected $type;
 
     /**
-     * @var array
+     * @var array<string, mixed>
      */
     protected $sonataAdmin = [
         'name' => null,
@@ -50,13 +53,12 @@ abstract class BaseWidgetTest extends AbstractWidgetTestCase
         ],
     ];
 
-    /**
-     * {@inheritdoc}
-     */
     protected function getEnvironment(): Environment
     {
         $environment = parent::getEnvironment();
         $environment->addGlobal('sonata_admin', $this->getSonataAdmin());
+        $environment->addExtension(new RoutingExtension($this->createStub(UrlGeneratorInterface::class)));
+        $environment->addExtension(new HttpKernelExtension());
         if (!$environment->hasExtension(TranslationExtension::class)) {
             $environment->addExtension(new TranslationExtension(new StubTranslator()));
         }
@@ -64,10 +66,7 @@ abstract class BaseWidgetTest extends AbstractWidgetTestCase
         return $environment;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function getRenderingEngine(?Environment $environment = null): TwigRendererEngine
+    protected function getRenderingEngine(Environment $environment): TwigRendererEngine
     {
         if (!\in_array($this->type, ['form', 'filter'], true)) {
             throw new \Exception(
@@ -82,16 +81,13 @@ abstract class BaseWidgetTest extends AbstractWidgetTestCase
     }
 
     /**
-     * {@inheritdoc}
+     * @return array<string, mixed>
      */
-    protected function getSonataAdmin()
+    protected function getSonataAdmin(): array
     {
         return $this->sonataAdmin;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function getTemplatePaths(): array
     {
         $twigPaths = array_filter([

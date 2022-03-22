@@ -14,52 +14,45 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Tests\Menu\Matcher\Voter;
 
 use Knp\Menu\ItemInterface;
-use Knp\Menu\Matcher\Voter\VoterInterface;
+use PHPUnit\Framework\TestCase;
 use Sonata\AdminBundle\Menu\Matcher\Voter\ActiveVoter;
 
-class ActiveVoterTest extends AbstractVoterTest
+final class ActiveVoterTest extends TestCase
 {
     /**
-     * {@inheritdoc}
+     * @dataProvider provideData
      */
-    public function createVoter($dataVoter, $route): VoterInterface
+    public function testMatching(?bool $itemData, ?bool $expected): void
     {
-        return new ActiveVoter();
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function provideData(): array
-    {
-        return [
-            'active' => [true, null, true, true],
-            'no active' => [false, null, false, false],
-            'null' => [null, null, null, null],
-        ];
-    }
-
-    /**
-     * @param mixed $data
-     */
-    protected function createItem($data): ItemInterface
-    {
-        $item = $this->getMockForAbstractClass(ItemInterface::class);
+        $item = $this->createMock(ItemInterface::class);
         $item
             ->method('getExtra')
-            ->with($this->logicalOr(
-                $this->equalTo('active'),
-                $this->equalTo('sonata_admin')
+            ->with(static::logicalOr(
+                static::equalTo('active'),
+                static::equalTo('sonata_admin')
             ))
-            ->willReturnCallback(static function (string $name) use ($data) {
+            ->willReturnCallback(static function (string $name) use ($itemData) {
                 if ('active' === $name) {
-                    return $data;
+                    return $itemData;
                 }
 
                 return true;
-            })
-        ;
+            });
 
-        return $item;
+        $voter = new ActiveVoter();
+
+        static::assertSame($expected, $voter->matchItem($item));
+    }
+
+    /**
+     * @return iterable<array{bool|null, bool|null}>
+     */
+    public function provideData(): iterable
+    {
+        return [
+            'active' => [true, true],
+            'no active' => [false, false],
+            'null' => [null, null],
+        ];
     }
 }

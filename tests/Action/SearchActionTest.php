@@ -13,73 +13,65 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Action;
 
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Sonata\AdminBundle\Action\SearchAction;
-use Sonata\AdminBundle\Admin\BreadcrumbsBuilderInterface;
 use Sonata\AdminBundle\Admin\Pool;
-use Sonata\AdminBundle\Search\SearchHandler;
 use Sonata\AdminBundle\Templating\TemplateRegistry;
-use Sonata\AdminBundle\Tests\Fixtures\Admin\CleanAdmin;
 use Symfony\Component\DependencyInjection\Container;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Twig\Environment;
 
-class SearchActionTest extends TestCase
+final class SearchActionTest extends TestCase
 {
+    /**
+     * @var Container
+     */
     private $container;
+
+    /**
+     * @var Pool
+     */
     private $pool;
-    private $searchHandler;
+
+    /**
+     * @var SearchAction
+     */
     private $action;
+
+    /**
+     * @var MockObject&Environment
+     */
     private $twig;
-    private $breadcrumbsBuilder;
 
     protected function setUp(): void
     {
         $this->container = new Container();
-
-        $this->pool = new Pool($this->container, 'title', 'logo.png');
+        $this->pool = new Pool($this->container, ['foo']);
         $templateRegistry = new TemplateRegistry([
             'search' => 'search.html.twig',
             'layout' => 'layout.html.twig',
         ]);
 
-        $this->breadcrumbsBuilder = $this->createMock(BreadcrumbsBuilderInterface::class);
-        $this->searchHandler = $this->createMock(SearchHandler::class);
-        $this->twig = $this->prophesize(Environment::class);
+        $this->twig = $this->createMock(Environment::class);
 
         $this->action = new SearchAction(
             $this->pool,
-            $this->searchHandler,
             $templateRegistry,
-            $this->breadcrumbsBuilder,
-            $this->twig->reveal()
+            $this->twig
         );
     }
 
     public function testGlobalPage(): void
     {
         $request = new Request(['q' => 'some search']);
-        $this->twig->render('search.html.twig', [
+        $this->twig->method('render')->with('search.html.twig', [
             'base_template' => 'layout.html.twig',
-            'breadcrumbs_builder' => $this->breadcrumbsBuilder,
-            'admin_pool' => $this->pool,
             'query' => 'some search',
             'groups' => [],
-        ])->willReturn('rendered search');
+        ])->willReturn('rendered_search');
 
-        $this->assertInstanceOf(Response::class, ($this->action)($request));
-    }
-
-    public function testAjaxCall(): void
-    {
-        $admin = new CleanAdmin('code', 'class', 'controller');
-        $this->container->set('foo', $admin);
-        $this->pool->setAdminServiceIds(['foo']);
-        $request = new Request(['admin' => 'foo']);
-        $request->headers->set('X-Requested-With', 'XMLHttpRequest');
-
-        $this->assertInstanceOf(JsonResponse::class, ($this->action)($request));
+        static::assertInstanceOf(Response::class, ($this->action)($request));
     }
 }

@@ -17,17 +17,13 @@ use Sonata\AdminBundle\Form\Type\Filter\ChoiceType;
 use Sonata\AdminBundle\Form\Type\Operator\ContainsOperatorType;
 use Sonata\AdminBundle\Tests\Fixtures\TestExtension;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType as SymfonyChoiceType;
+use Symfony\Component\Form\FormExtensionInterface;
 use Symfony\Component\Form\FormTypeGuesserInterface;
-use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Component\Form\FormTypeInterface;
 
-class FormSonataFilterChoiceWidgetTest extends BaseWidgetTest
+final class FormSonataFilterChoiceWidgetTest extends BaseWidgetTest
 {
     protected $type = 'filter';
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-    }
 
     public function testDefaultValueRendering(): void
     {
@@ -40,49 +36,48 @@ class FormSonataFilterChoiceWidgetTest extends BaseWidgetTest
         $html = $this->cleanHtmlWhitespace($this->renderWidget($choice->createView()));
         $html = $this->cleanHtmlAttributeWhitespace($html);
 
-        $this->assertStringContainsString(
+        static::assertStringContainsString(
             '<option value="1">[trans]label_type_contains[/trans]</option>',
             $html
         );
 
-        $this->assertStringContainsString(
+        static::assertStringContainsString(
             '<option value="2">[trans]label_type_not_contains[/trans]</option>',
             $html
         );
 
-        $this->assertStringContainsString(
+        static::assertStringContainsString(
             '<option value="3">[trans]label_type_equals[/trans]</option></select>',
             $html
         );
     }
 
-    protected function getChoiceClass()
+    /**
+     * @return class-string<FormTypeInterface>
+     */
+    protected function getChoiceClass(): string
     {
         return ChoiceType::class;
     }
 
-    protected function getExtensions()
+    /**
+     * @return array<FormExtensionInterface>
+     */
+    protected function getExtensions(): array
     {
-        $mock = $this->getMockBuilder(TranslatorInterface::class)->getMock();
-
-        $mock->method('trans')
-            ->willReturnCallback(
-                static function ($arg) {
-                    return $arg;
-                }
-            );
-
         $extensions = parent::getExtensions();
-        $guesser = $this->getMockForAbstractClass(FormTypeGuesserInterface::class);
+        $guesser = $this->createMock(FormTypeGuesserInterface::class);
         $extension = new TestExtension($guesser);
-        $type = new ChoiceType($mock);
+        $type = new ChoiceType();
         $extension->addType($type);
 
         if (!$extension->hasType($this->getChoiceClass())) {
             $reflection = new \ReflectionClass($extension);
             $property = $reflection->getProperty('types');
             $property->setAccessible(true);
-            $property->setValue($extension, [\get_class($type) => current($property->getValue($extension))]);
+            $types = $property->getValue($extension);
+            \assert(\is_array($types));
+            $property->setValue($extension, [\get_class($type) => current($types)]);
         }
 
         $extensions[] = $extension;
@@ -90,7 +85,10 @@ class FormSonataFilterChoiceWidgetTest extends BaseWidgetTest
         return $extensions;
     }
 
-    protected function getDefaultOption()
+    /**
+     * @return array<string, mixed>
+     */
+    protected function getDefaultOption(): array
     {
         return ['field_type' => SymfonyChoiceType::class,
              'field_options' => [],

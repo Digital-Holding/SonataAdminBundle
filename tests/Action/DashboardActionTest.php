@@ -13,18 +13,21 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Action;
 
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Sonata\AdminBundle\Action\DashboardAction;
-use Sonata\AdminBundle\Admin\BreadcrumbsBuilderInterface;
-use Sonata\AdminBundle\Admin\Pool;
 use Sonata\AdminBundle\Templating\MutableTemplateRegistryInterface;
-use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Twig\Environment;
 
-class DashboardActionTest extends TestCase
+final class DashboardActionTest extends TestCase
 {
+    /**
+     * @var MutableTemplateRegistryInterface&Stub
+     */
+    private $templateRegistry;
+
     /**
      * @var DashboardAction
      */
@@ -32,24 +35,13 @@ class DashboardActionTest extends TestCase
 
     protected function setUp(): void
     {
-        $container = new Container();
-
-        $templateRegistry = $this->prophesize(MutableTemplateRegistryInterface::class);
-        $templateRegistry->getTemplate('ajax')->willReturn('ajax.html');
-        $templateRegistry->getTemplate('dashboard')->willReturn('dashboard.html');
-        $templateRegistry->getTemplate('layout')->willReturn('layout.html');
-
-        $pool = new Pool($container, 'title', 'logo.png');
+        $this->templateRegistry = $this->createStub(MutableTemplateRegistryInterface::class);
 
         $twig = $this->createMock(Environment::class);
 
-        $breadcrumbsBuilder = $this->getMockForAbstractClass(BreadcrumbsBuilderInterface::class);
-
         $this->action = new DashboardAction(
             [],
-            $breadcrumbsBuilder,
-            $templateRegistry->reveal(),
-            $pool,
+            $this->templateRegistry,
             $twig
         );
     }
@@ -58,7 +50,12 @@ class DashboardActionTest extends TestCase
     {
         $request = new Request();
 
-        $this->assertInstanceOf(Response::class, ($this->action)($request));
+        $this->templateRegistry->method('getTemplate')->willReturnMap([
+            ['layout', 'layout.html'],
+            ['dashboard', 'dashboard.html'],
+        ]);
+
+        static::assertInstanceOf(Response::class, ($this->action)($request));
     }
 
     public function testDashboardActionAjaxLayout(): void
@@ -66,6 +63,11 @@ class DashboardActionTest extends TestCase
         $request = new Request();
         $request->headers->set('X-Requested-With', 'XMLHttpRequest');
 
-        $this->assertInstanceOf(Response::class, ($this->action)($request));
+        $this->templateRegistry->method('getTemplate')->willReturnMap([
+            ['ajax', 'ajax.html'],
+            ['dashboard', 'dashboard.html'],
+        ]);
+
+        static::assertInstanceOf(Response::class, ($this->action)($request));
     }
 }

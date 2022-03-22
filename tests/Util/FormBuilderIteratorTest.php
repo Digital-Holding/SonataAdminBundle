@@ -23,7 +23,7 @@ use Symfony\Component\Form\FormFactoryInterface;
 /**
  * @author Mike Meier <mike.meier@ibrows.ch>
  */
-class FormBuilderIteratorTest extends TestCase
+final class FormBuilderIteratorTest extends TestCase
 {
     /**
      * @var EventDispatcherInterface
@@ -42,34 +42,24 @@ class FormBuilderIteratorTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->dispatcher = $this->getMockForAbstractClass(EventDispatcherInterface::class);
-        $this->factory = $this->getMockForAbstractClass(FormFactoryInterface::class);
-        $this->builder = new TestFormBuilder('name', null, $this->dispatcher, $this->factory);
+        $this->dispatcher = $this->createStub(EventDispatcherInterface::class);
+        $this->factory = $this->createStub(FormFactoryInterface::class);
+        $this->builder = new FormBuilder('name', null, $this->dispatcher, $this->factory);
         $this->factory->method('createNamedBuilder')->willReturn($this->builder);
-    }
-
-    protected function tearDown(): void
-    {
-        $this->dispatcher = null;
-        $this->factory = null;
-        $this->builder = null;
     }
 
     public function testGetChildren(): void
     {
         $this->builder->add('name', TextType::class);
         $iterator = new FormBuilderIterator($this->builder);
-        $this->assertInstanceOf(\get_class($iterator), $iterator->getChildren());
+        static::assertInstanceOf(\get_class($iterator), $iterator->getChildren());
+        static::assertSame('name_name', $iterator->key());
     }
 
     public function testHasChildren(): void
     {
         $this->builder->add('name', TextType::class);
         $iterator = new FormBuilderIterator($this->builder);
-        $this->assertTrue($iterator->hasChildren());
+        static::assertTrue($iterator->hasChildren());
     }
-}
-
-class TestFormBuilder extends FormBuilder
-{
 }

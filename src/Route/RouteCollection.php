@@ -21,7 +21,7 @@ use Symfony\Component\Routing\Route;
 final class RouteCollection implements RouteCollectionInterface
 {
     /**
-     * @var Route[]
+     * @var array<string, Route|callable():Route>
      */
     private $elements = [];
 
@@ -46,7 +46,7 @@ final class RouteCollection implements RouteCollectionInterface
     private $baseRoutePattern;
 
     /**
-     * @var Route[]
+     * @var array<string, Route|callable():Route>
      */
     private $cachedElements = [];
 
@@ -62,6 +62,11 @@ final class RouteCollection implements RouteCollectionInterface
         $this->baseControllerName = $baseControllerName;
     }
 
+    public function getRouteName(string $name): string
+    {
+        return sprintf('%s_%s', $this->baseRouteName, $name);
+    }
+
     public function add(
         string $name,
         ?string $pattern = null,
@@ -73,15 +78,11 @@ final class RouteCollection implements RouteCollectionInterface
         array $methods = [],
         string $condition = ''
     ): RouteCollectionInterface {
-        $pattern = sprintf('%s/%s', $this->baseRoutePattern, $pattern ?: $name);
+        $pattern = sprintf('%s/%s', $this->baseRoutePattern, $pattern ?? $name);
         $code = $this->getCode($name);
-        $routeName = sprintf('%s_%s', $this->baseRouteName, $name);
 
         if (!isset($defaults['_controller'])) {
-            $actionJoiner = false === strpos($this->baseControllerName, '\\') ? ':' : '::';
-            if (':' !== $actionJoiner && false !== strpos($this->baseControllerName, ':')) {
-                $actionJoiner = ':';
-            }
+            $actionJoiner = false !== strpos($this->baseControllerName, ':') ? ':' : '::';
 
             $defaults['_controller'] = $this->baseControllerName.$actionJoiner.$this->actionify($code);
         }
@@ -90,9 +91,9 @@ final class RouteCollection implements RouteCollectionInterface
             $defaults['_sonata_admin'] = $this->baseCodeRoute;
         }
 
-        $defaults['_sonata_name'] = $routeName;
+        $defaults['_sonata_name'] = $this->getRouteName($name);
 
-        $element = static function () use ($pattern, $defaults, $requirements, $options, $host, $schemes, $methods, $condition) {
+        $element = static function () use ($pattern, $defaults, $requirements, $options, $host, $schemes, $methods, $condition): Route {
             return new Route($pattern, $defaults, $requirements, $options, $host, $schemes, $methods, $condition);
         };
         $this->addElement($code, $element);
@@ -123,8 +124,10 @@ final class RouteCollection implements RouteCollectionInterface
         foreach ($this->elements as $code => $element) {
             $this->resolveElement($code);
         }
+        /** @var array<string, Route> $elements */
+        $elements = $this->elements;
 
-        return $this->elements;
+        return $elements;
     }
 
     public function has(string $name): bool
@@ -142,6 +145,7 @@ final class RouteCollection implements RouteCollectionInterface
         if ($this->has($name)) {
             $code = $this->getCode($name);
             $this->resolveElement($code);
+            \assert($this->elements[$code] instanceof Route);
 
             return $this->elements[$code];
         }
@@ -168,6 +172,11 @@ final class RouteCollection implements RouteCollectionInterface
         throw new \InvalidArgumentException(sprintf('Element "%s" does not exist in cache.', $name));
     }
 
+    /**
+     * @param string|string[] $routeList
+     *
+     * @return static
+     */
     public function clearExcept($routeList): RouteCollectionInterface
     {
         if (!\is_array($routeList)) {
@@ -232,7 +241,7 @@ final class RouteCollection implements RouteCollectionInterface
     }
 
     /**
-     * @param Route|callable $element
+     * @param Route|callable():Route $element
      */
     private function addElement(string $code, $element): void
     {
@@ -250,7 +259,16 @@ final class RouteCollection implements RouteCollectionInterface
         $element = $this->elements[$code];
 
         if (\is_callable($element)) {
-            $this->elements[$code] = $element();
+            $resolvedElement = $element();
+            if (!$resolvedElement instanceof Route) {
+                throw new \TypeError(sprintf(
+                    'Element resolved by code "%s" must be an instance of "%s"',
+                    $code,
+                    Route::class
+                ));
+            }
+
+            $this->elements[$code] = $resolvedElement;
             $this->updateCachedElement($code);
         }
     }

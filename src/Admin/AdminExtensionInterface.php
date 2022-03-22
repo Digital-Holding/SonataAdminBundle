@@ -20,25 +20,50 @@ use Sonata\AdminBundle\Datagrid\ProxyQueryInterface;
 use Sonata\AdminBundle\Form\FormMapper;
 use Sonata\AdminBundle\Route\RouteCollectionInterface;
 use Sonata\AdminBundle\Show\ShowMapper;
-use Sonata\Form\Validator\ErrorElement;
 
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ *
+ * NEXT_MAJOR: Uncomment the actual definition of below methods inside the interface and remove these annotations.
+ *
+ * @method void preBatchAction(AdminInterface $admin, string $actionName, ProxyQueryInterface $query, array &$idx, bool $allElements)
+ *
+ * @phpstan-template T of object
  */
 interface AdminExtensionInterface
 {
-    public function configureFormFields(FormMapper $formMapper);
+    /**
+     * @phpstan-param FormMapper<T> $form
+     */
+    public function configureFormFields(FormMapper $form): void;
 
-    public function configureListFields(ListMapper $listMapper);
+    /**
+     * @phpstan-param ListMapper<T> $list
+     */
+    public function configureListFields(ListMapper $list): void;
 
-    public function configureDatagridFilters(DatagridMapper $datagridMapper);
+    /**
+     * @phpstan-param DatagridMapper<T> $filter
+     */
+    public function configureDatagridFilters(DatagridMapper $filter): void;
 
-    public function configureShowFields(ShowMapper $showMapper);
+    /**
+     * @phpstan-param ShowMapper<T> $show
+     */
+    public function configureShowFields(ShowMapper $show): void;
 
-    public function configureRoutes(AdminInterface $admin, RouteCollectionInterface $collection);
+    /**
+     * @phpstan-param AdminInterface<T> $admin
+     */
+    public function configureRoutes(AdminInterface $admin, RouteCollectionInterface $collection): void;
 
     /**
      * Builds the tab menu.
+     *
+     * @phpstan-template TChild of object
+     *
+     * @phpstan-param AdminInterface<T> $admin
+     * @phpstan-param AdminInterface<TChild>|null $childAdmin
      */
     public function configureTabMenu(
         AdminInterface $admin,
@@ -47,58 +72,130 @@ interface AdminExtensionInterface
         ?AdminInterface $childAdmin = null
     ): void;
 
-    public function validate(AdminInterface $admin, ErrorElement $errorElement, object $object): void;
-
+    /**
+     * @phpstan-param AdminInterface<T> $admin
+     */
     public function configureQuery(AdminInterface $admin, ProxyQueryInterface $query): void;
 
     /**
      * Get a chance to modify a newly created instance.
+     *
+     * @phpstan-param AdminInterface<T> $admin
+     * @phpstan-param T $object
      */
     public function alterNewInstance(AdminInterface $admin, object $object): void;
 
     /**
      * Get a chance to modify object instance.
+     *
+     * @phpstan-param AdminInterface<T> $admin
+     * @phpstan-param T $object
      */
     public function alterObject(AdminInterface $admin, object $object): void;
 
     /**
-     * Get a chance to add persistent parameters.
+     * Get a chance to configure admin before used.
+     *
+     * @phpstan-param AdminInterface<T> $admin
      */
-    public function getPersistentParameters(AdminInterface $admin): array;
+    public function configure(AdminInterface $admin): void;
+
+    /**
+     * Get a chance to add persistent parameters.
+     *
+     * @param array<string, mixed> $parameters
+     *
+     * @return array<string, mixed>
+     *
+     * @phpstan-param AdminInterface<T> $admin
+     */
+    public function configurePersistentParameters(AdminInterface $admin, array $parameters);
 
     /**
      * Return the controller access mapping.
+     *
+     * @return array<string, string[]|string>
+     *
+     * @phpstan-param AdminInterface<T> $admin
      */
     public function getAccessMapping(AdminInterface $admin): array;
 
     /**
      * Returns the list of batch actions.
+     *
+     * @param array<string, array<string, mixed>> $actions
+     *
+     * @return array<string, array<string, mixed>>
+     *
+     * @phpstan-param AdminInterface<T> $admin
      */
     public function configureBatchActions(AdminInterface $admin, array $actions): array;
+
+    // NEXT_MAJOR: Uncomment the method definition
+    // /**
+    // * @param mixed[] $idx
+    // * @phpstan-param AdminInterface<T> $admin
+    // */
+    // public function preBatchAction(AdminInterface $admin, string $actionName, ProxyQueryInterface $query, array &$idx, bool $allElements): void;
 
     /**
      * Get a chance to modify export fields.
      *
+     * @param string[] $fields
+     *
      * @return string[]
+     *
+     * @phpstan-param AdminInterface<T> $admin
      */
     public function configureExportFields(AdminInterface $admin, array $fields): array;
 
+    /**
+     * @phpstan-param AdminInterface<T> $admin
+     * @phpstan-param T $object
+     */
     public function preUpdate(AdminInterface $admin, object $object): void;
 
+    /**
+     * @phpstan-param AdminInterface<T> $admin
+     * @phpstan-param T $object
+     */
     public function postUpdate(AdminInterface $admin, object $object): void;
 
+    /**
+     * @phpstan-param AdminInterface<T> $admin
+     * @phpstan-param T $object
+     */
     public function prePersist(AdminInterface $admin, object $object): void;
 
+    /**
+     * @phpstan-param AdminInterface<T> $admin
+     * @phpstan-param T $object
+     */
     public function postPersist(AdminInterface $admin, object $object): void;
 
+    /**
+     * @phpstan-param AdminInterface<T> $admin
+     * @phpstan-param T $object
+     */
     public function preRemove(AdminInterface $admin, object $object): void;
 
+    /**
+     * Get all action buttons for an action.
+     *
+     * @phpstan-param AdminInterface<T> $admin
+     * @phpstan-param T $object
+     */
     public function postRemove(AdminInterface $admin, object $object): void;
 
     /**
      * Get all action buttons for an action.
      *
-     * @param object $object
+     * @param array<string, array<string, mixed>> $list
+     *
+     * @return array<string, array<string, mixed>>
+     *
+     * @phpstan-param AdminInterface<T> $admin
+     * @phpstan-param T $object
      */
     public function configureActionButtons(
         AdminInterface $admin,
@@ -108,12 +205,47 @@ interface AdminExtensionInterface
     ): array;
 
     /**
+     * @param array<string, array<string, mixed>> $actions
+     *
+     * @return array<string, array<string, mixed>>
+     *
+     * @phpstan-param AdminInterface<T> $admin
+     */
+    public function configureDashboardActions(AdminInterface $admin, array $actions): array;
+
+    /**
      * Returns a list of default filters.
+     *
+     * @param array<string, array<string, mixed>> $filterValues
+     *
+     * @phpstan-param AdminInterface<T> $admin
      */
     public function configureDefaultFilterValues(AdminInterface $admin, array &$filterValues): void;
 
-    /*
-     * Returns a list of default sort values
+    /**
+     * Returns a list of default sort values.
+     *
+     * @param array{_page?: int, _per_page?: int, _sort_by?: string, _sort_order?: string} $sortValues
+     *
+     * @phpstan-param AdminInterface<T> $admin
      */
     public function configureDefaultSortValues(AdminInterface $admin, array &$sortValues): void;
+
+    /**
+     * Returns a list of form options.
+     *
+     * @param array<string, mixed> $formOptions
+     *
+     * @phpstan-param AdminInterface<T> $admin
+     */
+    public function configureFormOptions(AdminInterface $admin, array &$formOptions): void;
+
+    /**
+     * @param array<string, mixed> $parameters
+     *
+     * @return array<string, mixed>
+     *
+     * @phpstan-param AdminInterface<T> $admin
+     */
+    public function configureFilterParameters(AdminInterface $admin, array $parameters): array;
 }

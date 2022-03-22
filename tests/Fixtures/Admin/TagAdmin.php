@@ -15,14 +15,9 @@ namespace Sonata\AdminBundle\Tests\Fixtures\Admin;
 
 use Sonata\AdminBundle\Admin\AbstractAdmin;
 
-class TagAdmin extends AbstractAdmin
+/**
+ * @phpstan-extends AbstractAdmin<\Sonata\AdminBundle\Tests\Fixtures\Bundle\Entity\Tag>
+ */
+final class TagAdmin extends AbstractAdmin
 {
-    public function getParentAssociationMapping(): ?string
-    {
-        if ($this->getParent() instanceof PostAdmin) {
-            return 'post';
-        }
-
-        return null;
-    }
 }

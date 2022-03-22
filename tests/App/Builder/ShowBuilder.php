@@ -13,15 +13,18 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\App\Builder;
 
-use Sonata\AdminBundle\Admin\AdminInterface;
-use Sonata\AdminBundle\Admin\FieldDescriptionCollection;
-use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
 use Sonata\AdminBundle\Builder\ShowBuilderInterface;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionCollection;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface;
+use Sonata\AdminBundle\Templating\TemplateRegistryInterface;
 
 final class ShowBuilder implements ShowBuilderInterface
 {
-    public function fixFieldDescription(AdminInterface $admin, FieldDescriptionInterface $fieldDescription): void
+    public function fixFieldDescription(FieldDescriptionInterface $fieldDescription): void
     {
+        if (null === $fieldDescription->getTemplate()) {
+            $fieldDescription->setTemplate($this->getTemplate($fieldDescription->getType()));
+        }
     }
 
     public function getBaseList(array $options = []): FieldDescriptionCollection
@@ -29,11 +32,16 @@ final class ShowBuilder implements ShowBuilderInterface
         return new FieldDescriptionCollection();
     }
 
-    public function addField(FieldDescriptionCollection $list, $type, FieldDescriptionInterface $fieldDescription, AdminInterface $admin): void
+    public function addField(FieldDescriptionCollection $list, ?string $type, FieldDescriptionInterface $fieldDescription): void
     {
         $fieldDescription->setType($type);
-        $fieldDescription->setAdmin($admin);
+        $this->fixFieldDescription($fieldDescription);
 
         $list->add($fieldDescription);
+    }
+
+    private function getTemplate(?string $type): ?string
+    {
+        return TemplateRegistryInterface::SHOW_TEMPLATES[$type] ?? null;
     }
 }

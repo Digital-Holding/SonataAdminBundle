@@ -15,6 +15,7 @@ namespace Sonata\AdminBundle\Form\Type\Operator;
 
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType as FormChoiceType;
+use Symfony\Component\Form\FormTypeInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 final class DateOperatorType extends AbstractType
@@ -24,10 +25,8 @@ final class DateOperatorType extends AbstractType
     public const TYPE_EQUAL = 3;
     public const TYPE_LESS_EQUAL = 4;
     public const TYPE_LESS_THAN = 5;
-    public const TYPE_NULL = 6;
-    public const TYPE_NOT_NULL = 7;
 
-    public function configureOptions(OptionsResolver $resolver)
+    public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
             'choice_translation_domain' => 'SonataAdminBundle',
@@ -37,18 +36,19 @@ final class DateOperatorType extends AbstractType
                 'label_date_type_greater_than' => self::TYPE_GREATER_THAN,
                 'label_date_type_less_equal' => self::TYPE_LESS_EQUAL,
                 'label_date_type_less_than' => self::TYPE_LESS_THAN,
-                'label_date_type_null' => self::TYPE_NULL,
-                'label_date_type_not_null' => self::TYPE_NOT_NULL,
             ],
         ]);
     }
 
-    public function getParent()
+    /**
+     * @phpstan-return class-string<FormTypeInterface>
+     */
+    public function getParent(): string
     {
         return FormChoiceType::class;
     }
 
-    public function getBlockPrefix()
+    public function getBlockPrefix(): string
     {
         return 'sonata_type_operator_date';
     }

@@ -42,11 +42,11 @@ final class BreadcrumbsBuilder implements BreadcrumbsBuilderInterface
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
-            'child_admin_route' => 'edit',
+            'child_admin_route' => 'show',
         ]);
     }
 
-    public function getBreadcrumbs(AdminInterface $admin, string $action): iterable
+    public function getBreadcrumbs(AdminInterface $admin, string $action): array
     {
         $breadcrumbs = [];
         if ($admin->isChild()) {
@@ -69,13 +69,15 @@ final class BreadcrumbsBuilder implements BreadcrumbsBuilderInterface
      * Builds breadcrumbs for $action, starting from $menu.
      *
      * Note: the method will be called by the top admin instance (parent => child)
+     *
+     * @param AdminInterface<object> $admin
      */
     public function buildBreadcrumbs(
         AdminInterface $admin,
         string $action,
         ?ItemInterface $menu = null
     ): ItemInterface {
-        if (!$menu) {
+        if (null === $menu) {
             $menu = $admin->getMenuFactory()->createItem('root');
 
             $menu = $menu->addChild(
@@ -101,14 +103,14 @@ final class BreadcrumbsBuilder implements BreadcrumbsBuilderInterface
 
         $childAdmin = $admin->getCurrentChildAdmin();
 
-        if ($childAdmin && $admin->hasSubject()) {
+        if (null !== $childAdmin && $admin->hasSubject()) {
             $id = $admin->getRequest()->get($admin->getIdParameter());
 
             $menu = $menu->addChild(
                 $admin->toString($admin->getSubject()),
                 [
                     'uri' => $admin->hasRoute($this->config['child_admin_route']) && $admin->hasAccess($this->config['child_admin_route'], $admin->getSubject()) ?
-                    $admin->generateUrl($this->config['child_admin_route'], ['id' => $id]) :
+                    $admin->generateUrl($this->config['child_admin_route'], [$admin->getIdParameter() => $id]) :
                     null,
                     'extras' => [
                         'translation_domain' => false,
@@ -146,11 +148,13 @@ final class BreadcrumbsBuilder implements BreadcrumbsBuilderInterface
      * Creates a new menu item from a simple name. The name is normalized and
      * translated with the specified translation domain.
      *
-     * @param AdminInterface $admin             used for translation
-     * @param ItemInterface  $menu              will be modified and returned
-     * @param string         $name              the source of the final label
-     * @param string         $translationDomain for label translation
-     * @param array          $options           menu item options
+     * @param ItemInterface        $menu              will be modified and returned
+     * @param string               $name              the source of the final label
+     * @param string|null          $translationDomain for label translation
+     * @param array<string, mixed> $options           menu item options
+     *
+     * @phpstan-template T of object
+     * @phpstan-param AdminInterface<T> $admin
      */
     private function createMenuItem(
         AdminInterface $admin,

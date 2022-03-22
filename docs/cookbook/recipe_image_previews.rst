@@ -43,7 +43,7 @@ we are manipulating form fields we do this from within ``ImageAdmin::configureFo
 
     final class ImageAdmin extends AbstractAdmin
     {
-        protected function configureFormFields(FormMapper $formMapper)
+        protected function configureFormFields(FormMapper $form): void
         {
             // get the current Image instance
             $image = $this->getSubject();
@@ -51,16 +51,16 @@ we are manipulating form fields we do this from within ``ImageAdmin::configureFo
             // use $fileFormOptions so we can add other options to the field
             $fileFormOptions = ['required' => false];
             if ($image && ($webPath = $image->getWebPath())) {
-                // get the container so the full path to the image can be set
-                $container = $this->getConfigurationPool()->getContainer();
-                $fullPath = $container->get('request_stack')->getCurrentRequest()->getBasePath().'/'.$webPath;
+                // get the request so the full path to the image can be set
+                $request = $this->getRequest();
+                $fullPath = $request->getBasePath().'/'.$webPath;
 
                 // add a 'help' option containing the preview's img tag
                 $fileFormOptions['help'] = '<img src="'.$fullPath.'" class="admin-preview"/>';
                 $fileFormOptions['help_html'] = true;
             }
 
-            $formMapper
+            $form
                 ->add('file', 'file', $fileFormOptions)
             ;
         }
@@ -89,7 +89,7 @@ Admin class is embedded and use a different method::
 
     final class ImageAdmin extends AbstractAdmin
     {
-        protected function configureFormFields(FormMapper $formMapper)
+        protected function configureFormFields(FormMapper $form): void
         {
             if($this->hasParentFieldDescription()) { // this Admin is embedded
                 // $getter will be something like 'getlogoImage'
@@ -114,7 +114,7 @@ Admin class is embedded and use a different method::
                 $fileFormOptions['help_html'] = true;
             }
 
-            $formMapper
+            $form
                 ->add('file', 'file', $fileFormOptions)
             ;
         }

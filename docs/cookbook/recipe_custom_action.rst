@@ -46,10 +46,7 @@ Either by using XML:
         <!-- config/services.xml -->
 
         <service id="app.admin.car" class="App\Admin\CarAdmin">
-            <tag name="sonata.admin" manager_type="orm" group="Demo" label="Car"/>
-            <argument/>
-            <argument>App\Entity\Car</argument>
-            <argument>App\Controller\CarAdminController</argument>
+            <tag name="sonata.admin" model_class="App\Entity\Car" controller="App\Controller\CarAdminController" manager_type="orm" group="Demo" label="Car"/>
         </service>
 
 or by adding it to your ``services.yaml``:
@@ -62,11 +59,7 @@ or by adding it to your ``services.yaml``:
         app.admin.car:
             class: App\Admin\CarAdmin
             tags:
-                - { name: sonata.admin, manager_type: orm, group: Demo, label: Car }
-            arguments:
-                - ~
-                - App\Entity\Car
-                - App\Controller\CarAdminController
+                - { name: sonata.admin, model_class: App\Entity\Car, controller: App\Controller\CarAdminController, manager_type: orm, group: Demo, label: Car }
 
 For more information about service configuration please refer to Step 3 of :doc:`../getting_started/creating_an_admin`
 
@@ -82,6 +75,7 @@ to implement a ``clone`` action::
 
     use Sonata\AdminBundle\Controller\CRUDController;
     use Symfony\Component\HttpFoundation\RedirectResponse;
+    use Symfony\Component\HttpFoundation\Response;
     use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
     class CarAdminController extends CRUDController
@@ -89,7 +83,7 @@ to implement a ``clone`` action::
         /**
          * @param $id
          */
-        public function cloneAction($id)
+        public function cloneAction($id): Response
         {
             $object = $this->admin->getSubject();
 
@@ -111,7 +105,7 @@ to implement a ``clone`` action::
         }
     }
 
-If you want to add the current filter parameters to the redirect url you can add them to the `generateUrl` method::
+If you want to add the current filter parameters to the redirect url you can add them to the ``generateUrl()`` method::
 
     return new RedirectResponse(
         $this->admin->generateUrl('list', ['filter' => $this->admin->getFilterParameters()])
@@ -123,7 +117,7 @@ as a new object. Finally we set a flash message indicating success and redirect 
 .. tip::
 
     If you want to render something here you can create new template anywhere, extend sonata layout
-    and use `sonata_admin_content` block.
+    and use ``sonata_admin_content`` block.
 
     .. code-block:: html+jinja
 
@@ -155,9 +149,9 @@ What is left now is actually adding your custom action to the admin class.
 
 You have to add the new route in ``configureRoutes``::
 
-    use Sonata\AdminBundle\Route\RouteCollection;
+    use Sonata\AdminBundle\Route\RouteCollectionInterface;
 
-    protected function configureRoutes(RouteCollection $collection)
+    protected function configureRoutes(RouteCollectionInterface $collection): void
     {
         $collection
             ->add('clone', $this->getRouterIdParameter().'/clone');
@@ -168,10 +162,10 @@ You could also write ``$collection->add('clone');`` to get a route like ``../adm
 
 Next we have to add the action in ``configureListFields`` specifying the template we created::
 
-    protected function configureListFields(ListMapper $listMapper)
+    protected function configureListFields(ListMapper $list): void
     {
-        $listMapper
-            ->add('_action', null, [
+        $list
+            ->add(ListMapper::NAME_ACTIONS, null, [
                 'actions' => [
 
                     // ...
@@ -195,20 +189,20 @@ The full ``CarAdmin.php`` example looks like this::
 
     final class CarAdmin extends AbstractAdmin
     {
-        protected function configureRoutes(RouteCollection $collection)
+        protected function configureRoutes(RouteCollectionInterface $collection): void
         {
             $collection
                 ->add('clone', $this->getRouterIdParameter().'/clone');
         }
 
-        protected function configureListFields(ListMapper $listMapper)
+        protected function configureListFields(ListMapper $list): void
         {
-            $listMapper
+            $list
                 ->addIdentifier('name')
                 ->add('engine')
                 ->add('rescueEngine')
                 ->add('createdAt')
-                ->add('_action', null, [
+                ->add(ListMapper::NAME_ACTIONS, null, [
                     'actions' => [
                         'show' => [],
                         'edit' => [],
@@ -238,9 +232,9 @@ Custom Action without Entity
 Creating an action that is not connected to an Entity is also possible.
 Let's imagine we have an import action. We register our route::
 
-    use Sonata\AdminBundle\Route\RouteCollection;
+    use Sonata\AdminBundle\Route\RouteCollectionInterface;
 
-    protected function configureRoutes(RouteCollection $collection)
+    protected function configureRoutes(RouteCollectionInterface $collection): void
     {
         $collection->add('import');
     }
@@ -253,10 +247,11 @@ and the controller action::
 
     use Sonata\AdminBundle\Controller\CRUDController;
     use Symfony\Component\HttpFoundation\Request;
+    use Symfony\Component\HttpFoundation\Response;
 
-    class CarAdminController extends CRUDController
+    final class CarAdminController extends CRUDController
     {
-        public function importAction(Request $request)
+        public function importAction(Request $request): Response
         {
             // do your import logic
         }
@@ -265,13 +260,11 @@ Now, instead of adding the action to the form mapper, we can add it next to
 the add button. In your admin class, overwrite the ``configureActionButtons``
 method::
 
-    public function configureActionButtons($action, $object = null)
+    protected function configureActionButtons(array $buttonList, string $action, ?object $object = null): array
     {
-        $list = parent::configureActionButtons($action, $object);
+        $buttonList['import'] = ['template' => 'import_button.html.twig'];
 
-        $list['import']['template'] = 'import_button.html.twig';
-
-        return $list;
+        return $buttonList;
     }
 
 Create a template for that button:
@@ -280,7 +273,7 @@ Create a template for that button:
 
     <li>
         <a class="sonata-action-element" href="{{ admin.generateUrl('import') }}">
-            <i class="fa fa-level-up"></i> {{ 'import_action'|trans({}, 'SonataAdminBundle') }}
+            <i class="fas fa-level-up-alt"></i> {{ 'import_action'|trans({}, 'SonataAdminBundle') }}
         </a>
     </li>
 
@@ -288,11 +281,9 @@ You can also add this action to your dashboard actions, you have to overwrite
 the ``getDashboardActions`` method in your admin class and there are two
 ways you can add action::
 
-    public function getDashboardActions()
+    protected function configureDashboardActions(array $actions): array
     {
-        $actions = parent::getDashboardActions();
-
-        $actions['import']['template'] = 'import_dashboard_button.html.twig';
+        $actions['import'] = ['template' => 'import_dashboard_button.html.twig'];
 
         return $actions;
     }
@@ -302,20 +293,18 @@ Create a template for that button:
 .. code-block:: html+jinja
 
     <a class="btn btn-link btn-flat" href="{{ admin.generateUrl('import') }}">
-        <i class="fa fa-level-up"></i> {{ 'import_action'|trans({}, 'SonataAdminBundle') }}
+        <i class="fas fa-level-up-alt"></i> {{ 'import_action'|trans({}, 'SonataAdminBundle') }}
     </a>
 
 Or you can pass values as array::
 
-    public function getDashboardActions()
+    protected function configureDashboardActions(array $actions): array
     {
-        $actions = parent::getDashboardActions();
-
         $actions['import'] = [
             'label' => 'import_action',
             'translation_domain' => 'SonataAdminBundle',
             'url' => $this->generateUrl('import'),
-            'icon' => 'level-up',
+            'icon' => 'level-up-alt',
         ];
 
         return $actions;

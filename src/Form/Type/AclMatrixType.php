@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Form\Type;
 
+use Sonata\AdminBundle\BCLayer\BCUserInterface;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\HiddenType;
@@ -28,10 +29,13 @@ use Symfony\Component\Security\Core\User\UserInterface;
  */
 final class AclMatrixType extends AbstractType
 {
+    /**
+     * @param array<string, mixed> $options
+     */
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $aclValueType = $options['acl_value'] instanceof UserInterface ? 'user' : 'role';
-        $aclValueData = $options['acl_value'] instanceof UserInterface ? $options['acl_value']->getUsername() : $options['acl_value'];
+        $aclValueData = $options['acl_value'] instanceof UserInterface ? BCUserInterface::getUsername($options['acl_value']) : $options['acl_value'];
 
         $builder->add($aclValueType, HiddenType::class, [
             'data' => $aclValueData,
@@ -49,7 +53,7 @@ final class AclMatrixType extends AbstractType
         $resolver->setAllowedTypes('acl_value', ['string', UserInterface::class]);
     }
 
-    public function getBlockPrefix()
+    public function getBlockPrefix(): string
     {
         return 'sonata_type_acl_matrix';
     }

@@ -76,12 +76,17 @@ final class AdminExtractor implements ExtractorInterface, LabelTranslatorStrateg
         $this->breadcrumbsBuilder = $breadcrumbsBuilder;
     }
 
-    public function extract($resource, MessageCatalogue $catalogue)
+    /**
+     * Extracts translation messages from files, a file or a directory to the catalogue.
+     *
+     * @param string|iterable<string> $resource Files, a file or a directory
+     */
+    public function extract($resource, MessageCatalogue $catalogue): void
     {
         $this->catalogue = $catalogue;
 
         foreach ($this->adminPool->getAdminGroups() as $name => $group) {
-            $catalogue->set($name, $this->prefix.$name, $group['label_catalogue']);
+            $catalogue->set($name, $this->prefix.$name, $group['translation_domain']);
         }
 
         foreach ($this->adminPool->getAdminServiceIds() as $id) {
@@ -91,7 +96,7 @@ final class AdminExtractor implements ExtractorInterface, LabelTranslatorStrateg
             $this->domain = $admin->getTranslationDomain();
 
             $label = $admin->getLabel();
-            if (!empty($label)) {
+            if (null !== $label && '' !== $label) {
                 $catalogue->set($label, $this->prefix.$label, $admin->getTranslationDomain());
             }
 
@@ -108,13 +113,30 @@ final class AdminExtractor implements ExtractorInterface, LabelTranslatorStrateg
         }
     }
 
+    /**
+     * NEXT_MAJOR: Add string type hint when support for Symfony 4 is dropped.
+     *
+     * Sets the prefix that should be used for new found messages.
+     *
+     * @param string $prefix The prefix
+     */
     public function setPrefix($prefix): void
     {
         $this->prefix = $prefix;
     }
 
-    public function getLabel($label, $context = '', $type = ''): string
+    public function getLabel(string $label, string $context = '', string $type = ''): string
     {
+        if (null === $this->catalogue) {
+            throw new \LogicException('The catalogue is not set.');
+        }
+        if (null === $this->labelStrategy) {
+            throw new \LogicException('The label strategy is not set.');
+        }
+        if (null === $this->domain) {
+            throw new \LogicException('The domain is not set.');
+        }
+
         $label = $this->labelStrategy->getLabel($label, $context, $type);
 
         $this->catalogue->set($label, $this->prefix.$label, $this->domain);

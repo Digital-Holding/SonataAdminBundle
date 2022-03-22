@@ -16,8 +16,11 @@ namespace Sonata\AdminBundle\Tests\Fixtures\Bundle\Entity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 
-class PostCategory
+final class PostCategory
 {
+    /**
+     * @var Collection<int, Post>
+     */
     private $posts;
 
     public function __construct()
@@ -25,6 +28,9 @@ class PostCategory
         $this->posts = new ArrayCollection();
     }
 
+    /**
+     * @param Collection<int, Post> $posts
+     */
     public function setPosts(Collection $posts): void
     {
         $this->posts = $posts;
@@ -40,6 +46,9 @@ class PostCategory
         $this->posts->removeElement($post);
     }
 
+    /**
+     * @return Collection<int, Post>
+     */
     public function getPosts(): Collection
     {
         return $this->posts;

@@ -48,10 +48,11 @@ and allows to secure the objects. For people using the previous ACL
 implementation, you can switch the ``security_handler`` to the role security handler.
 
 Configuration
-~~~~~~~~~~~~~
+^^^^^^^^^^^^^
 
-Only the security handler is required to determine which type of security to use.
-The other parameters are set as default, change them if needed.
+The security handler is required to determine which type of security to use.
+In case of using ACL you MUST set ``acl_user_manager`` parameter, the other other ones
+are set as default, change them if needed.
 
 Using roles:
 
@@ -80,13 +81,16 @@ Using ACL:
             security:
                 handler: sonata.admin.security.handler.acl
 
+                # this service MUST implement ``Sonata\AdminBundle\Util\AdminAclUserManagerInterface``.
+                acl_user_manager: App\Manager\AclUserManager
+
                 role_admin: ROLE_ADMIN
                 role_super_admin: ROLE_SUPER_ADMIN
 
                 # acl security information
                 information:
                     GUEST:    [VIEW, LIST]
-                    STAFF:    [EDIT, LIST, CREATE]
+                    STAFF:    [EDIT, HISTORY, LIST, CREATE]
                     EDITOR:   [OPERATOR, EXPORT]
                     ADMIN:    [MASTER]
 
@@ -95,7 +99,7 @@ Using ACL:
                 admin_permissions: [CREATE, LIST, DELETE, UNDELETE, EXPORT, OPERATOR, MASTER]
 
                 # permission related to the objects
-                object_permissions: [VIEW, EDIT, DELETE, UNDELETE, OPERATOR, MASTER, OWNER]
+                object_permissions: [VIEW, EDIT, HISTORY, DELETE, UNDELETE, OPERATOR, MASTER, OWNER]
 
 Later, we will explain how to set up ACL with the ``FriendsOfSymfony/UserBundle``.
 
@@ -106,7 +110,7 @@ The ``sonata.admin.security.handler.role`` allows you to operate finely on the
 actions that can be done (depending on the entity class), without requiring to set up ACL.
 
 Configuration
-~~~~~~~~~~~~~
+^^^^^^^^^^^^^
 
 First, activate the role security handler as described above.
 
@@ -122,6 +126,7 @@ LIST         view the list of objects
 VIEW         view the detail of one object
 CREATE       create a new object
 EDIT         update an existing object
+HISTORY      access to the history of edition of an object
 DELETE       delete an existing object
 EXPORT       (for the native Sonata export links)
 **ALL**      **grants LIST, VIEW, CREATE, EDIT, DELETE and EXPORT**
@@ -138,9 +143,11 @@ service), Sonata will check if the user has the ``ROLE_APP_ADMIN_FOO_EDIT`` or `
 The role name will be based on the name of your admin service.
 
 ========================   ======================================================
-app.admin.foo              ROLE_APP_ADMIN_FOO_{PERMISSION}
-my.blog.admin.foo_bar      ROLE_MY_BLOG_ADMIN_FOO_BAR_{PERMISSION}
-App\\Admin\\FooAdmin       ROLE_APP\\ADMIN\\FOOADMIN_{PERMISSION}
+Service name               Role name
+========================   ======================================================
+app.admin.foo              ``ROLE_APP_ADMIN_FOO_{PERMISSION}``
+my.blog.admin.foo_bar      ``ROLE_MY_BLOG_ADMIN_FOO_BAR_{PERMISSION}``
+App\\Admin\\FooAdmin       ``ROLE_APP\\ADMIN\\FOOADMIN_{PERMISSION}``
 ========================   ======================================================
 
 .. note::
@@ -188,7 +195,7 @@ For more information on this subject, please see `changing the access decision s
 in the Symfony documentation.
 
 Usage
-~~~~~
+^^^^^
 
 You can now test if a user is authorized from an Admin class::
 
@@ -219,29 +226,16 @@ Yon can also create your own permissions, for example ``EMAIL``
 (which will turn into role ``ROLE_APP_ADMIN_FOO_EMAIL``).
 
 Going further
-~~~~~~~~~~~~~
+^^^^^^^^^^^^^
 
 Because Sonata role handler supplements Symfony security, but does not override it, you are free to do more advanced operations.
 For example, you can `create your own voter`_
 
 Customizing the handler behavior
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you want to change the handler behavior (for example, to pass the current object to voters), extend
-``Sonata\AdminBundle\Security\Handler\RoleSecurityHandler``, and override the ``isGranted`` method.
-
-Then declare your handler as a service:
-
-.. configuration-block::
-
-    .. code-block:: xml
-
-        <service id="app.security.handler.role" class="App\Security\Handler\RoleSecurityHandler" public="false">
-            <argument type="service" id="security.context" on-invalid="null"/>
-            <argument type="collection">
-                <argument>ROLE_SUPER_ADMIN</argument>
-            </argument>
-        </service>
+If you want to change the handler behavior, create your own handler implementing
+``Sonata\AdminBundle\Security\Handler\SecurityHandlerInterface``.
 
 And specify it as Sonata security handler on your configuration:
 
@@ -252,8 +246,8 @@ And specify it as Sonata security handler on your configuration:
         # config/packages/sonata_admin.yaml
 
         sonata_admin:
-            security:
-                handler: app.security.handler.role
+            default_admin_services:
+                security_handler: App\Security\Handler\MySecurityHandler
 
 ACL and FriendsOfSymfony/UserBundle
 -----------------------------------
@@ -272,7 +266,7 @@ The security integration is a work in progress and has some known issues:
   with the required rules if objects are created outside the Admin
 
 Configuration
-~~~~~~~~~~~~~
+^^^^^^^^^^^^^
 
 Before you can use ``FriendsOfSymfony/FOSUserBundle`` you need to set it up as
 described in the documentation of the bundle. In step 4 you need to create a
@@ -304,6 +298,46 @@ User class (in a custom UserBundle). Do it as follows::
             // your own logic
         }
     }
+
+If you are going to use ACL, you must create a service implementing
+`Sonata\AdminBundle\Util\AdminAclUserManagerInterface`::
+
+    namespace App\Manager;
+
+    use FOS\UserBundle\Model\UserManagerInterface;
+    use Sonata\AdminBundle\Util\AdminAclUserManagerInterface;
+
+    final class AclUserManager implements AdminAclUserManagerInterface
+    {
+        /**
+         * @var UserManagerInterface
+         */
+        private $userManager;
+
+        public function __construct(UserManagerInterface $userManager)
+        {
+            $this->userManager = $userManager;
+        }
+
+        public function findUsers(): iterable
+        {
+            return $this->userManager->findUsers();
+        }
+    }
+
+and then configure SonataAdminBundle:
+
+.. configuration-block::
+
+    .. code-block:: yaml
+
+        # config/packages/sonata_admin.yaml
+
+        sonata_admin:
+            security:
+                handler: sonata.admin.security.handler.acl
+                acl_user_manager: App\Manager\AclUserManager
+                # ...
 
 In your ``config/packages/fos_user.yaml`` you then need to put the following:
 
@@ -441,10 +475,10 @@ If you try to access to the admin class you should see the login form, log in
 with the ``root`` user.
 
 An Admin is displayed in the dashboard (and menu) when the user has the role
-``LIST``. To change this override the ``showIn`` method in the Admin class.
+``LIST``. To change this override the ``showInDashboard`` method in the Admin class.
 
 Roles and Access control lists
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A user can have several roles when working with an application. Each Admin class
 has several roles, and each role specifies the permissions of the user for the
@@ -502,11 +536,11 @@ Vocabulary used for Access Control Lists:
   prevent that multiple voters vote on the same class with overlapping bitmasks.
 
 See the cookbook article "`Advanced ACL concepts
-<https://symfony.com/doc/current/cookbook/security/acl_advanced.html#pre-authorization-decisions.>`_"
+<https://symfony.com/doc/current/cookbook/security/acl_advanced.html#pre-authorization-decisions>`_"
 for the meaning of the different permissions.
 
 How is access granted?
-~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^
 
 In the application the security context is asked if access is granted for a role
 or a permission (``admin.isGranted``):
@@ -529,7 +563,7 @@ or a permission (``admin.isGranted``):
   object.
 
 Create a custom voter or a custom permission map
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 In some occasions you need to create a custom voter or a custom permission map
 because for example you want to restrict access using extra rules:
@@ -638,7 +672,7 @@ because for example you want to restrict access using extra rules:
     ``createSecurityObject`` method in the ``AclSecurityHandler``.
 
 Usage
-~~~~~
+^^^^^
 
 Every time you create a new ``Admin`` class, you should start with the command
 ``bin/console sonata:admin:setup-acl`` so the ACL database will be updated
@@ -676,11 +710,11 @@ In the templates, or in your code, you can use the Admin method ``hasAccess()``:
     {% endif %}
 
 List filtering
-~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^
 
 List filtering using ACL is available as a third party bundle:
 `CoopTilleulsAclSonataAdminExtensionBundle <https://github.com/coopTilleuls/CoopTilleulsAclSonataAdminExtensionBundle>`_.
-When enabled, the logged in user will only see the objects for which it has the `VIEW` right (or superior).
+When enabled, the logged in user will only see the objects for which it has the ``VIEW`` right (or superior).
 
 ACL editor
 ----------
@@ -690,10 +724,10 @@ interface.
 It will be automatically available if the ``sonata.admin.security.handler.acl``
 security handler is used and properly configured.
 
-The ACL editor is only available for users with `OWNER` or `MASTER` permissions
+The ACL editor is only available for users with ``OWNER`` or ``MASTER`` permissions
 on the object instance.
-The `OWNER` and `MASTER` permissions can only be edited by an user with the
-`OWNER` permission on the object instance.
+The ``OWNER`` and ``MASTER`` permissions can only be edited by an user with the
+``OWNER`` permission on the object instance.
 
 .. figure:: ../images/acl_editor.png
    :align: center
@@ -701,7 +735,7 @@ The `OWNER` and `MASTER` permissions can only be edited by an user with the
    :width: 700px
 
 User list customization
-~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^
 
 By default, the ACL editor allows to set permissions for all users managed by
 ``FOSUserBundle``.
@@ -710,7 +744,7 @@ To customize displayed user override
 ``Sonata\AdminBundle\Controller\CRUDController::getAclUsers()``. This method must
 return an iterable collection of users::
 
-    protected function getAclUsers()
+    protected function getAclUsers(): \Traversable
     {
         $userManager = $container->get('fos_user.user_manager');
 
@@ -722,7 +756,7 @@ return an iterable collection of users::
     }
 
 Role list customization
-~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^
 
 By default, the ACL editor allows to set permissions for all roles.
 
@@ -730,7 +764,7 @@ To customize displayed role override
 ``Sonata\AdminBundle\Controller\CRUDController::getAclRoles()``. This method must
 return an iterable collection of roles::
 
-    protected function getAclRoles()
+    protected function getAclRoles(): \Traversable
     {
         // Display only ROLE_BAPTISTE and ROLE_HELENE
         $roles = [
@@ -741,28 +775,7 @@ return an iterable collection of roles::
         return new \ArrayIterator($roles);
     }
 
-Custom user manager
-~~~~~~~~~~~~~~~~~~~
 
-If your project does not use `FOSUserBundle`, you can globally configure another
-service to use when retrieving your users.
-
-- Create a service with a method called ``findUsers()`` returning an iterable
-  collection of users
-- Update your admin configuration to reference your service name
-
-.. configuration-block::
-
-    .. code-block:: yaml
-
-        # config/packages/sonata_admin.yaml
-
-        sonata_admin:
-            security:
-
-                # the name of your service
-                acl_user_manager: my_user_manager
-
-.. _`SonataUserBundle's documentation area`: https://sonata-project.org/bundles/user/master/doc/reference/installation.html
-.. _`changing the access decision strategy`: https://symfony.com/doc/4.4/security/voters.html#changing-the-access-decision-strategy
-.. _`create your own voter`: https://symfony.com/doc/4.4/security/voters.html
+.. _`SonataUserBundle's documentation area`: https://docs.sonata-project.org/projects/SonataUserBundle/en/4.x/reference/installation/
+.. _`changing the access decision strategy`: https://symfony.com/doc/5.4/security/voters.html#changing-the-access-decision-strategy
+.. _`create your own voter`: https://symfony.com/doc/5.4/security/voters.html

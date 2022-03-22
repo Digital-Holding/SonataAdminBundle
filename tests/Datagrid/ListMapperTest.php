@@ -13,36 +13,35 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Datagrid;
 
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
-use Sonata\AdminBundle\Admin\AbstractAdmin;
 use Sonata\AdminBundle\Admin\AdminInterface;
-use Sonata\AdminBundle\Admin\BaseFieldDescription;
-use Sonata\AdminBundle\Admin\FieldDescriptionCollection;
-use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
 use Sonata\AdminBundle\Builder\ListBuilderInterface;
 use Sonata\AdminBundle\Datagrid\ListMapper;
-use Sonata\AdminBundle\Model\ModelManagerInterface;
+use Sonata\AdminBundle\FieldDescription\BaseFieldDescription;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionCollection;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface;
 use Sonata\AdminBundle\Translator\NoopLabelTranslatorStrategy;
 
 /**
  * @author Andrej Hudec <pulzarraider@gmail.com>
  */
-class ListMapperTest extends TestCase
+final class ListMapperTest extends TestCase
 {
     private const DEFAULT_GRANTED_ROLE = 'ROLE_ADMIN_BAZ';
 
     /**
-     * @var ListMapper
+     * @var ListMapper<object>
      */
     private $listMapper;
 
     /**
-     * @var FieldDescriptionCollection
+     * @var FieldDescriptionCollection<FieldDescriptionInterface>
      */
     private $fieldDescriptionCollection;
 
     /**
-     * @var AdminInterface
+     * @var AdminInterface<object>&MockObject
      */
     private $admin;
 
@@ -50,41 +49,31 @@ class ListMapperTest extends TestCase
     {
         $listBuilder = $this->createMock(ListBuilderInterface::class);
         $this->fieldDescriptionCollection = new FieldDescriptionCollection();
-        $this->admin = $this->createMock(AbstractAdmin::class);
+        $this->admin = $this->createMock(AdminInterface::class);
 
         $listBuilder
             ->method('addField')
             ->willReturnCallback(static function (
                 FieldDescriptionCollection $list,
                 ?string $type,
-                BaseFieldDescription $fieldDescription,
-                AbstractAdmin $admin
+                FieldDescriptionInterface $fieldDescription
             ): void {
                 $fieldDescription->setType($type);
                 $list->add($fieldDescription);
             });
 
-        $modelManager = $this->createMock(ModelManagerInterface::class);
-
-        $modelManager
-            ->method('getNewFieldDescriptionInstance')
-            ->willReturnCallback(function (?string $class, string $name, array $options = []): BaseFieldDescription {
-                $fieldDescription = $this->getFieldDescriptionMock();
-                $fieldDescription->setName($name);
+        $this->admin
+            ->method('createFieldDescription')
+            ->willReturnCallback(function (string $name, array $options = []): FieldDescriptionInterface {
+                $fieldDescription = $this->getMockForAbstractClass(BaseFieldDescription::class, [$name, []]);
                 $fieldDescription->setOptions($options);
 
                 return $fieldDescription;
             });
 
-        $this->admin
-            ->method('getModelManager')
-            ->willReturn($modelManager);
-
         $labelTranslatorStrategy = new NoopLabelTranslatorStrategy();
 
-        $this->admin
-            ->method('getLabelTranslatorStrategy')
-            ->willReturn($labelTranslatorStrategy);
+        $this->admin->method('getLabelTranslatorStrategy')->willReturn($labelTranslatorStrategy);
 
         $this->admin
             ->method('isGranted')
@@ -95,80 +84,49 @@ class ListMapperTest extends TestCase
         $this->listMapper = new ListMapper($listBuilder, $this->fieldDescriptionCollection, $this->admin);
     }
 
-    public function testFluidInterface(): void
-    {
-        $fieldDescription = $this->getFieldDescriptionMock('fooName', 'fooLabel');
-
-        $this->assertSame($this->listMapper, $this->listMapper->add($fieldDescription));
-        $this->assertSame($this->listMapper, $this->listMapper->remove('fooName'));
-        $this->assertSame($this->listMapper, $this->listMapper->reorder([]));
-    }
-
     public function testGet(): void
     {
-        $this->assertFalse($this->listMapper->has('fooName'));
+        static::assertFalse($this->listMapper->has('fooName'));
 
-        $fieldDescription = $this->getFieldDescriptionMock('fooName', 'fooLabel');
-
-        $this->listMapper->add($fieldDescription);
-        $this->assertSame($fieldDescription, $this->listMapper->get('fooName'));
+        $this->listMapper->add('fooName');
+        static::assertInstanceOf(FieldDescriptionInterface::class, $this->listMapper->get('fooName'));
     }
 
     public function testAddIdentifier(): void
     {
-        $this->assertFalse($this->listMapper->has('fooName'));
+        static::assertFalse($this->listMapper->has('fooName'));
 
-        $fieldDescription = $this->getFieldDescriptionMock('fooName', 'fooLabel');
-
-        $this->listMapper->addIdentifier($fieldDescription);
-        $this->assertTrue($this->listMapper->has('fooName'));
+        $this->listMapper->addIdentifier('fooName');
+        static::assertTrue($this->listMapper->has('fooName'));
 
         $fieldDescription = $this->listMapper->get('fooName');
-        $this->assertTrue($fieldDescription->getOption('identifier'));
+        static::assertTrue($fieldDescription->getOption('identifier'));
     }
 
     public function testAddOptionIdentifier(): void
     {
-        $this->assertFalse($this->listMapper->has('fooName'));
-        $this->assertFalse($this->listMapper->has('barName'));
-        $this->assertFalse($this->listMapper->has('bazName'));
+        static::assertFalse($this->listMapper->has('fooName'));
+        static::assertFalse($this->listMapper->has('barName'));
+        static::assertFalse($this->listMapper->has('bazName'));
 
         $this->listMapper->add('barName');
-        $this->assertNull($this->listMapper->get('barName')->getOption('identifier'));
+        static::assertNull($this->listMapper->get('barName')->getOption('identifier'));
         $this->listMapper->add('fooName', null, ['identifier' => true]);
-        $this->assertTrue($this->listMapper->has('fooName'));
-        $this->assertTrue($this->listMapper->get('fooName')->getOption('identifier'));
+        static::assertTrue($this->listMapper->has('fooName'));
+        static::assertTrue($this->listMapper->get('fooName')->getOption('identifier'));
         $this->listMapper->add('bazName', null, ['identifier' => false]);
-        $this->assertTrue($this->listMapper->has('bazName'));
-        $this->assertFalse($this->listMapper->get('bazName')->getOption('identifier'));
+        static::assertTrue($this->listMapper->has('bazName'));
+        static::assertFalse($this->listMapper->get('bazName')->getOption('identifier'));
     }
 
-    /**
-     * @dataProvider getWrongIdentifierOptions
-     */
-    public function testAddOptionIdentifierWithWrongValue(bool $expected, $value): void
+    public function testAddOptionIdentifierWithWrongValue(): void
     {
-        $this->assertFalse($this->listMapper->has('fooName'));
+        static::assertFalse($this->listMapper->has('fooName'));
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessageMatches('/^Value for "identifier" option must be boolean, .+ given.$/');
 
-        $this->listMapper->add('fooName', null, ['identifier' => $value]);
-    }
-
-    public function getWrongIdentifierOptions(): iterable
-    {
-        return [
-            [true, 1],
-            [true, 'string'],
-            [true, new \stdClass()],
-            [true, [null]],
-            [false, 0],
-            [false, null],
-            [false, ''],
-            [false, '0'],
-            [false, []],
-        ];
+        $this->listMapper->add('fooName', null, ['identifier' => 1]);
     }
 
     public function testAdd(): void
@@ -177,45 +135,46 @@ class ListMapperTest extends TestCase
         $this->listMapper->add('fooNameLabelBar', null, ['label' => 'Foo Bar']);
         $this->listMapper->add('fooNameLabelEmpty', null, ['label' => '']);
 
-        $this->assertTrue($this->listMapper->has('fooName'));
+        static::assertTrue($this->listMapper->has('fooName'));
 
         $fieldDescription = $this->listMapper->get('fooName');
         $fieldLabelBar = $this->listMapper->get('fooNameLabelBar');
         $fieldLabelFalse = $this->listMapper->get('fooNameLabelEmpty');
 
-        $this->assertInstanceOf(FieldDescriptionInterface::class, $fieldDescription);
-        $this->assertSame('fooName', $fieldDescription->getName());
-        $this->assertSame('fooName', $fieldDescription->getOption('label'));
-        $this->assertSame('Foo Bar', $fieldLabelBar->getOption('label'));
-        $this->assertEmpty($fieldLabelFalse->getOption('label'));
+        static::assertInstanceOf(FieldDescriptionInterface::class, $fieldDescription);
+        static::assertSame('fooName', $fieldDescription->getName());
+        static::assertSame('fooName', $fieldDescription->getOption('label'));
+        static::assertSame('Foo Bar', $fieldLabelBar->getOption('label'));
+        static::assertEmpty($fieldLabelFalse->getOption('label'));
     }
 
     public function testAddViewInlineAction(): void
     {
-        $this->assertFalse($this->listMapper->has('_action'));
-        $this->listMapper->add('_action', 'actions', ['actions' => ['show' => []]]);
+        static::assertFalse($this->listMapper->has(ListMapper::NAME_ACTIONS));
+        $this->listMapper->add(ListMapper::NAME_ACTIONS, ListMapper::TYPE_ACTIONS, ['actions' => ['show' => []]]);
 
-        $this->assertTrue($this->listMapper->has('_action'));
+        static::assertTrue($this->listMapper->has(ListMapper::NAME_ACTIONS));
 
-        $fieldDescription = $this->listMapper->get('_action');
+        $fieldDescription = $this->listMapper->get(ListMapper::NAME_ACTIONS);
 
-        $this->assertInstanceOf(FieldDescriptionInterface::class, $fieldDescription);
-        $this->assertSame('_action', $fieldDescription->getName());
-        $this->assertCount(1, $fieldDescription->getOption('actions'));
-        $this->assertSame(['show' => []], $fieldDescription->getOption('actions'));
+        static::assertInstanceOf(FieldDescriptionInterface::class, $fieldDescription);
+        static::assertSame(ListMapper::NAME_ACTIONS, $fieldDescription->getName());
+
+        $actions = $fieldDescription->getOption('actions');
+        static::assertIsArray($actions);
+        static::assertCount(1, $actions);
+        static::assertSame(['show' => []], $actions);
     }
 
     public function testAddRemove(): void
     {
-        $this->assertFalse($this->listMapper->has('fooName'));
+        static::assertFalse($this->listMapper->has('fooName'));
 
-        $fieldDescription = $this->getFieldDescriptionMock('fooName', 'fooLabel');
-
-        $this->listMapper->add($fieldDescription);
-        $this->assertTrue($this->listMapper->has('fooName'));
+        $this->listMapper->add('fooName');
+        static::assertTrue($this->listMapper->has('fooName'));
 
         $this->listMapper->remove('fooName');
-        $this->assertFalse($this->listMapper->has('fooName'));
+        static::assertFalse($this->listMapper->has('fooName'));
     }
 
     public function testAddDuplicateNameException(): void
@@ -239,14 +198,6 @@ class ListMapperTest extends TestCase
         $this->listMapper->add('fooName');
     }
 
-    public function testAddWrongTypeException(): void
-    {
-        $this->expectException(\TypeError::class);
-        $this->expectExceptionMessage('Unknown field name in list mapper. Field name should be either of FieldDescriptionInterface interface or string.');
-
-        $this->listMapper->add(12345);
-    }
-
     public function testAutoAddVirtualOption(): void
     {
         foreach (['actions', 'batch', 'select'] as $type) {
@@ -254,9 +205,9 @@ class ListMapperTest extends TestCase
         }
 
         foreach ($this->fieldDescriptionCollection->getElements() as $field) {
-            $this->assertTrue(
-                $field->isVirtual(),
-                sprintf('Failed asserting that FieldDescription with type "%s" is tagged with virtual flag.', $field->getType())
+            static::assertTrue(
+                $field->getOption('virtual_field', false),
+                sprintf('Failed asserting that FieldDescription with name "%s" is tagged with virtual flag.', $field->getName())
             );
         }
     }
@@ -277,8 +228,8 @@ class ListMapperTest extends TestCase
             [
                 'associated_property' => 'fooAssociatedProperty',
                 'sortable' => false,
-                'sort_parent_association_mappings' => 'fooSortParentAssociationMapping',
-                'sort_field_mapping' => 'fooSortFieldMapping',
+                'sort_parent_association_mappings' => [['fooSortParentAssociationMapping' => null]],
+                'sort_field_mapping' => ['fooSortFieldMapping' => null],
             ]
         );
 
@@ -286,108 +237,110 @@ class ListMapperTest extends TestCase
         $fieldAutoSort = $this->listMapper->get('fooNameAutoSort');
         $fieldManualSort = $this->listMapper->get('fooNameManualSort');
 
-        $this->assertNull($field->getOption('associated_property'));
-        $this->assertNull($field->getOption('sortable'));
-        $this->assertNull($field->getOption('sort_parent_association_mappings'));
-        $this->assertNull($field->getOption('sort_field_mapping'));
+        static::assertNull($field->getOption('associated_property'));
+        static::assertNull($field->getOption('sortable'));
+        static::assertNull($field->getOption('sort_parent_association_mappings'));
+        static::assertNull($field->getOption('sort_field_mapping'));
 
-        $this->assertSame('fooAssociatedProperty', $fieldAutoSort->getOption('associated_property'));
-        $this->assertTrue($fieldAutoSort->getOption('sortable'));
-        $this->assertSame([['fieldName' => $fieldAutoSort->getName()]], $fieldAutoSort->getOption('sort_parent_association_mappings'));
-        $this->assertSame(['fieldName' => $fieldAutoSort->getOption('associated_property')], $fieldAutoSort->getOption('sort_field_mapping'));
+        static::assertSame('fooAssociatedProperty', $fieldAutoSort->getOption('associated_property'));
+        static::assertTrue($fieldAutoSort->getOption('sortable'));
+        static::assertSame([['fieldName' => $fieldAutoSort->getName()]], $fieldAutoSort->getOption('sort_parent_association_mappings'));
+        static::assertSame(['fieldName' => $fieldAutoSort->getOption('associated_property')], $fieldAutoSort->getOption('sort_field_mapping'));
 
-        $this->assertSame('fooAssociatedProperty', $fieldManualSort->getOption('associated_property'));
-        $this->assertFalse($fieldManualSort->getOption('sortable'));
-        $this->assertSame('fooSortParentAssociationMapping', $fieldManualSort->getOption('sort_parent_association_mappings'));
-        $this->assertSame('fooSortFieldMapping', $fieldManualSort->getOption('sort_field_mapping'));
+        static::assertSame('fooAssociatedProperty', $fieldManualSort->getOption('associated_property'));
+        static::assertFalse($fieldManualSort->getOption('sortable'));
+        static::assertSame([['fooSortParentAssociationMapping' => null]], $fieldManualSort->getOption('sort_parent_association_mappings'));
+        static::assertSame(['fooSortFieldMapping' => null], $fieldManualSort->getOption('sort_field_mapping'));
+    }
+
+    public function testCallableAssociationPropertyCannotBeSortable(): void
+    {
+        $this->listMapper->add(
+            'fooNameNotSortable',
+            null,
+            [
+                'associated_property' => static function ($value): string {
+                    return (string) $value;
+                },
+            ]
+        );
+        $this->listMapper->add(
+            'fooNameSortable',
+            null,
+            [
+                'associated_property' => 'fooProperty',
+            ]
+        );
+
+        $fieldSortable = $this->listMapper->get('fooNameSortable');
+        $fieldNotSortable = $this->listMapper->get('fooNameNotSortable');
+
+        static::assertTrue($fieldSortable->getOption('sortable'));
+        static::assertFalse($fieldNotSortable->getOption('sortable'));
     }
 
     public function testKeys(): void
     {
-        $fieldDescription1 = $this->getFieldDescriptionMock('fooName1', 'fooLabel1');
-        $fieldDescription2 = $this->getFieldDescriptionMock('fooName2', 'fooLabel2');
+        $this->listMapper->add('fooName1');
+        $this->listMapper->add('fooName2');
 
-        $this->listMapper->add($fieldDescription1);
-        $this->listMapper->add($fieldDescription2);
-
-        $this->assertSame(['fooName1', 'fooName2'], $this->listMapper->keys());
+        static::assertSame(['fooName1', 'fooName2'], $this->listMapper->keys());
     }
 
     public function testReorder(): void
     {
-        $fieldDescription1 = $this->getFieldDescriptionMock('fooName1', 'fooLabel1');
-        $fieldDescription2 = $this->getFieldDescriptionMock('fooName2', 'fooLabel2');
-        $fieldDescription3 = $this->getFieldDescriptionMock('fooName3', 'fooLabel3');
-        $fieldDescription4 = $this->getFieldDescriptionMock('fooName4', 'fooLabel4');
+        $this->listMapper->add('fooName1');
+        $this->listMapper->add('fooName2');
+        $this->listMapper->add('fooName3');
+        $this->listMapper->add('fooName4');
 
-        $this->listMapper->add($fieldDescription1);
-        $this->listMapper->add($fieldDescription2);
-        $this->listMapper->add($fieldDescription3);
-        $this->listMapper->add($fieldDescription4);
-
-        $this->assertSame([
-            'fooName1' => $fieldDescription1,
-            'fooName2' => $fieldDescription2,
-            'fooName3' => $fieldDescription3,
-            'fooName4' => $fieldDescription4,
-        ], $this->fieldDescriptionCollection->getElements());
+        static::assertSame([
+            'fooName1',
+            'fooName2',
+            'fooName3',
+            'fooName4',
+        ], array_keys($this->fieldDescriptionCollection->getElements()));
 
         $this->listMapper->reorder(['fooName3', 'fooName2', 'fooName1', 'fooName4']);
 
-        // print_r is used to compare order of items in associative arrays
-        $this->assertSame(print_r([
-            'fooName3' => $fieldDescription3,
-            'fooName2' => $fieldDescription2,
-            'fooName1' => $fieldDescription1,
-            'fooName4' => $fieldDescription4,
-        ], true), print_r($this->fieldDescriptionCollection->getElements(), true));
+        static::assertSame([
+            'fooName3',
+            'fooName2',
+            'fooName1',
+            'fooName4',
+        ], array_keys($this->fieldDescriptionCollection->getElements()));
     }
 
     public function testAddOptionRole(): void
     {
         $this->listMapper->add('bar', 'bar');
 
-        $this->assertTrue($this->listMapper->has('bar'));
+        static::assertTrue($this->listMapper->has('bar'));
 
         $this->listMapper->add('quux', 'bar', ['role' => 'ROLE_QUX']);
 
-        $this->assertTrue($this->listMapper->has('bar'));
-        $this->assertFalse($this->listMapper->has('quux'));
+        static::assertTrue($this->listMapper->has('bar'));
+        static::assertFalse($this->listMapper->has('quux'));
 
         $this->listMapper
             ->add('foobar', 'bar', ['role' => self::DEFAULT_GRANTED_ROLE])
             ->add('foo', 'bar', ['role' => 'ROLE_QUX'])
             ->add('baz', 'bar');
 
-        $this->assertTrue($this->listMapper->has('foobar'));
-        $this->assertFalse($this->listMapper->has('foo'));
-        $this->assertTrue($this->listMapper->has('baz'));
+        static::assertTrue($this->listMapper->has('foobar'));
+        static::assertFalse($this->listMapper->has('foo'));
+        static::assertTrue($this->listMapper->has('baz'));
     }
 
     public function testTypeGuessActionField(): void
     {
-        $this->listMapper->add('_action', null);
+        $this->listMapper->add(ListMapper::NAME_ACTIONS);
 
-        $field = $this->fieldDescriptionCollection->get('_action');
+        $field = $this->fieldDescriptionCollection->get(ListMapper::NAME_ACTIONS);
 
-        $this->assertTrue(
-            $field->isVirtual(),
+        static::assertTrue(
+            $field->getOption('virtual_field', false),
             'Failed asserting that FieldDescription with name "'.$field->getName().'" is tagged with virtual flag.'
         );
-    }
-
-    private function getFieldDescriptionMock(?string $name = null, ?string $label = null): BaseFieldDescription
-    {
-        $fieldDescription = $this->getMockForAbstractClass(BaseFieldDescription::class);
-
-        if (null !== $name) {
-            $fieldDescription->setName($name);
-        }
-
-        if (null !== $label) {
-            $fieldDescription->setOption('label', $label);
-        }
-
-        return $fieldDescription;
     }
 }

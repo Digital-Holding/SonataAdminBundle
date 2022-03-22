@@ -13,12 +13,13 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Event;
 
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Sonata\AdminBundle\Admin\AdminInterface;
 use Sonata\AdminBundle\Datagrid\ProxyQueryInterface;
 use Sonata\AdminBundle\Event\ConfigureQueryEvent;
 
-class ConfigureQueryEventTest extends TestCase
+final class ConfigureQueryEventTest extends TestCase
 {
     /**
      * @var ConfigureQueryEvent
@@ -26,41 +27,41 @@ class ConfigureQueryEventTest extends TestCase
     private $event;
 
     /**
-     * @var AdminInterface
+     * @var AdminInterface<object>&MockObject
      */
     private $admin;
 
     /**
-     * @var ProxyQueryInterface
+     * @var ProxyQueryInterface&MockObject
      */
     private $proxyQuery;
 
     protected function setUp(): void
     {
-        $this->admin = $this->getMockForAbstractClass(AdminInterface::class);
-        $this->proxyQuery = $this->getMockForAbstractClass(ProxyQueryInterface::class);
+        $this->admin = $this->createMock(AdminInterface::class);
+        $this->proxyQuery = $this->createMock(ProxyQueryInterface::class);
 
         $this->event = new ConfigureQueryEvent($this->admin, $this->proxyQuery, 'Foo');
     }
 
     public function testGetContext(): void
     {
-        $this->assertSame('Foo', $this->event->getContext());
+        static::assertSame('Foo', $this->event->getContext());
     }
 
     public function testGetAdmin(): void
     {
         $result = $this->event->getAdmin();
 
-        $this->assertInstanceOf(AdminInterface::class, $result);
-        $this->assertSame($this->admin, $result);
+        static::assertInstanceOf(AdminInterface::class, $result);
+        static::assertSame($this->admin, $result);
     }
 
     public function testGetProxyQuery(): void
     {
         $result = $this->event->getProxyQuery();
 
-        $this->assertInstanceOf(ProxyQueryInterface::class, $result);
-        $this->assertSame($this->proxyQuery, $result);
+        static::assertInstanceOf(ProxyQueryInterface::class, $result);
+        static::assertSame($this->proxyQuery, $result);
     }
 }

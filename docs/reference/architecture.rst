@@ -38,7 +38,8 @@ injected by the bundle:
 Class                           Description
 =========================       =========================================================================
 ConfigurationPool               configuration pool where all Admin class instances are stored
-ModelManager                    service which handles specific code relating to your persistence layer (e.g. Doctrine ORM)
+ModelManager                    handles specific code relating to your persistence layer (e.g. Doctrine ORM)
+DataSource                      handles code related to the sonata exporter
 FormContractor                  builds the forms for the edit/create views using the Symfony ``FormBuilder``
 ShowBuilder                     builds the show fields
 ListBuilder                     builds the list fields
@@ -69,25 +70,18 @@ your ``Admin`` services. This is done using a ``call`` to the matching ``setter`
         services:
             app.admin.post:
                 class: App\Admin\PostAdmin
-                arguments:
-                    - ~
-                    - App\Entity\Post
-                    - ~
                 calls:
                     - [setLabelTranslatorStrategy, ['@sonata.admin.label.strategy.underscore']]
                 tags:
-                    - { name: sonata.admin, manager_type: orm, group: 'Content', label: 'Post' }
+                    - { name: sonata.admin, model_class: App\Entity\Post, manager_type: orm, group: 'Content', label: 'Post' }
 
     .. code-block:: xml
 
         <service id="app.admin.post" class="App\Admin\PostAdmin">
-              <argument/>
-              <argument>App\Entity\Post</argument>
-              <argument/>
               <call method="setLabelTranslatorStrategy">
                   <argument type="service" id="sonata.admin.label.strategy.underscore"/>
               </call>
-              <tag name="sonata.admin" manager_type="orm" group="Content" label="Post"/>
+              <tag name="sonata.admin" model_class="App\Entity\Post" manager_type="orm" group="Content" label="Post"/>
           </service>
 
 Here, we declare the same ``Admin`` service as in the :doc:`../getting_started/creating_an_admin`
@@ -124,25 +118,18 @@ to set the controller to ``App\Controller\PostAdminController``:
         services:
             app.admin.post:
                 class: App\Admin\PostAdmin
-                arguments:
-                    - ~
-                    - App\Entity\Post
-                    - App\Controller\PostAdminController
                 calls:
                     - [setTranslationDomain, ['App']]
                 tags:
-                    - { name: sonata.admin, manager_type: orm, group: 'Content', label: 'Post' }
+                    - { name: sonata.admin, model_class: App\Entity\Post, controller: App\Controller\PostAdminController, manager_type: orm, group: 'Content', label: 'Post' }
 
     .. code-block:: xml
 
         <service id="app.admin.post" class="App\Admin\PostAdmin">
-            <argument/>
-            <argument>App\Entity\Post</argument>
-            <argument>App\Controller\PostAdminController</argument>
             <call method="setTranslationDomain">
                 <argument>App</argument>
             </call>
-            <tag name="sonata.admin" manager_type="orm" group="Content" label="Post"/>
+            <tag name="sonata.admin" model_class="App\Entity\Post" controller="App\Controller\PostAdminController" manager_type="orm" group="Content" label="Post"/>
         </service>
 
 When extending ``CRUDController``, remember that the ``Admin`` class already has
@@ -186,9 +173,9 @@ which stores instances of ``FieldDescriptionInterface``. Picking up on our previ
     final class PostAdmin extends AbstractAdmin
     {
         // Fields to be shown on create/edit forms
-        protected function configureFormFields(FormMapper $formMapper)
+        protected function configureFormFields(FormMapper $form): void
         {
-            $formMapper
+            $form
                 ->add('title', TextType:class, [
                     'label' => 'Post Title'
                 ])
@@ -216,21 +203,21 @@ which stores instances of ``FieldDescriptionInterface``. Picking up on our previ
         }
 
         // Fields to be shown on filter forms
-        protected function configureDatagridFilters(DatagridMapper $datagridMapper)
+        protected function configureDatagridFilters(DatagridMapper $datagrid): void
         {
-            $datagridMapper
+            $datagrid
                 ->add('title')
                 ->add('author')
-                ->add('privateNotes', null, [], null, null, [
+                ->add('privateNotes', null, [], [
                     'role' => 'ROLE_ADMIN_MODERATOR'
                 ])
             ;
         }
 
         // Fields to be shown on lists
-        protected function configureListFields(ListMapper $listMapper)
+        protected function configureListFields(ListMapper $list): void
         {
-            $listMapper
+            $list
                 ->addIdentifier('title')
                 ->add('slug')
                 ->add('author')
@@ -241,9 +228,9 @@ which stores instances of ``FieldDescriptionInterface``. Picking up on our previ
         }
 
         // Fields to be shown on show action
-        protected function configureShowFields(ShowMapper $showMapper)
+        protected function configureShowFields(ShowMapper $show): void
         {
-            $showMapper
+            $show
                 ->add('id')
                 ->add('title')
                 ->add('slug')

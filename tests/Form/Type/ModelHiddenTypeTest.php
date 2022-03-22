@@ -19,32 +19,32 @@ use Symfony\Component\Form\Extension\Core\Type\HiddenType;
 use Symfony\Component\Form\Test\TypeTestCase;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
-class ModelHiddenTypeTest extends TypeTestCase
+final class ModelHiddenTypeTest extends TypeTestCase
 {
     public function testGetDefaultOptions(): void
     {
         $type = new ModelHiddenType();
-        $modelManager = $this->getMockForAbstractClass(ModelManagerInterface::class);
+        $modelManager = $this->createMock(ModelManagerInterface::class);
         $optionResolver = new OptionsResolver();
 
         $type->configureOptions($optionResolver);
 
         $options = $optionResolver->resolve(['model_manager' => $modelManager, 'class' => '\Foo']);
 
-        $this->assertInstanceOf(ModelManagerInterface::class, $options['model_manager']);
-        $this->assertSame($modelManager, $options['model_manager']);
-        $this->assertSame('\Foo', $options['class']);
+        static::assertInstanceOf(ModelManagerInterface::class, $options['model_manager']);
+        static::assertSame($modelManager, $options['model_manager']);
+        static::assertSame('\Foo', $options['class']);
     }
 
     public function testGetBlockPrefix(): void
     {
         $type = new ModelHiddenType();
-        $this->assertSame('sonata_type_model_hidden', $type->getBlockPrefix());
+        static::assertSame('sonata_type_model_hidden', $type->getBlockPrefix());
     }
 
     public function testGetParent(): void
     {
         $type = new ModelHiddenType();
-        $this->assertSame(HiddenType::class, $type->getParent());
+        static::assertSame(HiddenType::class, $type->getParent());
     }
 }

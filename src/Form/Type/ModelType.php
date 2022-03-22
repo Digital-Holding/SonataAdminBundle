@@ -13,14 +13,18 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Form\Type;
 
+use Sonata\AdminBundle\BCLayer\BCDeprecation;
 use Sonata\AdminBundle\Form\ChoiceList\ModelChoiceLoader;
 use Sonata\AdminBundle\Form\DataTransformer\ModelsToArrayTransformer;
 use Sonata\AdminBundle\Form\DataTransformer\ModelToIdTransformer;
 use Sonata\AdminBundle\Form\EventListener\MergeCollectionListener;
+use Sonata\AdminBundle\Model\ModelManagerInterface;
 use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\ChoiceList\ChoiceListInterface;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormInterface;
+use Symfony\Component\Form\FormTypeInterface;
 use Symfony\Component\Form\FormView;
 use Symfony\Component\OptionsResolver\Options;
 use Symfony\Component\OptionsResolver\OptionsResolver;
@@ -43,94 +47,106 @@ final class ModelType extends AbstractType
         $this->propertyAccessor = $propertyAccessor;
     }
 
+    /**
+     * @param array<string, mixed> $options
+     */
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
-        if ($options['multiple']) {
+        if (true === $options['multiple']) {
             $builder->addViewTransformer(
                 new ModelsToArrayTransformer($options['model_manager'], $options['class']),
                 true
             );
 
-            $builder
-                ->addEventSubscriber(new MergeCollectionListener($options['model_manager']))
-            ;
+            $builder->addEventSubscriber(new MergeCollectionListener());
         } else {
             $builder
-                ->addViewTransformer(new ModelToIdTransformer($options['model_manager'], $options['class']), true)
-            ;
+                ->addViewTransformer(new ModelToIdTransformer($options['model_manager'], $options['class']), true);
         }
     }
 
+    /**
+     * @param array<string, mixed> $options
+     */
     public function buildView(FormView $view, FormInterface $form, array $options): void
     {
         $view->vars['btn_add'] = $options['btn_add'];
         $view->vars['btn_list'] = $options['btn_list'];
         $view->vars['btn_delete'] = $options['btn_delete'];
+
+        // NEXT_MAJOR: Remove the btn_catalogue usage.
+        $view->vars['btn_translation_domain'] =
+            'SonataAdminBundle' !== $options['btn_translation_domain']
+                ? $options['btn_translation_domain']
+                : $options['btn_catalogue'];
         $view->vars['btn_catalogue'] = $options['btn_catalogue'];
     }
 
     public function configureOptions(OptionsResolver $resolver): void
     {
         $options = [];
-        $propertyAccessor = $this->propertyAccessor;
-        $options['choice_loader'] = static function (Options $options, $previousValue) use ($propertyAccessor) {
-            if ($previousValue && \count($choices = $previousValue->getChoices())) {
+
+        $options['choice_loader'] = function (Options $options, ?ChoiceListInterface $previousValue) {
+            if (null !== $previousValue && \count($choices = $previousValue->getChoices()) > 0) {
                 return $choices;
             }
 
             return new ModelChoiceLoader(
                 $options['model_manager'],
+                $this->propertyAccessor,
                 $options['class'],
                 $options['property'],
                 $options['query'],
                 $options['choices'],
-                $propertyAccessor
             );
         };
 
         $resolver->setDefaults(array_merge($options, [
-            'compound' => static function (Options $options) {
-                if (isset($options['multiple']) && $options['multiple']) {
-                    if (isset($options['expanded']) && $options['expanded']) {
-                        //checkboxes
-                        return true;
-                    }
-
-                    //select tag (with multiple attribute)
-                    return false;
-                }
-
-                if (isset($options['expanded']) && $options['expanded']) {
-                    //radio buttons
-                    return true;
-                }
-
-                //select tag
-                return false;
+            'compound' => static function (Options $options): bool {
+                return true === $options['expanded'];
             },
-
             'template' => 'choice',
             'multiple' => false,
             'expanded' => false,
-            'model_manager' => null,
-            'class' => null,
             'property' => null,
             'query' => null,
-            'choices' => [],
+            'choices' => null,
             'preferred_choices' => [],
             'btn_add' => 'link_add',
             'btn_list' => 'link_list',
             'btn_delete' => 'link_delete',
-            'btn_catalogue' => 'SonataAdminBundle',
+            'btn_catalogue' => 'SonataAdminBundle', // NEXT_MAJOR: Remove this option
+            'btn_translation_domain' => 'SonataAdminBundle',
         ]));
+
+        $resolver->setRequired(['model_manager', 'class']);
+        $resolver->setAllowedTypes('model_manager', ModelManagerInterface::class);
+        $resolver->setAllowedTypes('class', 'string');
+
+        $resolver->setDeprecated(
+            'btn_catalogue',
+            ...BCDeprecation::forOptionResolver(
+                static function (Options $options, $value): string {
+                    if ('SonataAdminBundle' !== $value) {
+                        return 'Passing a value to option "btn_catalogue" is deprecated! Use "btn_translation_domain" instead!';
+                    }
+
+                    return '';
+                },
+                '4.9',
+            )
+        ); // NEXT_MAJOR: Remove this deprecation notice.
     }
 
-    public function getParent()
+    /**
+     * @phpstan-return class-string<FormTypeInterface>
+     */
+    public function getParent(): string
     {
         return ChoiceType::class;
     }
 
-    public function getBlockPrefix()
+    public function getBlockPrefix(): string
     {
         return 'sonata_type_model';
     }

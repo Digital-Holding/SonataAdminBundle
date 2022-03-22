@@ -17,61 +17,48 @@ use Sonata\AdminBundle\Datagrid\ProxyQueryInterface;
 
 final class ProxyQuery implements ProxyQueryInterface
 {
-    public function __call($name, $args)
-    {
-    }
-
-    public function execute(array $params = [], $hydrationMode = null)
-    {
-    }
-
-    public function setSortBy($parentAssociationMappings, $fieldMapping): void
-    {
-    }
-
-    public function getSortBy()
-    {
-        return 'e.id';
-    }
-
-    public function setSortOrder($sortOrder): void
-    {
-    }
-
-    public function getSortOrder()
-    {
-        return 'ASC';
-    }
-
-    public function getSingleScalarResult()
-    {
-        return 0;
-    }
-
-    public function setFirstResult($firstResult): void
-    {
-    }
-
-    public function getFirstResult()
+    public function execute()
     {
         throw new \BadMethodCallException('Not implemented.');
     }
 
-    public function setMaxResults($maxResults): void
+    public function setSortBy(array $parentAssociationMappings, array $fieldMapping): ProxyQueryInterface
     {
+        throw new \BadMethodCallException('Not implemented.');
     }
 
-    public function getMaxResults()
+    public function getSortBy(): ?string
+    {
+        return 'e.id';
+    }
+
+    public function setSortOrder(string $sortOrder): ProxyQueryInterface
+    {
+        throw new \BadMethodCallException('Not implemented.');
+    }
+
+    public function getSortOrder(): ?string
+    {
+        return 'ASC';
+    }
+
+    public function setFirstResult(?int $firstResult): ProxyQueryInterface
+    {
+        throw new \BadMethodCallException('Not implemented.');
+    }
+
+    public function getFirstResult(): ?int
+    {
+        throw new \BadMethodCallException('Not implemented.');
+    }
+
+    public function setMaxResults(?int $maxResults): ProxyQueryInterface
+    {
+        throw new \BadMethodCallException('Not implemented.');
+    }
+
+    public function getMaxResults(): ?int
     {
         return 1;
-    }
-
-    public function getUniqueParameterId()
-    {
-        return 1;
-    }
-
-    public function entityJoin(array $associationMappings): void
-    {
     }
 }

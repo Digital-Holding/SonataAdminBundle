@@ -13,32 +13,26 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Command;
 
-use InvalidArgumentException;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Sonata\AdminBundle\Admin\AdminInterface;
-use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
 use Sonata\AdminBundle\Admin\Pool;
 use Sonata\AdminBundle\Builder\DatagridBuilderInterface;
 use Sonata\AdminBundle\Builder\ListBuilderInterface;
 use Sonata\AdminBundle\Command\ExplainAdminCommand;
 use Sonata\AdminBundle\Controller\CRUDController;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface;
 use Sonata\AdminBundle\Model\ModelManagerInterface;
 use Sonata\AdminBundle\Route\RouteCollection;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\Form\FormBuilderInterface;
-use Symfony\Component\Validator\Constraints\Email;
-use Symfony\Component\Validator\Constraints\Length;
-use Symfony\Component\Validator\Constraints\NotNull;
-use Symfony\Component\Validator\Mapping\ClassMetadata;
-use Symfony\Component\Validator\Mapping\Factory\MetadataFactoryInterface;
-use Symfony\Component\Validator\Mapping\GenericMetadata;
 
 /**
  * @author Andrej Hudec <pulzarraider@gmail.com>
  */
-class ExplainAdminCommandTest extends TestCase
+final class ExplainAdminCommandTest extends TestCase
 {
     /**
      * @var Application
@@ -46,14 +40,9 @@ class ExplainAdminCommandTest extends TestCase
     private $application;
 
     /**
-     * @var AdminInterface
+     * @var AdminInterface<object>&MockObject
      */
     private $admin;
-
-    /**
-     * @var MetadataFactoryInterface
-     */
-    private $validatorFactory;
 
     protected function setUp(): void
     {
@@ -146,41 +135,15 @@ class ExplainAdminCommandTest extends TestCase
 
         $container->set('acme.admin.foo', $this->admin);
 
-        $pool = new Pool($container, '', '');
-        $pool->setAdminServiceIds(['acme.admin.foo', 'acme.admin.bar']);
+        $pool = new Pool($container, ['acme.admin.foo', 'acme.admin.bar']);
 
-        $this->validatorFactory = $this->createMock(MetadataFactoryInterface::class);
-
-        $command = new ExplainAdminCommand($pool, $this->validatorFactory);
+        $command = new ExplainAdminCommand($pool);
 
         $this->application->add($command);
     }
 
     public function testExecute(): void
     {
-        $metadata = $this->createMock(ClassMetadata::class);
-
-        $this->validatorFactory->expects($this->once())
-            ->method('getMetadataFor')
-            ->with($this->equalTo('Acme\Entity\Foo'))
-            ->willReturn($metadata);
-
-        $propertyMetadata = $this->getMockForAbstractClass(GenericMetadata::class);
-        $propertyMetadata->constraints = [
-            new NotNull(),
-            new Length(['min' => 2, 'max' => 50, 'groups' => ['create', 'edit']]),
-        ];
-
-        $metadata->properties = ['firstName' => $propertyMetadata];
-
-        $getterMetadata = $this->getMockForAbstractClass(GenericMetadata::class);
-        $getterMetadata->constraints = [
-            new NotNull(),
-            new Email(['groups' => ['registration', 'edit']]),
-        ];
-
-        $metadata->getters = ['email' => $getterMetadata];
-
         $modelManager = $this->createMock(ModelManagerInterface::class);
 
         $this->admin
@@ -209,62 +172,11 @@ class ExplainAdminCommandTest extends TestCase
         $commandTester = new CommandTester($command);
         $commandTester->execute(['command' => $command->getName(), 'admin' => 'acme.admin.foo']);
 
-        $this->assertSame(sprintf(
-            str_replace("\n", PHP_EOL, file_get_contents(sprintf('%s/../Fixtures/Command/explain_admin.txt', __DIR__))),
-            \get_class($this->admin),
-            \get_class($modelManager),
-            \get_class($formBuilder),
-            \get_class($datagridBuilder),
-            \get_class($listBuilder)
-        ), $commandTester->getDisplay());
-    }
+        $explainAdminText = file_get_contents(sprintf('%s/../Fixtures/Command/explain_admin.txt', __DIR__));
+        static::assertNotFalse($explainAdminText);
 
-    public function testExecuteEmptyValidator(): void
-    {
-        $metadata = $this->createMock(ClassMetadata::class);
-
-        $this->validatorFactory->expects($this->once())
-            ->method('getMetadataFor')
-            ->with($this->equalTo('Acme\Entity\Foo'))
-            ->willReturn($metadata);
-
-        $metadata->properties = [];
-        $metadata->getters = [];
-
-        $modelManager = $this->createMock(ModelManagerInterface::class);
-
-        $this->admin
-            ->method('getModelManager')
-            ->willReturn($modelManager);
-
-        $formBuilder = $this->createMock(FormBuilderInterface::class);
-
-        $this->admin
-             ->method('getFormBuilder')
-             ->willReturn($formBuilder);
-
-        $datagridBuilder = $this->createMock(DatagridBuilderInterface::class);
-
-        $this->admin
-            ->method('getDatagridBuilder')
-            ->willReturn($datagridBuilder);
-
-        $listBuilder = $this->createMock(ListBuilderInterface::class);
-
-        $this->admin
-            ->method('getListBuilder')
-            ->willReturn($listBuilder);
-
-        $command = $this->application->find('sonata:admin:explain');
-        $commandTester = new CommandTester($command);
-        $commandTester->execute(['command' => $command->getName(), 'admin' => 'acme.admin.foo']);
-
-        $this->assertSame(sprintf(
-            str_replace(
-                "\n",
-                PHP_EOL,
-                file_get_contents(sprintf('%s/../Fixtures/Command/explain_admin_empty_validator.txt', __DIR__))
-            ),
+        static::assertSame(sprintf(
+            str_replace("\n", \PHP_EOL, $explainAdminText),
             \get_class($this->admin),
             \get_class($modelManager),
             \get_class($formBuilder),
@@ -278,59 +190,9 @@ class ExplainAdminCommandTest extends TestCase
         $command = $this->application->find('sonata:admin:explain');
         $commandTester = new CommandTester($command);
 
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Admin service "nonexistent.service" not found in admin pool. Did you mean "acme.admin.bar" or one of those: []');
 
         $commandTester->execute(['command' => $command->getName(), 'admin' => 'nonexistent.service']);
-    }
-
-    public function testExecuteWithNonClassMetadata(): void
-    {
-        $metadata = $this->createStub(GenericMetadata::class);
-
-        $this->validatorFactory->expects($this->once())
-            ->method('getMetadataFor')
-            ->with($this->equalTo('Acme\Entity\Foo'))
-            ->willReturn($metadata);
-
-        $metadata->properties = [];
-        $metadata->getters = [];
-
-        $modelManager = $this->createStub(ModelManagerInterface::class);
-
-        $this->admin
-            ->method('getModelManager')
-            ->willReturn($modelManager);
-
-        $formBuilder = $this->createStub(FormBuilderInterface::class);
-
-        $this->admin
-            ->method('getFormBuilder')
-            ->willReturn($formBuilder);
-
-        $datagridBuilder = $this->createStub(DatagridBuilderInterface::class);
-
-        $this->admin
-            ->method('getDatagridBuilder')
-            ->willReturn($datagridBuilder);
-
-        $listBuilder = $this->createStub(ListBuilderInterface::class);
-
-        $this->admin
-            ->method('getListBuilder')
-            ->willReturn($listBuilder);
-
-        $command = $this->application->find('sonata:admin:explain');
-        $commandTester = new CommandTester($command);
-
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage(
-            sprintf(
-                'Cannot read metadata properties of Acme\Entity\Foo because its metadata is an instance of %s instead of Symfony\Component\Validator\Mapping\ClassMetadata',
-                \get_class($metadata)
-            )
-        );
-
-        $commandTester->execute(['command' => $command->getName(), 'admin' => 'acme.admin.foo']);
     }
 }

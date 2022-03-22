@@ -18,10 +18,10 @@ namespace Sonata\AdminBundle\Translator;
  */
 final class UnderscoreLabelTranslatorStrategy implements LabelTranslatorStrategyInterface
 {
-    public function getLabel($label, $context = '', $type = '')
+    public function getLabel(string $label, string $context = '', string $type = ''): string
     {
         $label = str_replace('.', '_', $label);
 
-        return sprintf('%s.%s_%s', $context, $type, strtolower(preg_replace('~(?<=\\w)([A-Z])~', '_$1', $label)));
+        return sprintf('%s.%s_%s', $context, $type, strtolower(preg_replace('~(?<=\\w)([A-Z])~', '_$1', $label) ?? ''));
     }
 }

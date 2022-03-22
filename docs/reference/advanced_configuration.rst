@@ -11,6 +11,7 @@ the services which are injected by default are:
 Dependencies                  Service ID
 =========================     ===================================================================
 model_manager                 sonata.admin.manager.%manager-type%
+data_source                   sonata.admin.data_source.%manager-type%
 form_contractor               sonata.admin.builder.%manager-type%_form
 show_builder                  sonata.admin.builder.%manager-type%_show
 list_builder                  sonata.admin.builder.%manager-type%_list
@@ -44,13 +45,10 @@ With a tag attribute (less verbose)
 
         app.admin.project:
             class: App\Admin\ProjectAdmin
-            arguments:
-                - ~
-                - App\Entity\Project
-                - ~
             tags:
                 -
                     name: sonata.admin
+                    model_class: App\Entity\Project
                     manager_type: orm
                     group: 'Project'
                     label: 'Project'
@@ -62,11 +60,9 @@ With a tag attribute (less verbose)
         <!-- config/services.xml -->
 
         <service id="app.admin.project" class="App\Admin\ProjectAdmin">
-            <argument/>
-            <argument>App\Entity\Project</argument>
-            <argument/>
             <tag
                 name="sonata.admin"
+                model_class="App\Entity\Project"
                 manager_type="orm"
                 group="Project"
                 label="Project"
@@ -86,31 +82,24 @@ With a method call (more verbose)
 
         app.admin.project:
             class: App\Admin\ProjectAdmin
-            arguments:
-                - ~
-                - App\Entity\Project
-                - ~
             calls:
                 - [setLabelTranslatorStrategy, ['@sonata.admin.label.strategy.native']]
                 - [setRouteBuilder, ['@sonata.admin.route.path_info']]
             tags:
-                - { name: sonata.admin, manager_type: orm, group: 'Project', label: 'Project' }
+                - { name: sonata.admin, model_class: App\Entity\Project, manager_type: orm, group: 'Project', label: 'Project' }
 
     .. code-block:: xml
 
         <!-- config/services.xml -->
 
         <service id="app.admin.project" class="App\Admin\ProjectAdmin">
-            <argument/>
-            <argument>App\Entity\Project</argument>
-            <argument/>
             <call method="setLabelTranslatorStrategy">
                 <argument type="service" id="sonata.admin.label.strategy.native"/>
             </call>
             <call method="setRouteBuilder">
                 <argument type="service" id="sonata.admin.route.path_info"/>
             </call>
-            <tag name="sonata.admin" manager_type="orm" group="Project" label="Project"/>
+            <tag name="sonata.admin" model_class="App\Entity\Project" manager_type="orm" group="Project" label="Project"/>
         </service>
 
 If you want to modify the service that is going to be injected, add the following code to your
@@ -138,17 +127,23 @@ To create your own RouteBuilder create the PHP class and register it as a servic
     use Sonata\AdminBundle\Builder\RouteBuilderInterface;
     use Sonata\AdminBundle\Admin\AdminInterface;
     use Sonata\AdminBundle\Route\PathInfoBuilder;
-    use Sonata\AdminBundle\Route\RouteCollection;
+    use Sonata\AdminBundle\Route\RouteCollectionInterface;
 
-    class EntityRouterBuilder extends PathInfoBuilder implements RouteBuilderInterface
+    final class EntityRouterBuilder implements RouteBuilderInterface
     {
         /**
-         * @param AdminInterface  $admin
-         * @param RouteCollection $collection
+         * @var PathInfoBuilder
          */
-        public function build(AdminInterface $admin, RouteCollection $collection)
+        private $pathInfoBuilder;
+
+        public function __construct(PathInfoBuilder $pathInfoBuilder)
         {
-            parent::build($admin, $collection);
+            $this->pathInfoBuilder = $pathInfoBuilder;
+        }
+
+        public function build(AdminInterface $admin, RouteCollectionInterface $collection)
+        {
+            $this->pathInfoBuilder->build($admin, $collection);
 
             $collection->add('yourSubAction');
 
@@ -184,7 +179,7 @@ Inherited classes
 
 You can manage inherited classes by injecting subclasses using the service configuration.
 
-Lets consider a base class named `Person` and its subclasses `Student` and `Teacher`:
+Lets consider a base class named ``Person`` and its subclasses ``Student`` and ``Teacher``:
 
 .. configuration-block::
 
@@ -194,10 +189,6 @@ Lets consider a base class named `Person` and its subclasses `Student` and `Teac
 
         app.admin.person:
             class: App\Admin\PersonAdmin
-            arguments:
-                - ~
-                - App\Entity\Person
-                - ~
             calls:
                 -
                     - setSubClasses
@@ -205,23 +196,20 @@ Lets consider a base class named `Person` and its subclasses `Student` and `Teac
                         student: App\Entity\Student
                         teacher: App\Entity\Teacher
             tags:
-                - { name: sonata.admin, manager_type: orm, group: "admin", label: "Person" }
+                - { name: sonata.admin, model_class: App\Entity\Person, manager_type: orm, group: "admin", label: "Person" }
 
     .. code-block:: xml
 
         <!-- config/services.xml -->
 
         <service id="app.admin.person" class="App\Admin\PersonAdmin">
-            <argument/>
-            <argument>App\Entity\Person</argument>
-            <argument></argument>
             <call method="setSubClasses">
                 <argument type="collection">
                     <argument key="student">App\Entity\Student</argument>
                     <argument key="teacher">App\Entity\Teacher</argument>
                 </argument>
             </call>
-            <tag name="sonata.admin" manager_type="orm" group="admin" label="Person"/>
+            <tag name="sonata.admin" model_class="App\Entity\Person" manager_type="orm" group="admin" label="Person"/>
         </service>
 
 You will need to change the way forms are configured in order to
@@ -229,19 +217,19 @@ take into account these new subclasses::
 
     // src/Admin/PersonAdmin.php
 
-    protected function configureFormFields(FormMapper $formMapper)
+    protected function configureFormFields(FormMapper $form): void
     {
         $subject = $this->getSubject();
 
-        $formMapper
+        $form
             ->add('name')
         ;
 
         if ($subject instanceof Teacher) {
-            $formMapper->add('course', 'text');
+            $form->add('course', 'text');
         }
         elseif ($subject instanceof Student) {
-            $formMapper->add('year', 'integer');
+            $form->add('year', 'integer');
         }
     }
 
@@ -252,19 +240,19 @@ ACL
 ^^^
 
 Though the route linked by a menu may be protected the Tab Menu will not automatically check the ACl for you.
-The link will still appear unless you manually check it using the `hasAccess` method::
+The link will still appear unless you manually check it using the ``hasAccess()`` method::
 
-    protected function configureTabMenu(MenuItemInterface $menu, $action, AdminInterface $childAdmin = null)
+    protected function configureTabMenu(MenuItemInterface $menu, string $action, ?AdminInterface $childAdmin = null): void
     {
         // Link will always appear even if it is protected by ACL
         $menu->addChild($this->trans('Show'), [
-            'uri' => $admin->generateUrl('show', ['id' => $id])
+            'uri' => $admin->generateUrl('show', [$admin->getIdParameter() => $id])
         ]);
 
         // Link will only appear if access to ACL protected URL is granted
         if ($this->hasAccess('edit')) {
             $menu->addChild($this->trans('Edit'), [
-                'uri' => $admin->generateUrl('edit', ['id' => $id])
+                'uri' => $admin->generateUrl('edit', [$admin->getIdParameter() => $id])
             ]);
         }
     }
@@ -277,17 +265,17 @@ the `'dropdown' => true` attribute::
 
     // src/Admin/PersonAdmin.php
 
-    protected function configureTabMenu(MenuItemInterface $menu, $action, AdminInterface $childAdmin = null)
+    protected function configureTabMenu(MenuItemInterface $menu, string $action, ?AdminInterface $childAdmin = null): void
     {
         // other tab menu stuff ...
 
         $menu->addChild('comments', ['attributes' => ['dropdown' => true]]);
 
         $menu['comments']->addChild('list', [
-            'uri' => $admin->generateUrl('listComment', ['id' => $id])
+            'uri' => $admin->generateUrl('listComment', [$admin->getIdParameter() => $id])
         ]);
         $menu['comments']->addChild('create', [
-            'uri' => $admin->generateUrl('addComment', ['id' => $id])
+            'uri' => $admin->generateUrl('addComment', [$admin->getIdParameter() => $id])
         ]);
     }
 
@@ -307,18 +295,18 @@ Translations
 ^^^^^^^^^^^^
 
 The label translation parameters and domain can be customised by using the
-``label_translation_parameters`` and ``label_catalogue`` keys of the extra array
+``label_translation_parameters`` and ``translation_domain`` keys of the extra array
 of data associated with the item, respectively::
 
     $menuItem->setExtras([
         'label_translation_parameters' => ['myparam' => 'myvalue'],
-        'label_catalogue' => 'My domain',
+        'translation_domain' => 'My domain',
     ]);
 
 You can also set the translation domain on the menu root, and children will
 inherit it::
 
-    $menu->setExtra('label_catalogue', 'My domain');
+    $menu->setExtra('translation_domain', 'My domain');
 
 Filter parameters
 ^^^^^^^^^^^^^^^^^
@@ -332,7 +320,7 @@ You can add or override filter parameters to the Tab Menu::
 
     final class DeliveryAdmin extends AbstractAdmin
     {
-        protected function configureTabMenu(MenuItemInterface $menu, $action, AdminInterface $childAdmin = null)
+        protected function configureTabMenu(MenuItemInterface $menu, string $action, ?AdminInterface $childAdmin = null): void
         {
             if (!$childAdmin && !in_array($action, ['edit', 'show', 'list'])) {
                 return;
@@ -365,7 +353,7 @@ Actions Menu
 You can add custom items to the actions menu for a specific action by
 overriding the following method::
 
-    public function configureActionButtons(AdminInterface $admin, $list, $action, $object)
+    public function configureActionButtons(AdminInterface $admin, array $list, string $action, ?object $object = null): array
     {
         if (in_array($action, ['show', 'edit', 'acl']) && $object) {
             $buttonList['custom'] = [
@@ -378,6 +366,20 @@ overriding the following method::
 
         return $buttonList;
     }
+
+
+Your custom twig file
+
+.. code-block:: twig
+
+    {# @App/Button/custom_button.html.twig #}
+
+    <li>
+        <a href="{{ admin.generateObjectUrl('custom', object) }}">
+            <i class="fa fa-cogs" aria-hidden="true"></i>
+            Custom
+        </a>
+    </li>
 
 .. figure:: ../images/custom_action_buttons.png
    :align: center
@@ -400,26 +402,30 @@ to the ``<html>`` tag.
 Custom Action Access Management
 -------------------------------
 
-You can customize the access system inside the CRUDController by adding
-some entries inside the  `$accessMapping` array in the linked Admin::
+You can customize the access system inside the CRUDController by override
+`getAccessMapping` method in your Admin class and return array with
+additional entries::
 
-    // src/Admin/PostAdmin.php
+    // src/Admin/CustomAdmin.php
 
     final class CustomAdmin extends AbstractAdmin
     {
-        protected $accessMapping = [
-            'myCustomFoo' => 'EDIT',
-            'myCustomBar' => ['EDIT', 'LIST'],
-        ];
+        protected function getAccessMapping(): array
+        {
+            return [
+                'myCustomFoo' => 'EDIT',
+                'myCustomBar' => ['EDIT', 'LIST'],
+            ];
+        }
     }
 
 .. code-block:: php
 
     // src/Controller/CustomCRUDController.php
 
-    class CustomCRUDController extends CRUDController
+    final class CustomCRUDController extends CRUDController
     {
-        public function myCustomFooAction()
+        public function myCustomFooAction(): Response
         {
             $this->admin->checkAccess('myCustomFoo');
             // If you can't access to EDIT role for the linked admin, an AccessDeniedException will be thrown
@@ -427,7 +433,7 @@ some entries inside the  `$accessMapping` array in the linked Admin::
             // ...
         }
 
-        public function myCustomBarAction($object)
+        public function myCustomBarAction($object): Response
         {
             $this->admin->checkAccess('myCustomBar', $object);
             // If you can't access to EDIT AND LIST roles for the linked admin, an AccessDeniedException will be thrown
@@ -437,14 +443,124 @@ some entries inside the  `$accessMapping` array in the linked Admin::
     }
 
 You can also fully customize how you want to handle your access management
-by overriding ``checkAccess`` function::
+by creating custom SecurityHandler service for specific Admin class::
 
-    // src/Admin/CustomAdmin.php
+    // src/Security/Handler/CustomSecurityHandler.php
 
-    final class CustomAdmin extends AbstractAdmin
+    use Sonata\AdminBundle\Security\Handler\SecurityHandlerInterface;
+
+    final class CustomSecurityHandler extends SecurityHandlerInterface
     {
-        public function checkAccess($action, $object = null)
+        public function isGranted(AdminInterface $admin, $attributes, ?object $object = null): bool
         {
-            $this->customAccessLogic();
+            return $this->customAccessLogic();
+        }
+
+        public function getBaseRole(AdminInterface $admin): string
+        {
+            return '';
+        }
+
+        public function buildSecurityInformation(AdminInterface $admin): array
+        {
+            return [];
+        }
+
+        public function createObjectSecurity(AdminInterface $admin, object $object): void
+        {
+        }
+
+        public function deleteObjectSecurity(AdminInterface $admin, object $object): void
+        {
         }
     }
+
+Use `security_handler` tag to point to your custom SecurityHandler service
+for specific Admin class:
+
+.. configuration-block::
+
+    .. code-block:: yaml
+
+        # config/services.yaml
+
+        services:
+            # ...
+            admin.custom:
+                class: App\Admin\CustomAdmin
+                tags:
+                    - { name: sonata.admin, model_class: App\Entity\Custom, manager_type: orm, label: Category, security_handler: App\Security\Handler\CustomSecurityHandler }
+
+You can also use the default SecurityHandler (defined in global configuration)
+in your custom SecurityHandler::
+
+    // src/Security/Handler/CustomSecurityHandler.php
+
+    use Sonata\AdminBundle\Security\Handler\SecurityHandlerInterface;
+
+    final class CustomSecurityHandler extends SecurityHandlerInterface
+    {
+        private SecurityHandlerInterface $defaultSecurityHandler;
+
+        public function __construct(SecurityHandlerInterface $defaultSecurityHandler)
+        {
+            $this->defaultSecurityHandler = $defaultSecurityHandler;
+        }
+
+        public function isGranted(AdminInterface $admin, $attributes, ?object $object = null): bool
+        {
+            // Custom access logic
+            if (...) {
+                return false;
+            }
+
+            // Default access logic
+            return $this->defaultSecurityHandler->isGranted($admin, $attributes, $object);
+        }
+
+        // ...
+    }
+
+.. configuration-block::
+
+    .. code-block:: yaml
+
+        # config/services.yaml
+
+        services:
+            # ...
+            App\Security\Handler\CustomSecurityHandler:
+                arguments:
+                    - '@sonata.admin.security.handler'
+
+If you have a lot of SecurityHandler services that use the default SecurityHandler service,
+you can define a service alias:
+
+.. configuration-block::
+
+    .. code-block:: yaml
+
+        # config/services.yaml
+
+        services:
+            # ...
+            Sonata\AdminBundle\Security\Handler\SecurityHandlerInterface: '@sonata.admin.security.handler'
+
+This way, you do not need to define each custom SecurityHandler service to specify
+the default SecurityHandler service as an argument.
+
+
+Use your own custom controller as default
+-----------------------------------------
+
+By default, ``CRUDController`` is the controller used when no controller has been specified. You can modify this by
+adding the following in the configuration:
+
+.. configuration-block::
+
+    .. code-block:: yaml
+
+        # config/packages/sonata_admin.yaml
+
+        sonata_admin:
+            default_controller: App\Controller\DefaultCRUDController

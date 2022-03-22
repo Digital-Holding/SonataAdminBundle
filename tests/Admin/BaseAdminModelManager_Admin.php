@@ -15,6 +15,9 @@ namespace Sonata\AdminBundle\Tests\Admin;
 
 use Sonata\AdminBundle\Admin\AbstractAdmin;
 
-class BaseAdminModelManager_Admin extends AbstractAdmin
+/**
+ * @phpstan-extends AbstractAdmin<object>
+ */
+final class BaseAdminModelManager_Admin extends AbstractAdmin
 {
 }

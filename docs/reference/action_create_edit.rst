@@ -34,13 +34,8 @@ For more information about optional libraries:
 - iCheck: http://icheck.fronteed.com/
 - Bootlint: https://github.com/twbs/bootlint#in-the-browser
 
-.. note::
-
-    **TODO**
-    * options available when adding fields, inc custom templates
-
 Routes
-~~~~~~
+------
 
 You can disable creating or editing entities by removing the corresponding routes in your Admin.
 For more detailed information about routes, see :doc:`routing`::
@@ -49,7 +44,7 @@ For more detailed information about routes, see :doc:`routing`::
 
     final class PersonAdmin extends AbstractAdmin
     {
-        protected function configureRoutes(RouteCollection $collection): void
+        protected function configureRoutes(RouteCollectionInterface $collection): void
         {
             /* Removing the edit route will disable editing entities. It will also
             use the 'show' view as default link on the identifier columns in the list view. */
@@ -74,9 +69,9 @@ groups::
 
     final class PersonAdmin extends AbstractAdmin
     {
-        protected function configureFormFields(FormMapper $formMapper): void
+        protected function configureFormFields(FormMapper $form): void
         {
-            $formMapper
+            $form
                 ->tab('General') // The tab call is optional
                     ->with('Addresses')
                         ->add('title') // Add a field and let Sonata decide which type to use
@@ -109,7 +104,7 @@ has 4 parameters:
     through getters/setters or public access.
 
 FormGroup options
-~~~~~~~~~~~~~~~~~
+-----------------
 
 When adding a form group to your edit/create form, you may specify some
 options for the group itself.
@@ -131,9 +126,9 @@ To specify options, do as follows::
 
     final class PersonAdmin extends AbstractAdmin
     {
-        protected function configureFormFields(FormMapper $formMapper): void
+        protected function configureFormFields(FormMapper $form): void
         {
-            $formMapper
+            $form
                 ->tab('General') // the tab call is optional
                     ->with('Addresses', [
                         'class'       => 'col-md-8',
@@ -157,6 +152,41 @@ a group:
    :alt: Box Class
    :width: 500
 
+Displaying custom data/template
+-------------------------------
+
+If you need a specific layout between some fields, you can define a custom template
+with the sonata TemplateType::
+
+    namespace App\Admin;
+
+    use Sonata\AdminBundle\Admin\AbstractAdmin;
+    use Sonata\AdminBundle\Form\FormMapper;
+    use Sonata\AdminBundle\Form\Type\TemplateType;
+
+   final class PersonAdmin extends AbstractAdmin
+    {
+        protected function configureFormFields(FormMapper $form): void
+        {
+            $form
+                 ->add('title')
+                 ->add('googleMap', TemplateType::class, [
+                     'template'   => 'path/to/your/template.html.twig'
+                     'parameters' => [
+                         'url' => $this->generateGoogleMapUrl($this->getSubject()),
+                     ],
+                 ])
+                 ->add('streetname', TextType::class)
+                 ->add('housenumber', NumberType::class);
+        }
+    }
+
+The related template:
+
+.. code-block:: twig
+
+    <a href="{{ url }}">{{ object.title }}</a>
+
 Embedding other Admins
 ----------------------
 
@@ -165,12 +195,3 @@ Embedding other Admins
     **TODO**:
     * how to embed one Admin in another (1:1, 1:M, M:M)
     * how to access the right object(s) from the embedded Admin's code
-
-Customizing only one of the actions
------------------------------------
-
-.. note::
-
-    **TODO**:
-    * how to create settings/fields that appear on only one of the create/edit views
-    * and any controller changes needed to manage them

@@ -13,10 +13,16 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Action;
 
-class Bafoo
+final class Bafoo
 {
+    /**
+     * @var \DateTime|null
+     */
     private $dateProp;
 
+    /**
+     * @var \DateTime|null
+     */
     private $datetimeProp;
 
     public function getDateProp(): ?\DateTime

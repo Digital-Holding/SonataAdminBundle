@@ -16,11 +16,12 @@ namespace Sonata\AdminBundle\Tests\Block;
 use Sonata\AdminBundle\Admin\Pool;
 use Sonata\AdminBundle\Block\AdminStatsBlockService;
 use Sonata\BlockBundle\Test\BlockServiceTestCase;
+use Symfony\Component\DependencyInjection\Container;
 
 /**
  * @author Sullivan Senechal <soullivaneuh@gmail.com>
  */
-class AdminStatsBlockServiceTest extends BlockServiceTestCase
+final class AdminStatsBlockServiceTest extends BlockServiceTestCase
 {
     /**
      * @var Pool
@@ -31,7 +32,7 @@ class AdminStatsBlockServiceTest extends BlockServiceTestCase
     {
         parent::setUp();
 
-        $this->pool = $this->createMock(Pool::class);
+        $this->pool = new Pool(new Container());
     }
 
     public function testDefaultSettings(): void
@@ -39,8 +40,8 @@ class AdminStatsBlockServiceTest extends BlockServiceTestCase
         $blockService = new AdminStatsBlockService($this->twig, $this->pool);
         $blockContext = $this->getBlockContext($blockService);
 
-        $this->assertSettings([
-            'icon' => 'fa-line-chart',
+        self::assertSettings([
+            'icon' => 'fas fa-chart-line',
             'text' => 'Statistics',
             'translation_domain' => null,
             'color' => 'bg-aqua',

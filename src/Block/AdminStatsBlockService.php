@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Block;
 
 use Sonata\AdminBundle\Admin\Pool;
+use Sonata\AdminBundle\Datagrid\DatagridInterface;
 use Sonata\BlockBundle\Block\BlockContextInterface;
 use Sonata\BlockBundle\Block\Service\AbstractBlockService;
 use Symfony\Component\HttpFoundation\Response;
@@ -39,14 +40,18 @@ final class AdminStatsBlockService extends AbstractBlockService
 
     public function execute(BlockContextInterface $blockContext, ?Response $response = null): Response
     {
+        $template = $blockContext->getTemplate();
+        \assert(null !== $template);
+
         $admin = $this->pool->getAdminByAdminCode($blockContext->getSetting('code'));
 
         $datagrid = $admin->getDatagrid();
 
+        /** @var array<string, array{type?: string|null, value: mixed}> $filters */
         $filters = $blockContext->getSetting('filters');
 
-        if (!isset($filters['_per_page'])) {
-            $filters['_per_page'] = ['value' => $blockContext->getSetting('limit')];
+        if (!isset($filters[DatagridInterface::PER_PAGE])) {
+            $filters[DatagridInterface::PER_PAGE] = ['value' => $blockContext->getSetting('limit')];
         }
 
         foreach ($filters as $name => $data) {
@@ -55,10 +60,9 @@ final class AdminStatsBlockService extends AbstractBlockService
 
         $datagrid->buildPager();
 
-        return $this->renderPrivateResponse($blockContext->getTemplate(), [
+        return $this->renderPrivateResponse($template, [
             'block' => $blockContext->getBlock(),
             'settings' => $blockContext->getSettings(),
-            'admin_pool' => $this->pool,
             'admin' => $admin,
             'pager' => $datagrid->getPager(),
             'datagrid' => $datagrid,
@@ -68,7 +72,7 @@ final class AdminStatsBlockService extends AbstractBlockService
     public function configureSettings(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
-            'icon' => 'fa-line-chart',
+            'icon' => 'fas fa-chart-line',
             'text' => 'Statistics',
             'translation_domain' => null,
             'color' => 'bg-aqua',

@@ -23,6 +23,8 @@ use Symfony\Component\Form\FormEvents;
 
 /**
  * @author Emmanuel Vella <vella.emmanuel@gmail.com>
+ *
+ * @phpstan-extends AbstractAdminExtension<object>
  */
 final class LockExtension extends AbstractAdminExtension
 {
@@ -40,7 +42,7 @@ final class LockExtension extends AbstractAdminExtension
             $data = $event->getData();
             $form = $event->getForm();
 
-            if (null === $data || $form->getParent()) {
+            if (!\is_object($data) || null !== $form->getParent()) {
                 return;
             }
 
@@ -63,7 +65,12 @@ final class LockExtension extends AbstractAdminExtension
 
     public function preUpdate(AdminInterface $admin, object $object): void
     {
-        if (!$admin->hasRequest() || !$data = $admin->getRequest()->get($admin->getUniqid())) {
+        if (!$admin->hasRequest()) {
+            return;
+        }
+
+        $data = $admin->getRequest()->get($admin->getUniqId());
+        if (!\is_array($data)) {
             return;
         }
 
@@ -77,6 +84,6 @@ final class LockExtension extends AbstractAdminExtension
             return;
         }
 
-        $modelManager->lock($object, $data[$this->fieldName]);
+        $modelManager->lock($object, (int) $data[$this->fieldName]);
     }
 }

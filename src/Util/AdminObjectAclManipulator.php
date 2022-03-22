@@ -13,26 +13,27 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Util;
 
+use Sonata\AdminBundle\BCLayer\BCUserInterface;
 use Sonata\AdminBundle\Form\Type\AclMatrixType;
 use Symfony\Component\Form\Extension\Core\Type\FormType;
-use Symfony\Component\Form\Form;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormFactoryInterface;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Security\Acl\Domain\ObjectIdentity;
 use Symfony\Component\Security\Acl\Domain\RoleSecurityIdentity;
 use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
 use Symfony\Component\Security\Acl\Exception\NoAceFoundException;
+use Symfony\Component\Security\Acl\Model\SecurityIdentityInterface;
+use Symfony\Component\Security\Acl\Permission\MaskBuilderInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
  * A manipulator for updating ACL related to an object.
  *
- * @final since sonata-project/admin-bundle 3.52
- *
  * @author Kévin Dunglas <kevin@les-tilleuls.coop>
  * @author Baptiste Meyer <baptiste@les-tilleuls.coop>
  */
-class AdminObjectAclManipulator
+final class AdminObjectAclManipulator
 {
     public const ACL_USERS_FORM_NAME = 'acl_users_form';
     public const ACL_ROLES_FORM_NAME = 'acl_roles_form';
@@ -40,37 +41,33 @@ class AdminObjectAclManipulator
     /**
      * @var FormFactoryInterface
      */
-    protected $formFactory;
-    /**
-     * @var string
-     */
-    protected $maskBuilderClass;
+    private $formFactory;
 
     /**
-     * @param string $maskBuilderClass
+     * @var string
+     *
+     * @phpstan-var class-string<MaskBuilderInterface>
      */
-    public function __construct(FormFactoryInterface $formFactory, $maskBuilderClass)
+    private $maskBuilderClass;
+
+    /**
+     * @phpstan-param class-string<MaskBuilderInterface> $maskBuilderClass
+     */
+    public function __construct(FormFactoryInterface $formFactory, string $maskBuilderClass)
     {
         $this->formFactory = $formFactory;
         $this->maskBuilderClass = $maskBuilderClass;
     }
 
     /**
-     * Gets mask builder class name.
-     *
-     * @return string
+     * @phpstan-return class-string
      */
-    public function getMaskBuilderClass()
+    public function getMaskBuilderClass(): string
     {
         return $this->maskBuilderClass;
     }
 
-    /**
-     * Gets the ACL users form.
-     *
-     * @return Form
-     */
-    public function createAclUsersForm(AdminObjectAclData $data)
+    public function createAclUsersForm(AdminObjectAclData $data): FormInterface
     {
         $aclValues = $data->getAclUsers();
         $formBuilder = $this->formFactory->createNamedBuilder(self::ACL_USERS_FORM_NAME, FormType::class);
@@ -80,12 +77,7 @@ class AdminObjectAclManipulator
         return $form;
     }
 
-    /**
-     * Gets the ACL roles form.
-     *
-     * @return Form
-     */
-    public function createAclRolesForm(AdminObjectAclData $data)
+    public function createAclRolesForm(AdminObjectAclData $data): FormInterface
     {
         $aclValues = $data->getAclRoles();
         $formBuilder = $this->formFactory->createNamedBuilder(self::ACL_ROLES_FORM_NAME, FormType::class);
@@ -95,41 +87,46 @@ class AdminObjectAclManipulator
         return $form;
     }
 
-    /**
-     * Updates ACL users.
-     */
     public function updateAclUsers(AdminObjectAclData $data): void
     {
-        $aclValues = $data->getAclUsers();
         $form = $data->getAclUsersForm();
+        if (null === $form) {
+            throw new \InvalidArgumentException('Cannot update Acl roles if the acl users form is not set.');
+        }
 
-        $this->buildAcl($data, $form, $aclValues);
+        $this->buildAcl($data, $form, $data->getAclUsers());
     }
 
-    /**
-     * Updates ACL roles.
-     */
     public function updateAclRoles(AdminObjectAclData $data): void
     {
-        $aclValues = $data->getAclRoles();
         $form = $data->getAclRolesForm();
+        if (null === $form) {
+            throw new \InvalidArgumentException('Cannot update Acl roles if the acl roles form is not set.');
+        }
 
-        $this->buildAcl($data, $form, $aclValues);
+        $this->buildAcl($data, $form, $data->getAclRoles());
     }
 
     /**
-     * Builds ACL.
+     * @param \Traversable<int|string, UserInterface|string> $aclValues
+     *
+     * @phpstan-param \Traversable<array-key, UserInterface|string> $aclValues
      */
-    protected function buildAcl(AdminObjectAclData $data, Form $form, \Traversable $aclValues): void
+    private function buildAcl(AdminObjectAclData $data, FormInterface $form, \Traversable $aclValues): void
     {
-        $masks = $data->getMasks();
         $acl = $data->getAcl();
+        if (null === $acl) {
+            throw new \InvalidArgumentException('The acl cannot be null.');
+        }
+
+        $masks = $data->getMasks();
+        /** @var array<string, array<string, mixed>> $matrices */
         $matrices = $form->getData();
 
         foreach ($aclValues as $aclValue) {
             foreach ($matrices as $key => $matrix) {
                 if ($aclValue instanceof UserInterface) {
-                    if (\array_key_exists('user', $matrix) && $aclValue->getUsername() === $matrix['user']) {
+                    if (\array_key_exists('user', $matrix) && BCUserInterface::getUsername($aclValue) === $matrix['user']) {
                         $matrices[$key]['acl_value'] = $aclValue;
                     }
                 } elseif (\array_key_exists('role', $matrix) && $aclValue === $matrix['role']) {
@@ -164,17 +161,15 @@ class AdminObjectAclManipulator
             $mask = $maskBuilder->get();
 
             $index = null;
-            $ace = null;
             foreach ($acl->getObjectAces() as $currentIndex => $currentAce) {
                 if ($currentAce->getSecurityIdentity()->equals($securityIdentity)) {
                     $index = $currentIndex;
-                    $ace = $currentAce;
 
                     break;
                 }
             }
 
-            if ($ace) {
+            if (null !== $index) {
                 $acl->updateObjectAce($index, $mask);
             } else {
                 $acl->insertObjectAce($securityIdentity, $mask);
@@ -185,16 +180,16 @@ class AdminObjectAclManipulator
     }
 
     /**
-     * Builds the form.
+     * @param \Traversable<int|string, UserInterface|string> $aclValues
      *
-     * @return Form
+     * @phpstan-param \Traversable<array-key, UserInterface|string> $aclValues
      */
-    protected function buildForm(AdminObjectAclData $data, FormBuilderInterface $formBuilder, \Traversable $aclValues)
+    private function buildForm(AdminObjectAclData $data, FormBuilderInterface $formBuilder, \Traversable $aclValues): FormInterface
     {
         // Retrieve object identity
         $objectIdentity = ObjectIdentity::fromDomainObject($data->getObject());
         $acl = $data->getSecurityHandler()->getObjectAcl($objectIdentity);
-        if (!$acl) {
+        if (null === $acl) {
             $acl = $data->getSecurityHandler()->createAcl($objectIdentity);
         }
 
@@ -217,6 +212,7 @@ class AdminObjectAclManipulator
                 $attr = [];
                 if (
                     self::ACL_ROLES_FORM_NAME === $formBuilder->getName()
+                    && \is_string($aclValue)
                     && isset($securityInformation[$aclValue])
                     && false !== array_search($permission, $securityInformation[$aclValue], true)
                 ) {
@@ -232,7 +228,7 @@ class AdminObjectAclManipulator
             }
 
             $formBuilder->add(
-                $key,
+                (string) $key,
                 AclMatrixType::class,
                 ['permissions' => $permissions, 'acl_value' => $aclValue]
             );
@@ -248,11 +244,10 @@ class AdminObjectAclManipulator
      *
      * @return RoleSecurityIdentity|UserSecurityIdentity
      */
-    protected function getSecurityIdentity($aclValue)
+    private function getSecurityIdentity($aclValue): SecurityIdentityInterface
     {
         return ($aclValue instanceof UserInterface)
             ? UserSecurityIdentity::fromAccount($aclValue)
-            : new RoleSecurityIdentity($aclValue)
-        ;
+            : new RoleSecurityIdentity($aclValue);
     }
 }
