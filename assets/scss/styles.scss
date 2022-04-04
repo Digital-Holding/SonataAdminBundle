@@ -17,6 +17,22 @@ html {
   position: relative;
 }
 
+footer {
+  background-color: #333;
+  bottom: 0;
+  height: 20px;
+  position: absolute;
+  width: 100%;
+
+  p {
+    margin: 0;
+  }
+
+  a {
+    color: #f6f6f6;
+  }
+}
+
 .logo {
   img {
     display: inline;
@@ -39,6 +55,10 @@ html {
 
 body > .header .logo {
   font-family: 'Source Sans Pro', sans-serif;
+}
+
+.main-header {
+  height: 50px;
 }
 
 .open > .dropdown-menu {
