@@ -18,30 +18,22 @@ use Symfony\Component\Form\FormBuilderInterface;
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  *
- * @phpstan-extends \RecursiveArrayIterator<string|int, FormBuilderInterface>
+ * @phpstan-extends \RecursiveArrayIterator<string, FormBuilderInterface>
  */
 final class FormBuilderIterator extends \RecursiveArrayIterator
 {
-    /**
-     * @var FormBuilderInterface
-     */
-    private $formBuilder;
+    private string $prefix;
 
     /**
-     * @var string
+     * @var \ArrayIterator<string|int, string|int>
      */
-    private $prefix;
+    private \ArrayIterator $iterator;
 
-    /**
-     * @var \ArrayIterator<string|int, string>
-     */
-    private $iterator;
-
-    public function __construct(FormBuilderInterface $formBuilder, ?string $prefix = null)
-    {
+    public function __construct(
+        private FormBuilderInterface $formBuilder,
+        ?string $prefix = null
+    ) {
         parent::__construct();
-
-        $this->formBuilder = $formBuilder;
         $this->prefix = $prefix ?? $formBuilder->getName();
         $this->iterator = new \ArrayIterator(self::getKeys($formBuilder));
     }
@@ -70,7 +62,7 @@ final class FormBuilderIterator extends \RecursiveArrayIterator
 
     public function current(): FormBuilderInterface
     {
-        return $this->formBuilder->get($this->iterator->current());
+        return $this->formBuilder->get((string) $this->iterator->current());
     }
 
     public function getChildren(): self
@@ -84,7 +76,7 @@ final class FormBuilderIterator extends \RecursiveArrayIterator
     }
 
     /**
-     * @return array<string|int, string>
+     * @return array<string|int, string|int>
      */
     private static function getKeys(FormBuilderInterface $formBuilder): array
     {

@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Form\Type;
 
 use Sonata\AdminBundle\Admin\AdminInterface;
-use Sonata\AdminBundle\BCLayer\BCDeprecation;
 use Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface;
 use Sonata\AdminBundle\Form\DataTransformer\ArrayToModelTransformer;
 use Sonata\AdminBundle\Manipulator\ObjectManipulator;
@@ -30,6 +29,8 @@ use Symfony\Component\PropertyAccess\PropertyAccess;
 
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ *
+ * @psalm-suppress MissingTemplateParam https://github.com/phpstan/phpstan-symfony/issues/320
  */
 final class AdminType extends AbstractType
 {
@@ -45,11 +46,12 @@ final class AdminType extends AbstractType
         }
 
         if (true === $options['delete'] && $admin->hasAccess('delete')) {
-            if (!\array_key_exists('translation_domain', $options['delete_options']['type_options'])) {
-                $options['delete_options']['type_options']['translation_domain'] = $admin->getTranslationDomain();
+            $deleteOptions = $options['delete_options'];
+            if (!\array_key_exists('translation_domain', $deleteOptions['type_options'])) {
+                $deleteOptions['type_options']['translation_domain'] = $admin->getTranslationDomain();
             }
 
-            $builder->add('_delete', $options['delete_options']['type'], $options['delete_options']['type_options']);
+            $builder->add('_delete', $deleteOptions['type'], $deleteOptions['type_options']);
         }
 
         // hack to make sure the subject is correctly set
@@ -76,9 +78,7 @@ final class AdminType extends AbstractType
                     $parentPath = implode(
                         '',
                         array_map(
-                            static function (array $associationMapping): string {
-                                return sprintf('%s.', $associationMapping['fieldName']);
-                            },
+                            static fn (array $associationMapping): string => sprintf('%s.', $associationMapping['fieldName']),
                             $this->getFieldDescription($options)->getParentAssociationMappings()
                         )
                     );
@@ -86,15 +86,14 @@ final class AdminType extends AbstractType
 
                     try {
                         $subject = $propertyAccessor->getValue($parentSubject, $parentPath.$path);
-                    } catch (NoSuchIndexException $e) {
+                    } catch (NoSuchIndexException) {
                         // no object here, we create a new one
                         $subject = $admin->getNewInstance();
 
                         if (true === $options['collection_by_reference']) {
                             $subject = ObjectManipulator::addInstance($parentSubject, $subject, $parentFieldDescription);
-                        } else {
-                            $subject = ObjectManipulator::setObject($subject, $parentSubject, $parentFieldDescription);
                         }
+                        $subject = ObjectManipulator::setObject($subject, $parentSubject, $parentFieldDescription);
                     }
                 }
             }
@@ -129,9 +128,7 @@ final class AdminType extends AbstractType
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
-            'delete' => static function (Options $options): bool {
-                return false !== $options['btn_delete'];
-            },
+            'delete' => static fn (Options $options): bool => false !== $options['btn_delete'],
             'delete_options' => [
                 'type' => CheckboxType::class,
                 'type_options' => [
@@ -150,16 +147,15 @@ final class AdminType extends AbstractType
 
         $resolver->setDeprecated(
             'btn_catalogue',
-            ...BCDeprecation::forOptionResolver(
-                static function (Options $options, $value): string {
-                    if ('SonataAdminBundle' !== $value) {
-                        return 'Passing a value to option "btn_catalogue" is deprecated! Use "btn_translation_domain" instead!';
-                    }
+            'sonata-project/admin-bundle',
+            '4.9',
+            static function (Options $options, mixed $value): string {
+                if ('SonataAdminBundle' !== $value) {
+                    return 'Passing a value to option "btn_catalogue" is deprecated! Use "btn_translation_domain" instead!';
+                }
 
-                    return '';
-                },
-                '4.9',
-            )
+                return '';
+            },
         ); // NEXT_MAJOR: Remove this deprecation notice.
     }
 

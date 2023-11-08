@@ -31,49 +31,18 @@ use Twig\Environment;
 final class AdminSearchBlockService extends AbstractBlockService
 {
     /**
-     * @var Pool
-     */
-    private $pool;
-
-    /**
-     * @var SearchHandler
-     */
-    private $searchHandler;
-
-    /**
-     * @var TemplateRegistryInterface
-     */
-    private $templateRegistry;
-
-    /**
-     * @var string
-     */
-    private $emptyBoxesOption;
-
-    /**
-     * @var string
-     */
-    private $adminRoute;
-
-    /**
      * @phpstan-param 'show'|'hide'|'fade' $emptyBoxesOption
      * @phpstan-param 'show'|'edit'        $adminRoute
      */
     public function __construct(
         Environment $twig,
-        Pool $pool,
-        SearchHandler $searchHandler,
-        TemplateRegistryInterface $templateRegistry,
-        string $emptyBoxesOption,
-        string $adminRoute
+        private Pool $pool,
+        private SearchHandler $searchHandler,
+        private TemplateRegistryInterface $templateRegistry,
+        private string $emptyBoxesOption,
+        private string $adminRoute
     ) {
         parent::__construct($twig);
-
-        $this->pool = $pool;
-        $this->searchHandler = $searchHandler;
-        $this->templateRegistry = $templateRegistry;
-        $this->emptyBoxesOption = $emptyBoxesOption;
-        $this->adminRoute = $adminRoute;
     }
 
     public function execute(BlockContextInterface $blockContext, ?Response $response = null): Response
@@ -100,16 +69,17 @@ final class AdminSearchBlockService extends AbstractBlockService
         );
 
         if (null === $pager) {
-            $response = $response ?? new Response();
+            $response ??= new Response();
 
             return $response->setContent('')->setStatusCode(204);
         }
 
-        $filters = array_filter($admin->getDatagrid()->getFilters(), static function (FilterInterface $filter): bool {
-            return $filter instanceof SearchableFilterInterface && $filter->isSearchEnabled();
-        });
+        $filters = array_filter(
+            $admin->getDatagrid()->getFilters(),
+            static fn (FilterInterface $filter): bool => $filter instanceof SearchableFilterInterface && $filter->isSearchEnabled()
+        );
 
-        return $this->renderPrivateResponse($this->templateRegistry->getTemplate('search_result_block'), [
+        return $this->renderResponse($this->templateRegistry->getTemplate('search_result_block'), [
             'block' => $blockContext->getBlock(),
             'settings' => $blockContext->getSettings(),
             'pager' => $pager,

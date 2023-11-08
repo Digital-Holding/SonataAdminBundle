@@ -18,6 +18,8 @@ use Sonata\AdminBundle\Filter\Model\FilterData;
 
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ *
+ * @method array getFormOptions();
  */
 interface FilterInterface
 {
@@ -25,6 +27,9 @@ interface FilterInterface
 
     public const CONDITION_AND = 'AND';
 
+    /**
+     * @param ProxyQueryInterface<object> $query
+     */
     public function apply(ProxyQueryInterface $query, FilterData $filterData): void;
 
     /**
@@ -121,6 +126,10 @@ interface FilterInterface
     public function getFieldType(): string;
 
     /**
+     * NEXT_MAJOR: Remove this method.
+     *
+     * @deprecated since sonata-project/admin-bundle version 4.15 use getFormOptions() instead.
+     *
      * Returns the main widget used to render the filter.
      *
      * @return array{string, array<string, mixed>}

@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Form\Type;
 
-use Sonata\AdminBundle\BCLayer\BCDeprecation;
 use Sonata\AdminBundle\Form\ChoiceList\ModelChoiceLoader;
 use Sonata\AdminBundle\Form\DataTransformer\ModelsToArrayTransformer;
 use Sonata\AdminBundle\Form\DataTransformer\ModelToIdTransformer;
@@ -21,6 +20,7 @@ use Sonata\AdminBundle\Form\EventListener\MergeCollectionListener;
 use Sonata\AdminBundle\Model\ModelManagerInterface;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\ChoiceList\ChoiceListInterface;
+use Symfony\Component\Form\ChoiceList\Loader\ChoiceLoaderInterface;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormInterface;
@@ -34,17 +34,14 @@ use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
  * This type define a standard select input with a + sign to add new associated object.
  *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ *
+ * @psalm-suppress MissingTemplateParam https://github.com/phpstan/phpstan-symfony/issues/320
  */
 final class ModelType extends AbstractType
 {
-    /**
-     * @var PropertyAccessorInterface
-     */
-    private $propertyAccessor;
-
-    public function __construct(PropertyAccessorInterface $propertyAccessor)
-    {
-        $this->propertyAccessor = $propertyAccessor;
+    public function __construct(
+        private PropertyAccessorInterface $propertyAccessor
+    ) {
     }
 
     /**
@@ -86,7 +83,7 @@ final class ModelType extends AbstractType
     {
         $options = [];
 
-        $options['choice_loader'] = function (Options $options, ?ChoiceListInterface $previousValue) {
+        $options['choice_loader'] = function (Options $options, ?ChoiceListInterface $previousValue): array|ChoiceLoaderInterface {
             if (null !== $previousValue && \count($choices = $previousValue->getChoices()) > 0) {
                 return $choices;
             }
@@ -102,9 +99,7 @@ final class ModelType extends AbstractType
         };
 
         $resolver->setDefaults(array_merge($options, [
-            'compound' => static function (Options $options): bool {
-                return true === $options['expanded'];
-            },
+            'compound' => static fn (Options $options): bool => true === $options['expanded'],
             'template' => 'choice',
             'multiple' => false,
             'expanded' => false,
@@ -125,16 +120,15 @@ final class ModelType extends AbstractType
 
         $resolver->setDeprecated(
             'btn_catalogue',
-            ...BCDeprecation::forOptionResolver(
-                static function (Options $options, $value): string {
-                    if ('SonataAdminBundle' !== $value) {
-                        return 'Passing a value to option "btn_catalogue" is deprecated! Use "btn_translation_domain" instead!';
-                    }
+            'sonata-project/admin-bundle',
+            '4.9',
+            static function (Options $options, mixed $value): string {
+                if ('SonataAdminBundle' !== $value) {
+                    return 'Passing a value to option "btn_catalogue" is deprecated! Use "btn_translation_domain" instead!';
+                }
 
-                    return '';
-                },
-                '4.9',
-            )
+                return '';
+            },
         ); // NEXT_MAJOR: Remove this deprecation notice.
     }
 

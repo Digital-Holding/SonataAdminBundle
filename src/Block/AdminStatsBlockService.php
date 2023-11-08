@@ -26,22 +26,16 @@ use Twig\Environment;
  */
 final class AdminStatsBlockService extends AbstractBlockService
 {
-    /**
-     * @var Pool
-     */
-    private $pool;
-
-    public function __construct(Environment $twig, Pool $pool)
-    {
+    public function __construct(
+        Environment $twig,
+        private Pool $pool
+    ) {
         parent::__construct($twig);
-
-        $this->pool = $pool;
     }
 
     public function execute(BlockContextInterface $blockContext, ?Response $response = null): Response
     {
         $template = $blockContext->getTemplate();
-        \assert(null !== $template);
 
         $admin = $this->pool->getAdminByAdminCode($blockContext->getSetting('code'));
 
@@ -60,7 +54,7 @@ final class AdminStatsBlockService extends AbstractBlockService
 
         $datagrid->buildPager();
 
-        return $this->renderPrivateResponse($template, [
+        return $this->renderResponse($template, [
             'block' => $blockContext->getBlock(),
             'settings' => $blockContext->getSettings(),
             'admin' => $admin,

@@ -15,6 +15,7 @@ namespace Sonata\AdminBundle\Action;
 
 use Sonata\AdminBundle\Admin\AdminInterface;
 use Sonata\AdminBundle\Datagrid\DatagridInterface;
+use Sonata\AdminBundle\Exception\AbstractClassException;
 use Sonata\AdminBundle\Exception\BadRequestParamHttpException;
 use Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface;
 use Sonata\AdminBundle\Filter\FilterInterface;
@@ -29,14 +30,9 @@ use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 final class RetrieveAutocompleteItemsAction
 {
-    /**
-     * @var AdminFetcherInterface
-     */
-    private $adminFetcher;
-
-    public function __construct(AdminFetcherInterface $adminFetcher)
-    {
-        $this->adminFetcher = $adminFetcher;
+    public function __construct(
+        private AdminFetcherInterface $adminFetcher
+    ) {
     }
 
     /**
@@ -60,8 +56,12 @@ final class RetrieveAutocompleteItemsAction
             throw new AccessDeniedException();
         }
 
-        // subject will be empty to avoid unnecessary database requests and keep autocomplete function fast
-        $admin->setSubject($admin->getNewInstance());
+        try {
+            // subject will be empty to avoid unnecessary database requests and keep autocomplete function fast
+            $admin->setSubject($admin->getNewInstance());
+        } catch (AbstractClassException) {
+            // in case the subject is an abstract entity, we continue because the admin subject is non-mandatory here
+        }
 
         $field = $request->get('field');
         if (!\is_string($field)) {
@@ -137,7 +137,7 @@ final class RetrieveAutocompleteItemsAction
                         'To retrieve autocomplete items, you MUST add the filter "%s"'
                         .' to the %s::configureDatagridFilters() method.',
                         $prop,
-                        \get_class($targetAdmin)
+                        $targetAdmin::class
                     ));
                 }
 
@@ -147,7 +147,7 @@ final class RetrieveAutocompleteItemsAction
                         'To retrieve autocomplete items with multiple properties,'
                         .' the filter "%s" of the admin "%s" MUST implements "%s".',
                         $filter->getName(),
-                        \get_class($targetAdmin),
+                        $targetAdmin::class,
                         ChainableFilterInterface::class
                     ));
                 }
@@ -169,7 +169,7 @@ final class RetrieveAutocompleteItemsAction
                     'To retrieve autocomplete items, you MUST add the filter "%s"'
                     .' to the %s::configureDatagridFilters() method.',
                     $property,
-                    \get_class($targetAdmin)
+                    $targetAdmin::class
                 ));
             }
 

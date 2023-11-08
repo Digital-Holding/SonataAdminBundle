@@ -13,12 +13,12 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Form\ChoiceList;
 
-use Doctrine\Common\Util\ClassUtils;
 use Sonata\AdminBundle\Model\ModelManagerInterface;
-use Sonata\Doctrine\Adapter\AdapterInterface;
 use Symfony\Component\Form\ChoiceList\ArrayChoiceList;
 use Symfony\Component\Form\ChoiceList\ChoiceListInterface;
 use Symfony\Component\Form\ChoiceList\Loader\ChoiceLoaderInterface;
+use Symfony\Component\Form\Exception\InvalidArgumentException;
+use Symfony\Component\Form\Exception\TransformationFailedException;
 use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
 
 /**
@@ -26,42 +26,7 @@ use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
  */
 final class ModelChoiceLoader implements ChoiceLoaderInterface
 {
-    /**
-     * @var ModelManagerInterface<object>
-     */
-    private $modelManager;
-
-    /**
-     * @var PropertyAccessorInterface
-     */
-    private $propertyAccessor;
-
-    /**
-     * @var string
-     *
-     * @phpstan-var class-string
-     */
-    private $class;
-
-    /**
-     * @var string|null
-     */
-    private $property;
-
-    /**
-     * @var object|null
-     */
-    private $query;
-
-    /**
-     * @var object[]|null
-     */
-    private $choices;
-
-    /**
-     * @var ChoiceListInterface|null
-     */
-    private $choiceList;
+    private ?ChoiceListInterface $choiceList = null;
 
     /**
      * @param ModelManagerInterface<object> $modelManager
@@ -70,25 +35,15 @@ final class ModelChoiceLoader implements ChoiceLoaderInterface
      * @phpstan-param class-string $class
      */
     public function __construct(
-        ModelManagerInterface $modelManager,
-        PropertyAccessorInterface $propertyAccessor,
-        string $class,
-        ?string $property = null,
-        ?object $query = null,
-        ?array $choices = null
+        private ModelManagerInterface $modelManager,
+        private PropertyAccessorInterface $propertyAccessor,
+        private string $class,
+        private ?string $property = null,
+        private ?object $query = null,
+        private ?array $choices = null
     ) {
-        $this->modelManager = $modelManager;
-        $this->propertyAccessor = $propertyAccessor;
-        $this->class = $class;
-        $this->property = $property;
-        $this->choices = $choices;
-
-        if (null !== $query) {
-            if (!$this->modelManager->supportsQuery($query)) {
-                throw new \InvalidArgumentException('The model manager does not support the query.');
-            }
-
-            $this->query = $query;
+        if (null !== $query && !$this->modelManager->supportsQuery($query)) {
+            throw new InvalidArgumentException('The model manager does not support the query.');
         }
     }
 
@@ -112,10 +67,10 @@ final class ModelChoiceLoader implements ChoiceLoaderInterface
                     // Otherwise expect a __toString() method in the entity
                     $valueObject = (string) $model;
                 } else {
-                    throw new \LogicException(sprintf(
+                    throw new TransformationFailedException(sprintf(
                         'Unable to convert the model "%s" to string, provide "property" option'
                         .' or implement "__toString()" method in your model.',
-                        ClassUtils::getClass($model)
+                        $this->class
                     ));
                 }
 
@@ -123,10 +78,15 @@ final class ModelChoiceLoader implements ChoiceLoaderInterface
                     $choices[$valueObject] = [];
                 }
 
-                $choices[$valueObject][] = implode(
-                    AdapterInterface::ID_SEPARATOR,
-                    $this->getIdentifierValues($model)
-                );
+                $identifier = $this->modelManager->getNormalizedIdentifier($model);
+                if (null === $identifier) {
+                    throw new TransformationFailedException(sprintf(
+                        'No identifier was found for the model "%s".',
+                        $this->class
+                    ));
+                }
+
+                $choices[$valueObject][] = $identifier;
             }
 
             $finalChoices = [];
@@ -154,20 +114,5 @@ final class ModelChoiceLoader implements ChoiceLoaderInterface
     public function loadValuesForChoices(array $choices, $value = null): array
     {
         return $this->loadChoiceList($value)->getValuesForChoices($choices);
-    }
-
-    /**
-     * @return mixed[]
-     */
-    private function getIdentifierValues(object $model): array
-    {
-        try {
-            return $this->modelManager->getIdentifierValues($model);
-        } catch (\Exception $e) {
-            throw new \InvalidArgumentException(sprintf(
-                'Unable to retrieve the identifier values for entity %s',
-                ClassUtils::getClass($model)
-            ), 0, $e);
-        }
     }
 }

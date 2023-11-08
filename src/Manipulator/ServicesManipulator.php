@@ -21,30 +21,22 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class ServicesManipulator
 {
-    /**
-     * @var string
-     */
-    private $file;
-
-    /**
-     * @var string
-     */
-    private $template = '    %s:
+    private string $template = '    %s:
         class: %s
         tags:
             - { name: sonata.admin, model_class: %s, controller: %s, manager_type: %s, group: admin, label: %s }
 ';
 
-    public function __construct(string $file)
-    {
-        $this->file = $file;
+    public function __construct(
+        private string $file
+    ) {
     }
 
     /**
+     * @throws \RuntimeException
+     *
      * @phpstan-param class-string $modelClass
      * @phpstan-param class-string $adminClass
-     *
-     * @throws \RuntimeException
      */
     public function addResource(string $serviceId, string $modelClass, string $adminClass, string $controllerName, string $managerType): void
     {
@@ -76,7 +68,8 @@ final class ServicesManipulator
                     $code .= "\n";
                 }
             } else {
-                $code .= '' === $code ? '' : "\n"."services:\n";
+                /** @psalm-suppress TypeDoesNotContainType https://github.com/vimeo/psalm/issues/9511 */
+                $code .= '' === $code ? '' : "\n".'services:'."\n";
             }
         }
 

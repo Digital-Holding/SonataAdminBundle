@@ -23,43 +23,19 @@ final class RouteCollection implements RouteCollectionInterface
     /**
      * @var array<string, Route|callable():Route>
      */
-    private $elements = [];
-
-    /**
-     * @var string
-     */
-    private $baseCodeRoute;
-
-    /**
-     * @var string
-     */
-    private $baseRouteName;
-
-    /**
-     * @var string
-     */
-    private $baseControllerName;
-
-    /**
-     * @var string
-     */
-    private $baseRoutePattern;
+    private array $elements = [];
 
     /**
      * @var array<string, Route|callable():Route>
      */
-    private $cachedElements = [];
+    private array $cachedElements = [];
 
     public function __construct(
-        string $baseCodeRoute,
-        string $baseRouteName,
-        string $baseRoutePattern,
-        string $baseControllerName
+        private string $baseCodeRoute,
+        private string $baseRouteName,
+        private string $baseRoutePattern,
+        private string $baseControllerName
     ) {
-        $this->baseCodeRoute = $baseCodeRoute;
-        $this->baseRouteName = $baseRouteName;
-        $this->baseRoutePattern = $baseRoutePattern;
-        $this->baseControllerName = $baseControllerName;
     }
 
     public function getRouteName(string $name): string
@@ -82,7 +58,7 @@ final class RouteCollection implements RouteCollectionInterface
         $code = $this->getCode($name);
 
         if (!isset($defaults['_controller'])) {
-            $actionJoiner = false !== strpos($this->baseControllerName, ':') ? ':' : '::';
+            $actionJoiner = str_contains($this->baseControllerName, ':') ? ':' : '::';
 
             $defaults['_controller'] = $this->baseControllerName.$actionJoiner.$this->actionify($code);
         }
@@ -93,9 +69,7 @@ final class RouteCollection implements RouteCollectionInterface
 
         $defaults['_sonata_name'] = $this->getRouteName($name);
 
-        $element = static function () use ($pattern, $defaults, $requirements, $options, $host, $schemes, $methods, $condition): Route {
-            return new Route($pattern, $defaults, $requirements, $options, $host, $schemes, $methods, $condition);
-        };
+        $element = static fn (): Route => new Route($pattern, $defaults, $requirements, $options, $host, $schemes, $methods, $condition);
         $this->addElement($code, $element);
 
         return $this;
@@ -213,7 +187,7 @@ final class RouteCollection implements RouteCollectionInterface
 
         // if this is a service rather than just a controller name, the suffix
         // Action is not automatically appended to the method name
-        if (false === strpos($this->baseControllerName, ':')) {
+        if (!str_contains($this->baseControllerName, ':')) {
             $action .= 'Action';
         }
 
@@ -243,7 +217,7 @@ final class RouteCollection implements RouteCollectionInterface
     /**
      * @param Route|callable():Route $element
      */
-    private function addElement(string $code, $element): void
+    private function addElement(string $code, Route|callable $element): void
     {
         $this->elements[$code] = $element;
         $this->updateCachedElement($code);

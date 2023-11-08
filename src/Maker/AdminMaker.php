@@ -34,86 +34,63 @@ use Symfony\Component\DependencyInjection\Container;
  */
 final class AdminMaker extends AbstractMaker
 {
-    /**
-     * @var string
-     */
-    private $projectDirectory;
+    private string $skeletonDirectory;
 
     /**
-     * @var array<string, ModelManagerInterface<object>>
-     */
-    private $availableModelManagers;
-
-    /**
-     * @var string
-     */
-    private $skeletonDirectory;
-
-    /**
-     * @var string
      * @phpstan-var class-string
      *
      * @psalm-suppress PropertyNotSetInConstructor
+     * @phpstan-ignore-next-line
      *
      * @see AdminMaker::configure
      */
-    private $modelClass;
+    private string $modelClass;
 
     /**
-     * @var string
-     *
      * @psalm-suppress PropertyNotSetInConstructor
+     * @phpstan-ignore-next-line
      *
      * @see AdminMaker::configure
      */
-    private $modelClassBasename;
+    private string $modelClassBasename;
 
     /**
-     * @var string
-     *
      * @psalm-suppress PropertyNotSetInConstructor
+     * @phpstan-ignore-next-line
      *
      * @see AdminMaker::configure
      */
-    private $adminClassBasename;
+    private string $adminClassBasename;
+
+    private ?string $controllerClassBasename = null;
 
     /**
-     * @var string|null
-     */
-    private $controllerClassBasename;
-
-    /**
-     * @var string
-     *
      * @psalm-suppress PropertyNotSetInConstructor
+     * @phpstan-ignore-next-line
      *
      * @see AdminMaker::configure
      */
-    private $managerType;
+    private string $managerType;
 
     /**
      * @var ModelManagerInterface<object>
      *
      * @psalm-suppress PropertyNotSetInConstructor
+     * @phpstan-ignore-next-line
      *
      * @see AdminMaker::configure
      */
-    private $modelManager;
+    private ModelManagerInterface $modelManager;
 
     /**
-     * @var string
+     * @param array<string, ModelManagerInterface<object>> $availableModelManagers
      */
-    private $defaultController;
-
-    /**
-     * @param array<string, ModelManagerInterface<object>> $modelManagers
-     */
-    public function __construct(string $projectDirectory, array $modelManagers, string $defaultController)
-    {
-        $this->projectDirectory = $projectDirectory;
-        $this->availableModelManagers = $modelManagers;
+    public function __construct(
+        private string $projectDirectory,
+        private array $availableModelManagers,
+        private string $defaultController
+    ) {
         $this->skeletonDirectory = sprintf('%s/../Resources/skeleton', __DIR__);
-        $this->defaultController = $defaultController;
     }
 
     public static function getCommandName(): string
@@ -172,7 +149,7 @@ final class AdminMaker extends AbstractMaker
             $path = sprintf('%s/config/', $this->projectDirectory);
             $servicesFile = $io->ask(
                 'The services YAML configuration file',
-                is_file($path.'admin.yaml') ? 'admin.yaml' : 'services.yaml',
+                $input->getOption('services') ?? (is_file($path.'admin.yaml') ? 'admin.yaml' : 'services.yaml'),
                 [Validators::class, 'validateServicesFile']
             );
             $id = $io->ask(
@@ -231,7 +208,7 @@ final class AdminMaker extends AbstractMaker
     {
         return Container::underscore(sprintf(
             'admin.%s',
-            str_replace('\\', '.', 'Admin' === substr($adminClassBasename, -5) ?
+            str_replace('\\', '.', str_ends_with($adminClassBasename, 'Admin') ?
                 substr($adminClassBasename, 0, -5) : $adminClassBasename)
         ));
     }

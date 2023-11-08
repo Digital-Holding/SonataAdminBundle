@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Util;
 
+use Sonata\AdminBundle\Exception\AbstractClassException;
+
 /**
  * @internal
  */
@@ -20,6 +22,7 @@ final class Instantiator
 {
     /**
      * @template T of object
+     *
      * @phpstan-param class-string<T> $class
      * @phpstan-return T
      */
@@ -27,7 +30,7 @@ final class Instantiator
     {
         $r = new \ReflectionClass($class);
         if ($r->isAbstract()) {
-            throw new \RuntimeException(sprintf('Cannot initialize abstract class: %s', $class));
+            throw new AbstractClassException($class);
         }
 
         $constructor = $r->getConstructor();

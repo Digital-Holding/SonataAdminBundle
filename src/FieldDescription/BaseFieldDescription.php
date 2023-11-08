@@ -93,7 +93,7 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
     protected $fieldMapping = [];
 
     /**
-     * @var array<string, array<string, mixed>> parent mapping association
+     * @var array<array<string, mixed>> parent mapping association
      */
     protected $parentAssociationMappings = [];
 
@@ -104,6 +104,7 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
 
     /**
      * @var array<string, mixed> the option collection
+     *
      * @phpstan-var FieldDescriptionOptions
      */
     protected $options = [];
@@ -176,12 +177,12 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
         return $this->name;
     }
 
-    final public function getOption(string $name, $default = null)
+    final public function getOption(string $name, mixed $default = null)
     {
         return $this->options[$name] ?? $default;
     }
 
-    final public function setOption(string $name, $value): void
+    final public function setOption(string $name, mixed $value): void
     {
         $this->options[$name] = $value;
     }
@@ -235,13 +236,16 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
 
     final public function getParent(): AdminInterface
     {
-        if (null === $this->parent) {
+        if (!$this->hasParent()) {
             throw new \LogicException(sprintf('%s has no parent.', static::class));
         }
 
         return $this->parent;
     }
 
+    /**
+     * @phpstan-assert-if-true !null $this->parent
+     */
     final public function hasParent(): bool
     {
         return null !== $this->parent;
@@ -270,13 +274,16 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
 
     final public function getAssociationAdmin(): AdminInterface
     {
-        if (null === $this->associationAdmin) {
+        if (!$this->hasAssociationAdmin()) {
             throw new \LogicException(sprintf('%s has no association admin.', static::class));
         }
 
         return $this->associationAdmin;
     }
 
+    /**
+     * @phpstan-assert-if-true !null $this->associationAdmin
+     */
     final public function hasAssociationAdmin(): bool
     {
         return null !== $this->associationAdmin;
@@ -289,13 +296,16 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
 
     final public function getAdmin(): AdminInterface
     {
-        if (null === $this->admin) {
+        if (!$this->hasAdmin()) {
             throw new \LogicException(sprintf('%s has no admin.', static::class));
         }
 
         return $this->admin;
     }
 
+    /**
+     * @phpstan-assert-if-true !null $this->admin
+     */
     final public function hasAdmin(): bool
     {
         return null !== $this->admin;
@@ -368,7 +378,7 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
     abstract protected function setAssociationMapping(array $associationMapping): void;
 
     /**
-     *  @param array<array<string, mixed>> $parentAssociationMappings
+     * @param array<array<string, mixed>> $parentAssociationMappings
      */
     abstract protected function setParentAssociationMappings(array $parentAssociationMappings): void;
 
@@ -389,11 +399,11 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
             if (null !== $child && !\is_object($child)) {
                 throw new NoValueException(sprintf(
                     <<<'EXCEPTION'
-                    Unexpected value when accessing to the property "%s" on the class "%s" for the field "%s".
-                    Expected object|null, got %s.
-                    EXCEPTION,
+                        Unexpected value when accessing to the property "%s" on the class "%s" for the field "%s".
+                        Expected object|null, got %s.
+                        EXCEPTION,
                     $fieldName,
-                    \get_class($object),
+                    $object::class,
                     $this->getName(),
                     \gettype($child)
                 ));
@@ -410,7 +420,7 @@ abstract class BaseFieldDescription implements FieldDescriptionInterface
             throw new \TypeError(sprintf(
                 'The option "accessor" must be a string, a callable or a %s, %s given.',
                 PropertyPathInterface::class,
-                \is_object($accessor) ? 'instance of '.\get_class($accessor) : \gettype($accessor)
+                \is_object($accessor) ? 'instance of '.$accessor::class : \gettype($accessor)
             ));
         }
 

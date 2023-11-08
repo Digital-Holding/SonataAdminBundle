@@ -23,22 +23,12 @@ use Twig\Extension\RuntimeExtensionInterface;
 final class TemplateRegistryRuntime implements RuntimeExtensionInterface
 {
     /**
-     * @var TemplateRegistryInterface
-     */
-    private $globalTemplateRegistry;
-
-    /**
-     * @var Pool
-     */
-    private $pool;
-
-    /**
      * @internal This class should only be used through Twig
      */
-    public function __construct(TemplateRegistryInterface $globalTemplateRegistry, Pool $pool)
-    {
-        $this->globalTemplateRegistry = $globalTemplateRegistry;
-        $this->pool = $pool;
+    public function __construct(
+        private TemplateRegistryInterface $globalTemplateRegistry,
+        private Pool $pool
+    ) {
     }
 
     /**

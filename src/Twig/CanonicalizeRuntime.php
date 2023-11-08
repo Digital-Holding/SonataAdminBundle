@@ -13,52 +13,38 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Twig;
 
+use Sonata\Form\Twig\CanonicalizeRuntime as SonataFormCanonicalizeRuntime;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Twig\Extension\RuntimeExtensionInterface;
 
+/** @psalm-suppress UndefinedClass */
 final class CanonicalizeRuntime implements RuntimeExtensionInterface
 {
-    // @todo: there are more locales which are not supported by "Moment.js" NPM library and they need to be translated/normalized/canonicalized here
-    private const MOMENT_UNSUPPORTED_LOCALES = [
-        'de' => ['de', 'de-at'],
-        'es' => ['es', 'es-do'],
-        'nl' => ['nl', 'nl-be'],
-        'fr' => ['fr', 'fr-ca', 'fr-ch'],
-    ];
-
     /**
-     * @var RequestStack
-     */
-    private $requestStack;
-
-    /**
+     * TODO: Remove second argument when dropping support for `sonata-project/form-extensions` 1.x.
+     *
      * @internal This class should only be used through Twig
      */
-    public function __construct(RequestStack $requestStack)
-    {
-        $this->requestStack = $requestStack;
+    public function __construct(
+        private RequestStack $requestStack,
+        private ?SonataFormCanonicalizeRuntime $canonicalizeRuntime = null // @phpstan-ignore-line
+    ) {
     }
 
     /**
+     * NEXT_MAJOR: Remove this method.
+     *
      * Returns a canonicalized locale for "Moment.js" NPM library,
      * or `null` if the locale's language is "en", which doesn't require localization.
      */
     public function getCanonicalizedLocaleForMoment(): ?string
     {
-        $locale = $this->getLocale();
-
-        // "en" language doesn't require localization.
-        if (('en' === $lang = substr($locale, 0, 2)) && !\in_array($locale, ['en-au', 'en-ca', 'en-gb', 'en-ie', 'en-nz'], true)) {
+        if (null === $this->canonicalizeRuntime) {
             return null;
         }
 
-        foreach (self::MOMENT_UNSUPPORTED_LOCALES as $language => $locales) {
-            if ($language === $lang && !\in_array($locale, $locales, true)) {
-                $locale = $language;
-            }
-        }
-
-        return $locale;
+        // @phpstan-ignore-next-line
+        return $this->canonicalizeRuntime->getCanonicalizedLocaleForMoment();
     }
 
     /**

@@ -13,7 +13,8 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\DependencyInjection;
 
-use Sonata\AdminBundle\BCLayer\BCDeprecation;
+use Sonata\AdminBundle\Admin\Pool;
+use Sonata\AdminBundle\DependencyInjection\Compiler\ExtensionCompilerPass;
 use Sonata\AdminBundle\Security\Acl\Permission\AdminPermissionMap;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
@@ -26,10 +27,11 @@ use Symfony\Component\Config\Definition\ConfigurationInterface;
  *
  * @author Michael Williams <mtotheikle@gmail.com>
  *
- * @phpstan-import-type ExtensionMap from \Sonata\AdminBundle\DependencyInjection\Compiler\ExtensionCompilerPass
- * @phpstan-import-type Item from \Sonata\AdminBundle\Admin\Pool
+ * @phpstan-import-type ExtensionMap from ExtensionCompilerPass
+ * @phpstan-import-type Item from Pool
  *
  * NEXT_MAJOR: Remove the default_label_catalogue key.
+ *
  * @phpstan-type SonataAdminConfigurationOptions = array{
  *     confirm_exit: bool,
  *     default_admin_route: string,
@@ -53,7 +55,6 @@ use Symfony\Component\Config\Definition\ConfigurationInterface;
  *     use_select2: bool,
  *     use_stickyforms: bool,
  * }
- *
  * @phpstan-type SonataAdminConfiguration = array{
  *     assets: array{
  *         extra_javascripts: list<string>,
@@ -172,7 +173,7 @@ use Symfony\Component\Config\Definition\ConfigurationInterface;
 final class Configuration implements ConfigurationInterface
 {
     /**
-     * @psalm-suppress PossiblyNullReference, PossiblyUndefinedMethod
+     * @psalm-suppress PossiblyNullReference, UndefinedInterfaceMethod
      *
      * @see https://github.com/psalm/psalm-plugin-symfony/issues/174
      */
@@ -199,9 +200,7 @@ final class Configuration implements ConfigurationInterface
                                 ->performNoDeepMerging()
                                 ->beforeNormalization()
                                     ->ifString()
-                                    ->then(static function (string $value): array {
-                                        return [$value];
-                                    })
+                                    ->then(static fn (string $value): array => [$value])
                                 ->end()
                                 ->prototype('scalar')->end()
                             ->end()
@@ -256,9 +255,7 @@ final class Configuration implements ConfigurationInterface
                             ->defaultValue('show')
                             ->info('Perhaps one of the three options: show, fade, hide.')
                             ->validate()
-                                ->ifTrue(static function (string $v): bool {
-                                    return !\in_array($v, ['show', 'fade', 'hide'], true);
-                                })
+                                ->ifTrue(static fn (string $v): bool => !\in_array($v, ['show', 'fade', 'hide'], true))
                                 ->thenInvalid('Configuration value of "global_search.empty_boxes" must be one of show, fade or hide.')
                             ->end()
                         ->end()
@@ -329,10 +326,11 @@ final class Configuration implements ConfigurationInterface
                         ->end()
                         // NEXT_MAJOR: Remove this option.
                         ->scalarNode('default_label_catalogue')
-                            ->setDeprecated(...BCDeprecation::forConfig(
-                                'The "default_label_catalogue" node is deprecated, use "default_translation_domain" instead.',
-                                '4.9'
-                            ))
+                            ->setDeprecated(
+                                'sonata-project/admin-bundle',
+                                '4.9',
+                                'The "default_label_catalogue" node is deprecated, use "default_translation_domain" instead.'
+                            )
                             ->defaultValue('SonataAdminBundle')
                             ->info('Label Catalogue used for admin services if one isn\'t provided.')
                         ->end()
@@ -340,7 +338,7 @@ final class Configuration implements ConfigurationInterface
                             // NEXT_MAJOR: Use `messages` as default value and remove the deprecation.
                             ->defaultValue(null)
                             ->validate()
-                                ->always(static function ($value) {
+                                ->always(static function (?string $value): ?string {
                                     if (null === $value) {
                                         @trigger_error(
                                             'Not setting the "sonata_admin.options.default_translation_domain" config option is deprecated'
@@ -412,10 +410,11 @@ final class Configuration implements ConfigurationInterface
                                     ->scalarNode('translation_domain')->end()
                                     // NEXT_MAJOR: Remove this option.
                                     ->scalarNode('label_catalogue')
-                                        ->setDeprecated(...BCDeprecation::forConfig(
-                                            'The "default_label_catalogue" node is deprecated, use "default_translation_domain" instead.',
-                                            '4.9'
-                                        ))
+                                        ->setDeprecated(
+                                            'sonata-project/admin-bundle',
+                                            '4.9',
+                                            'The "label_catalogue" node is deprecated, use "translation_domain" instead.'
+                                        )
                                     ->end()
                                     ->scalarNode('icon')->end()
                                     ->scalarNode('on_top')->defaultFalse()->info('Show menu item in side dashboard menu without treeview')->end()
@@ -501,10 +500,11 @@ final class Configuration implements ConfigurationInterface
                                     ->end()
                                     // NEXT_MAJOR: Remove the item_adds key.
                                     ->arrayNode('item_adds')
-                                        ->setDeprecated(...BCDeprecation::forConfig(
-                                            'The "item_adds" node is deprecated',
-                                            '4.9'
-                                        ))
+                                        ->setDeprecated(
+                                            'sonata-project/admin-bundle',
+                                            '4.9',
+                                            'The "item_adds" node is deprecated'
+                                        )
                                         ->prototype('scalar')->defaultValue([])->end()
                                     ->end()
                                     ->arrayNode('roles')
@@ -617,6 +617,7 @@ final class Configuration implements ConfigurationInterface
                         ->arrayNode('stylesheets')
                             ->defaultValue([
                                 'bundles/sonataadmin/app.css',
+                                'bundles/sonataform/app.css',
                             ])
                             ->prototype('scalar')->end()
                         ->end()
@@ -633,6 +634,7 @@ final class Configuration implements ConfigurationInterface
                         ->arrayNode('javascripts')
                             ->defaultValue([
                                 'bundles/sonataadmin/app.js',
+                                'bundles/sonataform/app.js',
                             ])
                             ->prototype('scalar')->end()
                         ->end()
@@ -676,6 +678,18 @@ final class Configuration implements ConfigurationInterface
                                 ->prototype('scalar')->end()
                             ->end()
                             ->arrayNode('uses')
+                                ->prototype('scalar')->end()
+                            ->end()
+                            ->arrayNode('admin_implements')
+                                ->prototype('scalar')->end()
+                            ->end()
+                            ->arrayNode('admin_extends')
+                                ->prototype('scalar')->end()
+                            ->end()
+                            ->arrayNode('admin_instanceof')
+                                ->prototype('scalar')->end()
+                            ->end()
+                            ->arrayNode('admin_uses')
                                 ->prototype('scalar')->end()
                             ->end()
                             ->integerNode('priority')

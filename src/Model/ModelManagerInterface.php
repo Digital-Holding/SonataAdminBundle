@@ -77,16 +77,20 @@ interface ModelManagerInterface
     /**
      * @throws ModelManagerThrowable
      *
-     * @phpstan-param class-string<T> $class
+     * @phpstan-param class-string<T>        $class
+     * @phpstan-param ProxyQueryInterface<T> $query
      */
     public function batchDelete(string $class, ProxyQueryInterface $query): void;
 
     /**
      * @phpstan-param class-string<T> $class
+     * @phpstan-return ProxyQueryInterface<T>
      */
     public function createQuery(string $class): ProxyQueryInterface;
 
     /**
+     * NEXT_MAJOR: Remove this method.
+     *
      * Get the identifiers of this model class.
      *
      * This returns an array to handle cases like a primary key that is
@@ -100,6 +104,8 @@ interface ModelManagerInterface
     public function getIdentifierValues(object $model): array;
 
     /**
+     * NEXT_MAJOR: Remove this method.
+     *
      * Get a list of the field names models of the specified fully qualified
      * class name used to store the identifier.
      *
@@ -136,9 +142,11 @@ interface ModelManagerInterface
     public function supportsQuery(object $query): bool;
 
     /**
-     * @return array<object>|\Traversable<object>
+     * NEXT_MAJOR: Add typehint.
      *
-     * @phpstan-return array<T>|\Traversable<T>
+     * @return iterable<object>
+     *
+     * @phpstan-return iterable<T>
      */
     public function executeQuery(object $query);
 
@@ -153,6 +161,7 @@ interface ModelManagerInterface
      * @param array<int|string> $idx
      *
      * @phpstan-param class-string<T>             $class
+     * @phpstan-param ProxyQueryInterface<T>      $query
      * @phpstan-param non-empty-array<string|int> $idx
      */
     public function addIdentifiersToQuery(string $class, ProxyQueryInterface $query, array $idx): void;

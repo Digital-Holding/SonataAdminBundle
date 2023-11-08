@@ -24,20 +24,10 @@ use Twig\Environment;
 
 final class GetShortObjectDescriptionAction
 {
-    /**
-     * @var AdminFetcherInterface
-     */
-    private $adminFetcher;
-
-    /**
-     * @var Environment
-     */
-    private $twig;
-
-    public function __construct(Environment $twig, AdminFetcherInterface $adminFetcher)
-    {
-        $this->twig = $twig;
-        $this->adminFetcher = $adminFetcher;
+    public function __construct(
+        private Environment $twig,
+        private AdminFetcherInterface $adminFetcher
+    ) {
     }
 
     /**
@@ -56,9 +46,21 @@ final class GetShortObjectDescriptionAction
             throw new BadRequestParamHttpException('objectId', ['string', 'int'], $objectId);
         }
 
-        $object = $admin->getObject($objectId);
-        if (null === $object) {
-            throw new NotFoundHttpException(sprintf('Could not find subject for id "%s"', $objectId));
+        // If the subclass parameter is present it can cause conflict with other admin.
+        // The admin do not need subclass parameter to load an existing object.
+        $subclass = $request->query->get('subclass');
+        $request->query->remove('subclass');
+
+        try {
+            $object = $admin->getObject($objectId);
+            if (null === $object) {
+                throw new NotFoundHttpException(sprintf('Could not find subject for id "%s"', $objectId));
+            }
+        } finally {
+            // Restore the subclass if present to reduce impact of the parameter removal above.
+            if (null !== $subclass) {
+                $request->query->set('subclass', $subclass);
+            }
         }
 
         if ('json' === $request->get('_format')) {

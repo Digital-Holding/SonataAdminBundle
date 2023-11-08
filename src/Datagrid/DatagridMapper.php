@@ -15,6 +15,7 @@ namespace Sonata\AdminBundle\Datagrid;
 
 use Sonata\AdminBundle\Admin\AdminInterface;
 use Sonata\AdminBundle\Builder\DatagridBuilderInterface;
+use Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface;
 use Sonata\AdminBundle\Filter\FilterInterface;
 use Sonata\AdminBundle\Mapper\MapperInterface;
 
@@ -23,7 +24,7 @@ use Sonata\AdminBundle\Mapper\MapperInterface;
  *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  *
- * @phpstan-import-type FieldDescriptionOptions from \Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface
+ * @phpstan-import-type FieldDescriptionOptions from FieldDescriptionInterface
  *
  * @phpstan-template T of object
  * @phpstan-implements MapperInterface<T>
@@ -31,35 +32,15 @@ use Sonata\AdminBundle\Mapper\MapperInterface;
 final class DatagridMapper implements MapperInterface
 {
     /**
-     * @var DatagridBuilderInterface<ProxyQueryInterface>
-     */
-    private $builder;
-
-    /**
-     * @var DatagridInterface<ProxyQueryInterface>
-     */
-    private $datagrid;
-
-    /**
-     * @var AdminInterface<object>
-     * @phpstan-var AdminInterface<T>
-     */
-    private $admin;
-
-    /**
-     * @param DatagridBuilderInterface<ProxyQueryInterface> $datagridBuilder
-     * @param DatagridInterface<ProxyQueryInterface>        $datagrid
-     *
+     * @phpstan-param DatagridBuilderInterface<ProxyQueryInterface<T>> $builder
+     * @phpstan-param DatagridInterface<ProxyQueryInterface<T>>        $datagrid
      * @phpstan-param AdminInterface<T> $admin
      */
     public function __construct(
-        DatagridBuilderInterface $datagridBuilder,
-        DatagridInterface $datagrid,
-        AdminInterface $admin
+        private DatagridBuilderInterface $builder,
+        private DatagridInterface $datagrid,
+        private AdminInterface $admin
     ) {
-        $this->admin = $admin;
-        $this->builder = $datagridBuilder;
-        $this->datagrid = $datagrid;
     }
 
     public function getAdmin(): AdminInterface
@@ -73,8 +54,6 @@ final class DatagridMapper implements MapperInterface
      *
      * @throws \LogicException
      *
-     * @return static
-     *
      * @phpstan-param class-string|null $type
      * @phpstan-param FieldDescriptionOptions $fieldDescriptionOptions
      */
@@ -83,7 +62,7 @@ final class DatagridMapper implements MapperInterface
         ?string $type = null,
         array $filterOptions = [],
         array $fieldDescriptionOptions = []
-    ): self {
+    ): static {
         if (
             isset($fieldDescriptionOptions['role'])
             && \is_string($fieldDescriptionOptions['role'])
@@ -128,10 +107,7 @@ final class DatagridMapper implements MapperInterface
         return array_keys($this->datagrid->getFilters());
     }
 
-    /**
-     * @return static
-     */
-    public function remove(string $key): self
+    public function remove(string $key): static
     {
         $this->getAdmin()->removeFilterFieldDescription($key);
         $this->datagrid->removeFilter($key);
@@ -139,10 +115,7 @@ final class DatagridMapper implements MapperInterface
         return $this;
     }
 
-    /**
-     * @return static
-     */
-    public function reorder(array $keys): self
+    public function reorder(array $keys): static
     {
         $this->datagrid->reorderFilters($keys);
 

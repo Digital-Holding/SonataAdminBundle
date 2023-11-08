@@ -15,7 +15,6 @@ namespace Sonata\AdminBundle\Form\DataTransformer;
 
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
-use Doctrine\Common\Util\ClassUtils;
 use Sonata\AdminBundle\Model\ModelManagerInterface;
 use Symfony\Component\Form\DataTransformerInterface;
 use Symfony\Component\Form\Exception\TransformationFailedException;
@@ -30,26 +29,13 @@ use Symfony\Component\Form\Exception\UnexpectedTypeException;
 final class ModelsToArrayTransformer implements DataTransformerInterface
 {
     /**
-     * @var ModelManagerInterface
-     * @phpstan-var ModelManagerInterface<T>
-     */
-    private $modelManager;
-
-    /**
-     * @var string
-     *
-     * @phpstan-var class-string<T>
-     */
-    private $class;
-
-    /**
      * @phpstan-param ModelManagerInterface<T> $modelManager
      * @phpstan-param class-string<T>          $class
      */
-    public function __construct(ModelManagerInterface $modelManager, string $class)
-    {
-        $this->modelManager = $modelManager;
-        $this->class = $class;
+    public function __construct(
+        private ModelManagerInterface $modelManager,
+        private string $class
+    ) {
     }
 
     /**
@@ -71,7 +57,7 @@ final class ModelsToArrayTransformer implements DataTransformerInterface
             if (null === $identifier) {
                 throw new TransformationFailedException(sprintf(
                     'No identifier was found for the model "%s".',
-                    ClassUtils::getClass($model)
+                    $this->class
                 ));
             }
 
@@ -90,7 +76,7 @@ final class ModelsToArrayTransformer implements DataTransformerInterface
      *
      * @phpstan-return Collection<array-key, T>|null
      */
-    public function reverseTransform($value)
+    public function reverseTransform($value): ?Collection
     {
         if (null === $value) {
             return null;
@@ -100,8 +86,11 @@ final class ModelsToArrayTransformer implements DataTransformerInterface
             throw new UnexpectedTypeException($value, 'array');
         }
 
+        /** @var Collection<array-key, T> $collection */
+        $collection = new ArrayCollection();
+
         if ([] === $value) {
-            return new ArrayCollection();
+            return $collection;
         }
 
         $query = $this->modelManager->createQuery($this->class);
@@ -114,14 +103,13 @@ final class ModelsToArrayTransformer implements DataTransformerInterface
             if (null === $identifier) {
                 throw new TransformationFailedException(sprintf(
                     'No identifier was found for the model "%s".',
-                    ClassUtils::getClass($model)
+                    $this->class
                 ));
             }
 
             $modelsById[$identifier] = $model;
         }
 
-        $result = [];
         foreach ($value as $identifier) {
             if (!isset($modelsById[$identifier])) {
                 throw new TransformationFailedException(sprintf(
@@ -130,9 +118,9 @@ final class ModelsToArrayTransformer implements DataTransformerInterface
                 ));
             }
 
-            $result[] = $modelsById[$identifier];
+            $collection->add($modelsById[$identifier]);
         }
 
-        return new ArrayCollection($result);
+        return $collection;
     }
 }

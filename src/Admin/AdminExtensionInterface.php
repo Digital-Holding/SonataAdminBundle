@@ -61,7 +61,6 @@ interface AdminExtensionInterface
      * Builds the tab menu.
      *
      * @phpstan-template TChild of object
-     *
      * @phpstan-param AdminInterface<T> $admin
      * @phpstan-param AdminInterface<TChild>|null $childAdmin
      */
@@ -73,7 +72,8 @@ interface AdminExtensionInterface
     ): void;
 
     /**
-     * @phpstan-param AdminInterface<T> $admin
+     * @phpstan-param AdminInterface<T>      $admin
+     * @phpstan-param ProxyQueryInterface<T> $query
      */
     public function configureQuery(AdminInterface $admin, ProxyQueryInterface $query): void;
 
@@ -101,6 +101,8 @@ interface AdminExtensionInterface
     public function configure(AdminInterface $admin): void;
 
     /**
+     * NEXT_MAJOR: Add return typehint `array`.
+     *
      * Get a chance to add persistent parameters.
      *
      * @param array<string, mixed> $parameters

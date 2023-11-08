@@ -24,7 +24,7 @@ use Sonata\AdminBundle\Mapper\MapperInterface;
  *
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  *
- * @phpstan-import-type FieldDescriptionOptions from \Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface
+ * @phpstan-import-type FieldDescriptionOptions from FieldDescriptionInterface
  *
  * @phpstan-template T of object
  * @phpstan-implements MapperInterface<T>
@@ -40,34 +40,16 @@ final class ListMapper implements MapperInterface
     public const TYPE_SELECT = 'select';
 
     /**
-     * @var ListBuilderInterface
-     */
-    private $builder;
-
-    /**
-     * @var FieldDescriptionCollection<FieldDescriptionInterface>
-     */
-    private $list;
-
-    /**
-     * @var AdminInterface<object>
-     * @phpstan-var AdminInterface<T>
-     */
-    private $admin;
-
-    /**
      * @param FieldDescriptionCollection<FieldDescriptionInterface> $list
+     * @param AdminInterface<object>                                $admin
      *
      * @phpstan-param AdminInterface<T> $admin
      */
     public function __construct(
-        ListBuilderInterface $listBuilder,
-        FieldDescriptionCollection $list,
-        AdminInterface $admin
+        private ListBuilderInterface $builder,
+        private FieldDescriptionCollection $list,
+        private AdminInterface $admin
     ) {
-        $this->admin = $admin;
-        $this->builder = $listBuilder;
-        $this->list = $list;
     }
 
     public function getAdmin(): AdminInterface
@@ -78,11 +60,9 @@ final class ListMapper implements MapperInterface
     /**
      * @param array<string, mixed> $fieldDescriptionOptions
      *
-     * @return static
-     *
      * @phpstan-param FieldDescriptionOptions $fieldDescriptionOptions
      */
-    public function addIdentifier(string $name, ?string $type = null, array $fieldDescriptionOptions = []): self
+    public function addIdentifier(string $name, ?string $type = null, array $fieldDescriptionOptions = []): static
     {
         $fieldDescriptionOptions['identifier'] = true;
 
@@ -94,11 +74,9 @@ final class ListMapper implements MapperInterface
      *
      * @throws \LogicException
      *
-     * @return static
-     *
      * @phpstan-param FieldDescriptionOptions $fieldDescriptionOptions
      */
-    public function add(string $name, ?string $type = null, array $fieldDescriptionOptions = []): self
+    public function add(string $name, ?string $type = null, array $fieldDescriptionOptions = []): static
     {
         if (
             isset($fieldDescriptionOptions['role'])
@@ -173,10 +151,7 @@ final class ListMapper implements MapperInterface
         return $this->list->has($key);
     }
 
-    /**
-     * @return static
-     */
-    public function remove(string $key): self
+    public function remove(string $key): static
     {
         $this->getAdmin()->removeListFieldDescription($key);
         $this->list->remove($key);
@@ -189,10 +164,7 @@ final class ListMapper implements MapperInterface
         return array_keys($this->list->getElements());
     }
 
-    /**
-     * @return static
-     */
-    public function reorder(array $keys): self
+    public function reorder(array $keys): static
     {
         $this->list->reorder($keys);
 

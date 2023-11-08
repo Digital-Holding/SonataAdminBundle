@@ -16,6 +16,7 @@ namespace Sonata\AdminBundle\Datagrid;
 use Sonata\AdminBundle\FieldDescription\FieldDescriptionCollection;
 use Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface;
 use Sonata\AdminBundle\Filter\FilterInterface;
+use Sonata\AdminBundle\Form\Type\Filter\FilterDataType;
 use Symfony\Component\Form\CallbackTransformer;
 use Symfony\Component\Form\Exception\UnexpectedTypeException;
 use Symfony\Component\Form\Extension\Core\Type\CollectionType;
@@ -36,51 +37,18 @@ final class Datagrid implements DatagridInterface
      *
      * @var array<string, FilterInterface>
      */
-    private $filters = [];
+    private array $filters = [];
 
-    /**
-     * @var array<string, mixed>
-     */
-    private $values = [];
+    private bool $bound = false;
 
-    /**
-     * @var FieldDescriptionCollection<FieldDescriptionInterface>
-     */
-    private $columns;
-
-    /**
-     * @var PagerInterface
-     * @phpstan-var PagerInterface<T>
-     */
-    private $pager;
-
-    /**
-     * @var bool
-     */
-    private $bound = false;
-
-    /**
-     * @var ProxyQueryInterface
-     * @phpstan-var T
-     */
-    private $query;
-
-    /**
-     * @var FormBuilderInterface
-     */
-    private $formBuilder;
-
-    /**
-     * @var FormInterface|null
-     */
-    private $form;
+    private ?FormInterface $form = null;
 
     /**
      * Results are null prior to its initialization in `getResults()`.
      *
      * @var iterable<object>|null
      */
-    private $results;
+    private ?iterable $results = null;
 
     /**
      * @param FieldDescriptionCollection<FieldDescriptionInterface> $columns
@@ -90,17 +58,12 @@ final class Datagrid implements DatagridInterface
      * @phpstan-param PagerInterface<T> $pager
      */
     public function __construct(
-        ProxyQueryInterface $query,
-        FieldDescriptionCollection $columns,
-        PagerInterface $pager,
-        FormBuilderInterface $formBuilder,
-        array $values = []
+        private ProxyQueryInterface $query,
+        private FieldDescriptionCollection $columns,
+        private PagerInterface $pager,
+        private FormBuilderInterface $formBuilder,
+        private array $values = []
     ) {
-        $this->pager = $pager;
-        $this->query = $query;
-        $this->values = $values;
-        $this->columns = $columns;
-        $this->formBuilder = $formBuilder;
     }
 
     public function getPager(): PagerInterface
@@ -191,7 +154,7 @@ final class Datagrid implements DatagridInterface
         return $this->values;
     }
 
-    public function setValue(string $name, ?string $operator, $value): void
+    public function setValue(string $name, ?string $operator, mixed $value): void
     {
         $this->values[$name] = [
             'type' => $operator,
@@ -276,7 +239,7 @@ final class Datagrid implements DatagridInterface
     private function applyFilters(array $data): void
     {
         foreach ($this->getFilters() as $name => $filter) {
-            $this->values[$name] = $this->values[$name] ?? null;
+            $this->values[$name] ??= null;
             $filterFormName = $filter->getFormName();
 
             $value = $this->values[$filterFormName]['value'] ?? '';
@@ -307,7 +270,7 @@ final class Datagrid implements DatagridInterface
             $this->values[DatagridInterface::SORT_BY]->getSortFieldMapping()
         );
 
-        $this->values[DatagridInterface::SORT_ORDER] = $this->values[DatagridInterface::SORT_ORDER] ?? 'ASC';
+        $this->values[DatagridInterface::SORT_ORDER] ??= 'ASC';
         $this->query->setSortOrder($this->values[DatagridInterface::SORT_ORDER]);
     }
 
@@ -359,19 +322,30 @@ final class Datagrid implements DatagridInterface
         }
 
         foreach ($this->getFilters() as $filter) {
-            [$type, $options] = $filter->getRenderSettings();
+            // NEXT_MAJOR: Keep the if part.
+            if (method_exists($filter, 'getFormOptions')) {
+                $type = FilterDataType::class;
+                $options = $filter->getFormOptions();
+            } else {
+                @trigger_error(
+                    'Not implementing "getFormOptions()" is deprecated since sonata-project/admin-bundle 4.15'
+                    .' and will throw an error in 5.0.',
+                    \E_USER_DEPRECATED
+                );
+
+                /**
+                 * @psalm-suppress DeprecatedMethod
+                 */
+                [$type, $options] = $filter->getRenderSettings();
+            }
 
             $this->formBuilder->add($filter->getFormName(), $type, $options);
         }
 
         $this->formBuilder->add(DatagridInterface::SORT_BY, HiddenType::class);
         $this->formBuilder->get(DatagridInterface::SORT_BY)->addViewTransformer(new CallbackTransformer(
-            static function ($value) {
-                return $value;
-            },
-            static function ($value) {
-                return $value instanceof FieldDescriptionInterface ? $value->getName() : $value;
-            }
+            static fn (mixed $value): mixed => $value,
+            static fn (mixed $value): mixed => $value instanceof FieldDescriptionInterface ? $value->getName() : $value
         ));
 
         $this->formBuilder->add(DatagridInterface::SORT_ORDER, HiddenType::class);

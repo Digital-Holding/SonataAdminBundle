@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Command;
 
 use Sonata\AdminBundle\Admin\Pool;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -22,45 +23,40 @@ use Symfony\Component\Console\Output\OutputInterface;
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
+#[AsCommand(name: 'sonata:admin:explain', description: 'Explain an admin service')]
 final class ExplainAdminCommand extends Command
 {
-    protected static $defaultName = 'sonata:admin:explain';
-
-    /**
-     * @var Pool
-     */
-    private $pool;
-
     /**
      * @internal This class should only be used through the console
      */
-    public function __construct(Pool $pool)
-    {
-        $this->pool = $pool;
-
+    public function __construct(
+        private Pool $pool
+    ) {
         parent::__construct();
     }
 
     public function configure(): void
     {
-        $this->setDescription('Explain an admin service');
-
-        $this->addArgument('admin', InputArgument::REQUIRED, 'The admin service id');
+        $this
+            ->addArgument('admin', InputArgument::REQUIRED, 'The admin service id');
     }
 
     public function execute(InputInterface $input, OutputInterface $output): int
     {
         $admin = $this->pool->getInstance($input->getArgument('admin'));
 
+        // Some admin methods might require a subject.
+        $admin->setSubject($admin->getNewInstance());
+
         $output->writeln('<comment>AdminBundle Information</comment>');
         $output->writeln(sprintf('<info>% -20s</info> : %s', 'id', $admin->getCode()));
-        $output->writeln(sprintf('<info>% -20s</info> : %s', 'Admin', \get_class($admin)));
+        $output->writeln(sprintf('<info>% -20s</info> : %s', 'Admin', $admin::class));
         $output->writeln(sprintf('<info>% -20s</info> : %s', 'Model', $admin->getClass()));
         $output->writeln(sprintf('<info>% -20s</info> : %s', 'Controller', $admin->getBaseControllerName()));
-        $output->writeln(sprintf('<info>% -20s</info> : %s', 'Model Manager', \get_class($admin->getModelManager())));
-        $output->writeln(sprintf('<info>% -20s</info> : %s', 'Form Builder', \get_class($admin->getFormBuilder())));
-        $output->writeln(sprintf('<info>% -20s</info> : %s', 'Datagrid Builder', \get_class($admin->getDatagridBuilder())));
-        $output->writeln(sprintf('<info>% -20s</info> : %s', 'List Builder', \get_class($admin->getListBuilder())));
+        $output->writeln(sprintf('<info>% -20s</info> : %s', 'Model Manager', $admin->getModelManager()::class));
+        $output->writeln(sprintf('<info>% -20s</info> : %s', 'Form Builder', $admin->getFormBuilder()::class));
+        $output->writeln(sprintf('<info>% -20s</info> : %s', 'Datagrid Builder', $admin->getDatagridBuilder()::class));
+        $output->writeln(sprintf('<info>% -20s</info> : %s', 'List Builder', $admin->getListBuilder()::class));
 
         if ($admin->isChild()) {
             $output->writeln(sprintf('<info>% -15s</info> : %s', 'Parent', $admin->getParent()->getCode()));

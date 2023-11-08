@@ -25,26 +25,13 @@ use Symfony\Component\Form\DataTransformerInterface;
 final class ModelToIdTransformer implements DataTransformerInterface
 {
     /**
-     * @var ModelManagerInterface
-     * @phpstan-var ModelManagerInterface<T>
-     */
-    private $modelManager;
-
-    /**
-     * @var string
-     *
-     * @phpstan-var class-string<T>
-     */
-    private $className;
-
-    /**
      * @phpstan-param ModelManagerInterface<T> $modelManager
      * @phpstan-param class-string<T>          $className
      */
-    public function __construct(ModelManagerInterface $modelManager, string $className)
-    {
-        $this->modelManager = $modelManager;
-        $this->className = $className;
+    public function __construct(
+        private ModelManagerInterface $modelManager,
+        private string $className
+    ) {
     }
 
     /**

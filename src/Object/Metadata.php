@@ -20,46 +20,19 @@ final class Metadata implements MetadataInterface
      */
     public const DEFAULT_MOSAIC_BACKGROUND = 'bundles/sonataadmin/images/default_mosaic_image.png';
 
-    /**
-     * @var string
-     */
-    private $title;
-
-    /**
-     * @var string|null
-     */
-    private $description;
-
-    /**
-     * @var string|null
-     */
-    private $image;
-
-    /**
-     * @var string|null
-     */
-    private $domain;
-
-    /**
-     * @var array<string, mixed>
-     */
-    private $options = [];
+    private ?string $image = null;
 
     /**
      * @param array<string, mixed> $options
      */
     public function __construct(
-        string $title,
-        ?string $description = null,
+        private string $title,
+        private ?string $description = null,
         ?string $image = null,
-        ?string $domain = null,
-        array $options = []
+        private ?string $domain = null,
+        private array $options = []
     ) {
-        $this->title = $title;
-        $this->description = $description;
-        $this->image = null !== $image ? $image : self::DEFAULT_MOSAIC_BACKGROUND;
-        $this->domain = $domain;
-        $this->options = $options;
+        $this->image = $image ?? self::DEFAULT_MOSAIC_BACKGROUND;
     }
 
     public function getTitle(): string

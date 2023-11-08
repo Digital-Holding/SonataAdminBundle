@@ -80,7 +80,7 @@ abstract class BaseGroupedMapper implements MapperInterface
             'label' => $this->getAdmin()->getLabelTranslatorStrategy()->getLabel($name, $this->getName(), 'group'),
             'translation_domain' => null,
             'name' => $name,
-            'box_class' => 'card card-primary',
+            'box_class' => 'box box-primary',
             'empty_message' => 'message_form_group_empty',
             'empty_message_translation_domain' => 'SonataAdminBundle',
         ];
@@ -268,8 +268,8 @@ abstract class BaseGroupedMapper implements MapperInterface
         }
 
         if (isset($groups[$group])) {
-            foreach ($groups[$group]['fields'] as $field) {
-                $this->remove($field);
+            foreach ($groups[$group]['fields'] as $fieldKey => $field) {
+                $this->remove((string) $fieldKey);
             }
         }
         unset($groups[$group]);
@@ -302,8 +302,8 @@ abstract class BaseGroupedMapper implements MapperInterface
 
         foreach ($tabs[$tab]['groups'] as $group) {
             if (isset($groups[$group])) {
-                foreach ($groups[$group]['fields'] as $field) {
-                    $this->remove($field);
+                foreach ($groups[$group]['fields'] as $fieldKey => $field) {
+                    $this->remove((string) $fieldKey);
                 }
             }
 

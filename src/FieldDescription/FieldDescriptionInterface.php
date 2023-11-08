@@ -15,24 +15,26 @@ namespace Sonata\AdminBundle\FieldDescription;
 
 use Sonata\AdminBundle\Admin\AdminInterface;
 use Sonata\AdminBundle\Exception\NoValueException;
+use Symfony\Component\PropertyAccess\PropertyPathInterface;
 
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  *
- * @psalm-type FieldDescriptionOptions = array{
- *  accessor?: string|callable|\Symfony\Component\PropertyAccess\PropertyPathInterface,
- *  associated_property?: string|callable|\Symfony\Component\PropertyAccess\PropertyPathInterface,
- *  label?: string|false|null,
- *  link_parameters?: array<string, mixed>,
- *  role?: string|string[],
- *  sort_field_mapping?: array<string, mixed>,
- *  sort_parent_association_mappings?: array<array<string, mixed>>,
- *  sortable?: string|bool,
- *  template?: string,
- *  translation_domain?: string|false,
- *  type?: string,
- *  virtual_field?: bool
+ * @psalm-type FieldDescriptionOptions array{
+ *     accessor?: string|callable|PropertyPathInterface,
+ *     associated_property?: string|callable|PropertyPathInterface,
+ *     label?: string|false|null,
+ *     link_parameters?: array<string, mixed>,
+ *     role?: string|string[],
+ *     sort_field_mapping?: array<string, mixed>,
+ *     sort_parent_association_mappings?: array<array<string, mixed>>,
+ *     sortable?: string|bool,
+ *     template?: string,
+ *     translation_domain?: string|false,
+ *     type?: string,
+ *     virtual_field?: bool
  * }&array<string, mixed>
+ *
  * @phpstan-type FieldDescriptionOptions = array<string, mixed>
  */
 interface FieldDescriptionInterface
@@ -75,18 +77,14 @@ interface FieldDescriptionInterface
     /**
      * Returns the value represented by the provided name.
      *
-     * @param mixed $default
-     *
      * @return mixed
      */
-    public function getOption(string $name, $default = null);
+    public function getOption(string $name, mixed $default = null);
 
     /**
      * Define an option, an option is has a name and a value.
-     *
-     * @param mixed $value
      */
-    public function setOption(string $name, $value): void;
+    public function setOption(string $name, mixed $value): void;
 
     /**
      * Define the options value, if the options array contains the reserved keywords

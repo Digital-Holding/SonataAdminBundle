@@ -25,44 +25,28 @@ final class AdminPoolLoader extends Loader
 {
     public const ROUTE_TYPE_NAME = 'sonata_admin';
 
-    /**
-     * @var Pool
-     */
-    private $pool;
-
-    public function __construct(Pool $pool)
-    {
-        // Remove this check when dropping support for support of symfony/symfony-config < 5.3.
-        // @phpstan-ignore-next-line
-        if (method_exists(parent::class, '__construct')) {
-            parent::__construct();
-        }
-
-        $this->pool = $pool;
+    public function __construct(
+        private Pool $pool
+    ) {
+        parent::__construct();
     }
 
     /**
-     * NEXT_MAJOR: Add the ?string param typehint when Symfony 4 support is dropped.
-     *
-     * @param mixed       $resource
-     * @param string|null $type
+     * @param mixed $resource
      */
-    public function supports($resource, $type = null): bool
+    public function supports($resource, ?string $type = null): bool
     {
         return self::ROUTE_TYPE_NAME === $type;
     }
 
     /**
-     * NEXT_MAJOR: Add the ?string param typehint when Symfony 4 support is dropped.
-     *
-     * @param mixed       $resource
-     * @param string|null $type
+     * @param mixed $resource
      */
-    public function load($resource, $type = null): SymfonyRouteCollection
+    public function load($resource, ?string $type = null): SymfonyRouteCollection
     {
         $collection = new SymfonyRouteCollection();
-        foreach ($this->pool->getAdminServiceIds() as $id) {
-            $admin = $this->pool->getInstance($id);
+        foreach ($this->pool->getAdminServiceCodes() as $code) {
+            $admin = $this->pool->getInstance($code);
 
             foreach ($admin->getRoutes()->getElements() as $route) {
                 $name = $route->getDefault('_sonata_name');
