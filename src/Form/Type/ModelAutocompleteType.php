@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Form\Type;
 
-use Sonata\AdminBundle\BCLayer\BCDeprecation;
 use Sonata\AdminBundle\Datagrid\DatagridInterface;
 use Sonata\AdminBundle\Form\DataTransformer\ModelToIdPropertyTransformer;
 use Sonata\AdminBundle\Model\ModelManagerInterface;
@@ -31,6 +30,8 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
  *
  * @author Andrej Hudec <pulzarraider@gmail.com>
  * @author Florent Denis <dflorent.pokap@gmail.com>
+ *
+ * @psalm-suppress MissingTemplateParam https://github.com/phpstan/phpstan-symfony/issues/320
  */
 final class ModelAutocompleteType extends AbstractType
 {
@@ -43,6 +44,7 @@ final class ModelAutocompleteType extends AbstractType
 
         $builder->setAttribute('property', $options['property']);
         $builder->setAttribute('callback', $options['callback']);
+        $builder->setAttribute('response_item_callback', $options['response_item_callback']);
         $builder->setAttribute('minimum_input_length', $options['minimum_input_length']);
         $builder->setAttribute('items_per_page', $options['items_per_page']);
         $builder->setAttribute('req_param_name_page_number', $options['req_param_name_page_number']);
@@ -110,9 +112,7 @@ final class ModelAutocompleteType extends AbstractType
 
     public function configureOptions(OptionsResolver $resolver): void
     {
-        $compound = static function (Options $options): bool {
-            return $options['multiple'];
-        };
+        $compound = static fn (Options $options): bool => $options['multiple'];
 
         $resolver->setDefaults([
             'attr' => [],
@@ -169,30 +169,28 @@ final class ModelAutocompleteType extends AbstractType
         $resolver->setAllowedTypes('property', ['string', 'array']);
         $resolver->setDeprecated(
             'quiet_millis',
-            ...BCDeprecation::forOptionResolver(
-                static function (Options $options, $value): string {
-                    if (100 !== $value) {
-                        return 'Passing a value to option "quiet_millis" is deprecated! Use "delay" instead!';
-                    }
+            'sonata-project/admin-bundle',
+            '4.6',
+            static function (Options $options, mixed $value): string {
+                if (100 !== $value) {
+                    return 'Passing a value to option "quiet_millis" is deprecated! Use "delay" instead!';
+                }
 
-                    return '';
-                },
-                '4.6',
-            )
+                return '';
+            },
         ); // NEXT_MAJOR: Remove this deprecation notice.
 
         $resolver->setDeprecated(
             'btn_catalogue',
-            ...BCDeprecation::forOptionResolver(
-                static function (Options $options, $value): string {
-                    if ('SonataAdminBundle' !== $value) {
-                        return 'Passing a value to option "btn_catalogue" is deprecated! Use "btn_translation_domain" instead!';
-                    }
+            'sonata-project/admin-bundle',
+            '4.9',
+            static function (Options $options, mixed $value): string {
+                if ('SonataAdminBundle' !== $value) {
+                    return 'Passing a value to option "btn_catalogue" is deprecated! Use "btn_translation_domain" instead!';
+                }
 
-                    return '';
-                },
-                '4.9',
-            )
+                return '';
+            },
         ); // NEXT_MAJOR: Remove this deprecation notice.
     }
 

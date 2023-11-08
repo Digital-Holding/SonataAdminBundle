@@ -34,15 +34,12 @@ use Symfony\Component\Form\FormBuilderInterface;
  */
 final class ExplainAdminCommandTest extends TestCase
 {
-    /**
-     * @var Application
-     */
-    private $application;
+    private Application $application;
 
     /**
      * @var AdminInterface<object>&MockObject
      */
-    private $admin;
+    private AdminInterface $admin;
 
     protected function setUp(): void
     {
@@ -177,11 +174,11 @@ final class ExplainAdminCommandTest extends TestCase
 
         static::assertSame(sprintf(
             str_replace("\n", \PHP_EOL, $explainAdminText),
-            \get_class($this->admin),
-            \get_class($modelManager),
-            \get_class($formBuilder),
-            \get_class($datagridBuilder),
-            \get_class($listBuilder)
+            $this->admin::class,
+            $modelManager::class,
+            $formBuilder::class,
+            $datagridBuilder::class,
+            $listBuilder::class
         ), $commandTester->getDisplay());
     }
 

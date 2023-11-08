@@ -37,12 +37,9 @@ final class AdminObjectAclManipulatorTest extends TestCase
     /**
      * @var MockObject&FormFactoryInterface
      */
-    private $formFactory;
+    private FormFactoryInterface $formFactory;
 
-    /**
-     * @var AdminObjectAclManipulator
-     */
-    private $adminObjectAclManipulator;
+    private AdminObjectAclManipulator $adminObjectAclManipulator;
 
     protected function setUp(): void
     {
@@ -73,11 +70,7 @@ final class AdminObjectAclManipulatorTest extends TestCase
         ]);
         $acl->method('getObjectAces')->willReturn([]);
         $acl->method('isGranted')
-            ->withConsecutive(
-                [[MaskBuilder::MASK_MASTER], static::isType('array'), false],
-                [[MaskBuilder::MASK_OWNER], static::isType('array'), false]
-            )
-            ->willReturnOnConsecutiveCalls(true, false);
+            ->willReturnCallback(static fn (array $masks, array $securityIdentities, bool $administrativeMode = false): bool => $masks === [MaskBuilder::MASK_MASTER]);
 
         $acl
             ->expects(static::once())

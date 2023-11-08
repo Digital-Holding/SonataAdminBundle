@@ -15,29 +15,17 @@ namespace Sonata\AdminBundle\Tests\App\Model;
 
 final class Foo implements EntityInterface
 {
-    /**
-     * @var string
-     */
-    private $id;
-
-    /**
-     * @var string
-     */
-    private $name;
-
-    /**
-     * @var string[]
-     */
-    private $elements;
+    private ?Bar $referenced;
 
     /**
      * @param string[] $elements
      */
-    public function __construct(string $id, string $name, array $elements = [])
-    {
-        $this->id = $id;
-        $this->name = $name;
-        $this->elements = $elements;
+    public function __construct(
+        private string $id,
+        private string $name,
+        private array $elements = []
+    ) {
+        $this->referenced = null;
     }
 
     public function getId(): string
@@ -48,6 +36,11 @@ final class Foo implements EntityInterface
     public function getName(): string
     {
         return $this->name;
+    }
+
+    public function getReferenced(): ?Bar
+    {
+        return $this->referenced;
     }
 
     /**

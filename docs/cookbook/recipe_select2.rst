@@ -12,15 +12,13 @@ Disable select2
 
 If you don't want to use select2 in your admin, you can disable it in configuration.
 
-.. configuration-block::
+.. code-block:: yaml
 
-    .. code-block:: yaml
+    # config/packages/sonata_admin.yaml
 
-        # config/packages/sonata_admin.yaml
-
-        sonata_admin:
-            options:
-                use_select2:    false # disable select2
+    sonata_admin:
+        options:
+            use_select2: false # disable select2
 
 .. note::
 
@@ -95,3 +93,22 @@ To control the minimum amount of results that are required before the select is 
 .. note::
 
     By default ``minimumResultsForSearch`` will be set to ``10``
+
+Maximum selection length
+--------------------------
+
+To control the maximum amount of results that can be selected, you can set the data attribute ``data-sonata-select2-maximumSelectionLength``. This controls select2's ``maximumSelectionLength`` parameter::
+
+
+    use Sonata\AdminBundle\Form\Type\ModelType;
+
+    protected function configureFormFields(FormMapper $form): void
+    {
+        $form
+            ->add('category', ModelType::class, [
+                'attr' => [
+                    'data-sonata-select2-maximumSelectionLength' => '3',
+                ]
+            ])
+        ;
+    }

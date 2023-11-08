@@ -34,27 +34,24 @@ final class RetrieveFormFieldElementActionTest extends TestCase
     /**
      * @var Stub&AdminFetcherInterface
      */
-    private $adminFetcher;
+    private AdminFetcherInterface $adminFetcher;
 
-    /**
-     * @var RetrieveFormFieldElementAction
-     */
-    private $action;
+    private RetrieveFormFieldElementAction $action;
 
     /**
      * @var AdminInterface<object>&MockObject
      */
-    private $admin;
+    private AdminInterface $admin;
 
     /**
      * @var Environment&MockObject
      */
-    private $twig;
+    private Environment $twig;
 
     /**
      * @var AdminHelper&MockObject
      */
-    private $helper;
+    private AdminHelper $helper;
 
     protected function setUp(): void
     {
@@ -90,12 +87,12 @@ final class RetrieveFormFieldElementActionTest extends TestCase
         $renderer = $this->configureFormRenderer();
 
         $this->admin->method('getObject')->with(42)->willReturn($object);
-        $this->admin->method('getClass')->willReturn(\get_class($object));
+        $this->admin->method('getClass')->willReturn($object::class);
         $this->admin->expects(static::once())->method('setSubject')->with($object);
         $this->admin->method('getFormTheme')->willReturn([]);
         $this->admin->method('getFormBuilder')->willReturn($formBuilder);
         $this->helper->method('getChildFormView')->with($formView, 'element_42')->willReturn($formView);
-        $modelManager->method('find')->with(\get_class($object), 42)->willReturn($object);
+        $modelManager->method('find')->with($object::class, 42)->willReturn($object);
         $form->expects(static::once())->method('setData')->with($object);
         $form->expects(static::once())->method('handleRequest')->with($request);
         $form->method('createView')->willReturn($formView);

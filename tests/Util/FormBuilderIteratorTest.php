@@ -18,6 +18,7 @@ use Sonata\AdminBundle\Util\FormBuilderIterator;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilder;
+use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormFactoryInterface;
 
 /**
@@ -25,20 +26,11 @@ use Symfony\Component\Form\FormFactoryInterface;
  */
 final class FormBuilderIteratorTest extends TestCase
 {
-    /**
-     * @var EventDispatcherInterface
-     */
-    private $dispatcher;
+    private EventDispatcherInterface $dispatcher;
 
-    /**
-     * @var FormFactoryInterface
-     */
-    private $factory;
+    private FormFactoryInterface $factory;
 
-    /**
-     * @var FormBuilder
-     */
-    private $builder;
+    private FormBuilder $builder;
 
     protected function setUp(): void
     {
@@ -52,7 +44,7 @@ final class FormBuilderIteratorTest extends TestCase
     {
         $this->builder->add('name', TextType::class);
         $iterator = new FormBuilderIterator($this->builder);
-        static::assertInstanceOf(\get_class($iterator), $iterator->getChildren());
+        static::assertInstanceOf($iterator::class, $iterator->getChildren());
         static::assertSame('name_name', $iterator->key());
     }
 
@@ -61,5 +53,12 @@ final class FormBuilderIteratorTest extends TestCase
         $this->builder->add('name', TextType::class);
         $iterator = new FormBuilderIterator($this->builder);
         static::assertTrue($iterator->hasChildren());
+    }
+
+    public function testCurrentWithIntegerIndexedChildren(): void
+    {
+        $this->builder->add('0', TextType::class);
+        $iterator = new FormBuilderIterator($this->builder);
+        static::assertInstanceOf(FormBuilderInterface::class, $iterator->current());
     }
 }

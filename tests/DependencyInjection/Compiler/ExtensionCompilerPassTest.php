@@ -22,6 +22,7 @@ use Sonata\AdminBundle\Admin\AdminExtensionInterface;
 use Sonata\AdminBundle\Admin\AdminInterface;
 use Sonata\AdminBundle\DependencyInjection\Compiler\ExtensionCompilerPass;
 use Sonata\AdminBundle\DependencyInjection\SonataAdminExtension;
+use Sonata\BlockBundle\Cache\HttpCacheHandler;
 use Sonata\BlockBundle\DependencyInjection\SonataBlockExtension;
 use Symfony\Bundle\FrameworkBundle\Translation\Translator;
 use Symfony\Component\Config\FileLocatorInterface;
@@ -30,6 +31,8 @@ use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Session\Session;
+use Symfony\Component\HttpKernel\Controller\ControllerResolverInterface;
+use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\PropertyAccess\PropertyAccessor;
 use Symfony\Component\Routing\RouterInterface;
@@ -41,22 +44,17 @@ use Twig\Environment;
 
 final class ExtensionCompilerPassTest extends TestCase
 {
-    /**
-     * @var SonataAdminExtension
-     */
-    private $extension;
+    private SonataAdminExtension $extension;
 
     /**
      * @var array<string, mixed>
      */
-    private $config = [];
+    private array $config = [];
 
     /**
      * Root name of the configuration.
-     *
-     * @var string
      */
-    private $root;
+    private string $root;
 
     protected function setUp(): void
     {
@@ -134,8 +132,8 @@ final class ExtensionCompilerPassTest extends TestCase
         static::assertArrayHasKey('admins', $extensionMap);
         static::assertCount(1, $extensionMap['admins']);
 
-        static::assertArrayHasKey('sonata_extension_publish', $extensionMap['admins']['sonata_post_admin']);
         static::assertCount(1, $extensionMap['admins']['sonata_post_admin']);
+        static::assertArrayHasKey('sonata_extension_publish', $extensionMap['admins']['sonata_post_admin']);
 
         // Excludes
         static::assertArrayHasKey('excludes', $extensionMap);
@@ -209,6 +207,7 @@ final class ExtensionCompilerPassTest extends TestCase
 
     /**
      * @doesNotPerformAssertions
+     *
      * @covers \Sonata\AdminBundle\DependencyInjection\Compiler\ExtensionCompilerPass::process
      */
     public function testProcessWithInvalidAdminId(): void
@@ -250,10 +249,17 @@ final class ExtensionCompilerPassTest extends TestCase
         static::assertTrue($container->hasDefinition('sonata_extension_order'));
         static::assertTrue($container->hasDefinition('sonata_extension_security'));
         static::assertTrue($container->hasDefinition('sonata_extension_timestamp'));
+        static::assertTrue($container->hasDefinition('sonata_extension_admin_publish'));
+        static::assertTrue($container->hasDefinition('sonata_extension_admin_instanceof'));
+        static::assertTrue($container->hasDefinition('sonata_extension_admin_extends'));
+        static::assertTrue($container->hasDefinition('sonata_extension_admin_uses'));
 
         static::assertTrue($container->hasDefinition('sonata_post_admin'));
         static::assertTrue($container->hasDefinition('sonata_article_admin'));
         static::assertTrue($container->hasDefinition('sonata_news_admin'));
+        static::assertTrue($container->hasDefinition('sonata_super_admin'));
+        static::assertTrue($container->hasDefinition('sonata_timestampable_admin'));
+        static::assertTrue($container->hasDefinition('sonata_publishable_admin'));
 
         $globalExtension = $container->get('sonata_extension_global');
         $securityExtension = $container->get('sonata_extension_security');
@@ -261,41 +267,77 @@ final class ExtensionCompilerPassTest extends TestCase
         $historyExtension = $container->get('sonata_extension_history');
         $orderExtension = $container->get('sonata_extension_order');
         $filterExtension = $container->get('sonata_extension_filter');
+        $adminPublishExtension = $container->get('sonata_extension_admin_publish');
+        $adminInstanceOfExtension = $container->get('sonata_extension_admin_instanceof');
+        $adminExtendsExtension = $container->get('sonata_extension_admin_extends');
+        $adminUsesExtension = $container->get('sonata_extension_admin_uses');
 
         $def = $container->get('sonata_post_admin');
         static::assertInstanceOf(AdminInterface::class, $def);
 
         $extensions = $def->getExtensions();
-        static::assertCount(5, $extensions);
+        static::assertCount(7, $extensions);
 
         static::assertSame($historyExtension, $extensions[0]);
-        static::assertSame($publishExtension, $extensions[2]);
-        static::assertSame($securityExtension, $extensions[3]);
-        static::assertSame($globalExtension, $extensions[4]);
+        static::assertSame($adminInstanceOfExtension, $extensions[1]);
+        static::assertSame($securityExtension, $extensions[2]);
+        static::assertSame($publishExtension, $extensions[4]);
+        static::assertSame($globalExtension, $extensions[6]);
 
         $def = $container->get('sonata_article_admin');
         static::assertInstanceOf(AdminInterface::class, $def);
 
         $extensions = $def->getExtensions();
-        static::assertCount(6, $extensions);
+        static::assertCount(8, $extensions);
 
         static::assertSame($filterExtension, $extensions[0]);
-        static::assertSame($securityExtension, $extensions[1]);
-        static::assertSame($publishExtension, $extensions[2]);
-        static::assertSame($orderExtension, $extensions[4]);
-        static::assertSame($globalExtension, $extensions[5]);
+        static::assertSame($adminInstanceOfExtension, $extensions[1]);
+        static::assertSame($securityExtension, $extensions[2]);
+        static::assertSame($publishExtension, $extensions[3]);
+        static::assertSame($orderExtension, $extensions[6]);
+        static::assertSame($globalExtension, $extensions[7]);
 
         $def = $container->get('sonata_news_admin');
         static::assertInstanceOf(AdminInterface::class, $def);
 
         $extensions = $def->getExtensions();
-        static::assertCount(6, $extensions);
+        static::assertCount(8, $extensions);
 
         static::assertSame($historyExtension, $extensions[0]);
-        static::assertSame($securityExtension, $extensions[2]);
-        static::assertSame($filterExtension, $extensions[3]);
-        static::assertSame($orderExtension, $extensions[4]);
-        static::assertSame($globalExtension, $extensions[5]);
+        static::assertSame($filterExtension, $extensions[1]);
+        static::assertSame($adminInstanceOfExtension, $extensions[4]);
+        static::assertSame($securityExtension, $extensions[3]);
+        static::assertSame($orderExtension, $extensions[6]);
+        static::assertSame($globalExtension, $extensions[7]);
+
+        $def = $container->get('sonata_super_admin');
+        static::assertInstanceOf(AdminInterface::class, $def);
+
+        $extensions = $def->getExtensions();
+        static::assertCount(5, $extensions);
+
+        static::assertSame($adminInstanceOfExtension, $extensions[1]);
+        static::assertSame($adminExtendsExtension, $extensions[2]);
+        static::assertSame($globalExtension, $extensions[4]);
+
+        $def = $container->get('sonata_timestampable_admin');
+        static::assertInstanceOf(AdminInterface::class, $def);
+
+        $extensions = $def->getExtensions();
+        static::assertCount(5, $extensions);
+
+        static::assertSame($adminUsesExtension, $extensions[1]);
+        static::assertSame($filterExtension, $extensions[2]);
+        static::assertSame($globalExtension, $extensions[4]);
+
+        $def = $container->get('sonata_publishable_admin');
+        static::assertInstanceOf(AdminInterface::class, $def);
+
+        $extensions = $def->getExtensions();
+        static::assertCount(4, $extensions);
+
+        static::assertSame($adminPublishExtension, $extensions[1]);
+        static::assertSame($globalExtension, $extensions[3]);
     }
 
     /**
@@ -324,7 +366,7 @@ final class ExtensionCompilerPassTest extends TestCase
      */
     protected function getConfig(): array
     {
-        $config = [
+        return [
             'extensions' => [
                 'sonata_extension_global' => [
                     'global' => true,
@@ -345,12 +387,23 @@ final class ExtensionCompilerPassTest extends TestCase
                     'implements' => [Publishable::class],
                     'priority' => -128,
                 ],
+                'sonata_extension_post' => [
+                    'uses' => [TimestampableTrait::class],
+                ],
+                'sonata_extension_admin_publish' => [
+                    'admin_implements' => [Publishable::class],
+                ],
+                'sonata_extension_admin_instanceof' => [
+                    'admin_instanceof' => [MockAdmin::class],
+                ],
+                'sonata_extension_admin_extends' => [
+                    'admin_extends' => [MockAdmin::class],
+                ],
+                'sonata_extension_admin_uses' => [
+                    'admin_uses' => [TimestampableTrait::class],
+                ],
             ],
         ];
-
-        $config['extensions']['sonata_extension_post']['uses'] = [TimestampableTrait::class];
-
-        return $config;
     }
 
     private function getContainer(): ContainerBuilder
@@ -403,6 +456,12 @@ final class ExtensionCompilerPassTest extends TestCase
         $container
             ->register('security.authorization_checker')
             ->setClass(AuthorizationCheckerInterface::class);
+        $container
+            ->register('controller_resolver')
+            ->setClass(ControllerResolverInterface::class);
+        $container
+            ->register(HttpKernelInterface::class)
+            ->setClass(HttpKernelInterface::class);
 
         // Add admin definition's
         $container
@@ -421,11 +480,26 @@ final class ExtensionCompilerPassTest extends TestCase
             ->setClass(MockAdmin::class)
             ->addTag('sonata.admin', ['model_class' => Article::class]);
         $container
+            ->register('sonata_super_admin')
+            ->setPublic(true)
+            ->setClass(SuperMockAdmin::class)
+            ->addTag('sonata.admin', ['model_class' => \stdClass::class]);
+        $container
+            ->register('sonata_timestampable_admin')
+            ->setPublic(true)
+            ->setClass(TimestampableAdmin::class)
+            ->addTag('sonata.admin', ['model_class' => \stdClass::class]);
+        $container
+            ->register('sonata_publishable_admin')
+            ->setPublic(true)
+            ->setClass(PublishableAdmin::class)
+            ->addTag('sonata.admin', ['model_class' => \stdClass::class]);
+        $container
             ->register('event_dispatcher')
             ->setClass(EventDispatcher::class);
 
         // Add admin extension definition's
-        $extensionClass = \get_class($this->createMock(AdminExtensionInterface::class));
+        $extensionClass = $this->createMock(AdminExtensionInterface::class)::class;
 
         $container
             ->register('sonata_extension_global')
@@ -444,7 +518,27 @@ final class ExtensionCompilerPassTest extends TestCase
             ->setPublic(true)
             ->setClass($extensionClass);
         $container
+            ->register('sonata_extension_post')
+            ->setPublic(true)
+            ->setClass($extensionClass);
+        $container
             ->register('sonata_extension_timestamp')
+            ->setPublic(true)
+            ->setClass($extensionClass);
+        $container
+            ->register('sonata_extension_admin_publish')
+            ->setPublic(true)
+            ->setClass($extensionClass);
+        $container
+            ->register('sonata_extension_admin_instanceof')
+            ->setPublic(true)
+            ->setClass($extensionClass);
+        $container
+            ->register('sonata_extension_admin_extends')
+            ->setPublic(true)
+            ->setClass($extensionClass);
+        $container
+            ->register('sonata_extension_admin_uses')
             ->setPublic(true)
             ->setClass($extensionClass);
         $container
@@ -456,8 +550,11 @@ final class ExtensionCompilerPassTest extends TestCase
             ->register('sonata_extension_filter')
             ->setPublic(true)
             ->setClass($extensionClass)
-            ->addTag('sonata.admin.extension', ['target' => 'sonata_news_admin'])
-            ->addTag('sonata.admin.extension', ['target' => 'sonata_article_admin']);
+            ->addTag('sonata.admin.extension', ['global' => false])
+            ->addTag('sonata.admin.extension', ['target' => 'sonata_news_admin', 'priority' => 10])
+            ->addTag('sonata.admin.extension', ['target' => 'sonata_article_admin'])
+            ->addTag('sonata.admin.extension', ['implements' => Publishable::class])
+            ->addTag('sonata.admin.extension', ['admin_uses' => TimestampableTrait::class]);
 
         // Add definitions for sonata.templating service
         $container
@@ -468,15 +565,18 @@ final class ExtensionCompilerPassTest extends TestCase
             ->setClass(FileLocatorInterface::class);
 
         $blockExtension = new SonataBlockExtension();
-        $blockExtension->load([], $container);
+        /*
+         * TODO: remove "http_cache" parameter when support for SonataBlockBundle 4 is dropped.
+         */
+        $blockExtension->load(
+            [
+                'sonata_block' => class_exists(HttpCacheHandler::class) ? ['http_cache' => false] : [],
+            ],
+            $container
+        );
 
         return $container;
     }
-}
-
-/** @phpstan-extends AbstractAdmin<object> */
-class MockAdmin extends AbstractAdmin
-{
 }
 
 trait TimestampableTrait
@@ -484,6 +584,7 @@ trait TimestampableTrait
 }
 class Post
 {
+    use TimestampableTrait;
 }
 interface Publishable
 {
@@ -492,5 +593,21 @@ class News extends Post
 {
 }
 class Article implements Publishable
+{
+}
+/** @phpstan-extends AbstractAdmin<object> */
+class MockAdmin extends AbstractAdmin
+{
+}
+class SuperMockAdmin extends MockAdmin
+{
+}
+/** @phpstan-extends AbstractAdmin<object> */
+class TimestampableAdmin extends AbstractAdmin
+{
+    use TimestampableTrait;
+}
+/** @phpstan-extends AbstractAdmin<object> */
+class PublishableAdmin extends AbstractAdmin implements Publishable
 {
 }

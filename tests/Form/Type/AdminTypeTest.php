@@ -29,10 +29,7 @@ use Symfony\Component\PropertyAccess\Exception\NoSuchPropertyException;
 
 final class AdminTypeTest extends TypeTestCase
 {
-    /**
-     * @var AdminType
-     */
-    private $adminType;
+    private AdminType $adminType;
 
     protected function setUp(): void
     {
@@ -84,11 +81,11 @@ final class AdminTypeTest extends TypeTestCase
         $field->expects(static::once())->method('getAssociationAdmin')->willReturn($admin);
         $field->expects(static::once())->method('getAdmin');
         $field->expects(static::once())->method('getName');
-        $field->expects(static::exactly(3))->method('getOption')->withConsecutive(
-            ['edit', 'standard'],
-            ['inline', 'natural'],
-            ['block_name', false]
-        );
+        $field->expects(static::exactly(3))->method('getOption')->willReturnMap([
+            ['edit', 'standard', 'standard'],
+            ['inline', 'natural', 'natural'],
+            ['block_name', false, false],
+        ]);
 
         $formData = [];
 
@@ -208,8 +205,16 @@ final class AdminTypeTest extends TypeTestCase
         $modelManager = $this->createStub(ModelManagerInterface::class);
 
         $newInstance = new class() {
+            private ?object $bar = null;
+
             public function setBar(object $bar): void
             {
+                $this->bar = $bar;
+            }
+
+            public function getBar(): ?object
+            {
+                return $this->bar;
             }
         };
 
@@ -239,6 +244,8 @@ final class AdminTypeTest extends TypeTestCase
         } catch (NoSuchPropertyException $exception) {
             static::fail($exception->getMessage());
         }
+
+        static::assertSame($parentSubject, $newInstance->getBar());
     }
 
     public function testArrayCollectionByReferenceNotFound(): void
@@ -258,12 +265,24 @@ final class AdminTypeTest extends TypeTestCase
         $parentField = $this->createMock(FieldDescriptionInterface::class);
         $parentField->expects(static::once())->method('setAssociationAdmin')->with(static::isInstanceOf(AdminInterface::class));
         $parentField->expects(static::once())->method('getAdmin')->willReturn($parentAdmin);
-        $parentField->expects(static::once())->method('getParentAssociationMappings')->willReturn([]);
-        $parentField->expects(static::once())->method('getAssociationMapping')->willReturn(['fieldName' => 'foo', 'mappedBy' => 'bar']);
+        $parentField->expects(static::atLeastOnce())->method('getParentAssociationMappings')->willReturn([]);
+        $parentField->expects(static::atLeastOnce())->method('getAssociationMapping')->willReturn(['fieldName' => 'foo', 'mappedBy' => 'bar']);
 
         $modelManager = $this->createStub(ModelManagerInterface::class);
 
-        $newInstance = new \stdClass();
+        $newInstance = new class() {
+            private ?object $bar = null;
+
+            public function setBar(object $bar): void
+            {
+                $this->bar = $bar;
+            }
+
+            public function getBar(): ?object
+            {
+                return $this->bar;
+            }
+        };
 
         $admin = $this->createMock(AdminInterface::class);
         $admin->expects(static::exactly(2))->method('hasParentFieldDescription')->willReturn(true);
@@ -277,7 +296,7 @@ final class AdminTypeTest extends TypeTestCase
         $field = $this->createMock(FieldDescriptionInterface::class);
         $field->expects(static::once())->method('getAssociationAdmin')->willReturn($admin);
         $field->expects(static::atLeastOnce())->method('getFieldName')->willReturn('foo');
-        $field->expects(static::once())->method('getParentAssociationMappings')->willReturn([]);
+        $field->expects(static::atLeastOnce())->method('getParentAssociationMappings')->willReturn([]);
 
         $this->builder->add('foo');
 
@@ -291,6 +310,8 @@ final class AdminTypeTest extends TypeTestCase
         } catch (NoSuchPropertyException $exception) {
             static::fail($exception->getMessage());
         }
+
+        static::assertSame($parentSubject, $newInstance->getBar());
     }
 
     /**

@@ -24,11 +24,11 @@ use Sonata\AdminBundle\Util\TraversableToCollection;
 final class TraversableToCollectionTest extends TestCase
 {
     /**
-     * @param \Traversable<mixed>|array<mixed> $value
+     * @param iterable<mixed, mixed> $value
      *
-     * @dataProvider provideTraversableValues
+     * @dataProvider provideTransformCases
      */
-    public function testTransform(int $expectedCount, $value): void
+    public function testTransform(int $expectedCount, iterable $value): void
     {
         $collection = TraversableToCollection::transform($value);
 
@@ -39,7 +39,7 @@ final class TraversableToCollectionTest extends TestCase
     /**
      * @phpstan-return iterable<array-key, array{int, iterable<mixed, mixed>}>
      */
-    public function provideTraversableValues(): iterable
+    public function provideTransformCases(): iterable
     {
         yield [0, []];
         yield [1, [null]];
@@ -51,11 +51,9 @@ final class TraversableToCollectionTest extends TestCase
     }
 
     /**
-     * @param mixed $value
-     *
-     * @dataProvider provideInvalidValues
+     * @dataProvider provideFailedTransformCases
      */
-    public function testFailedTransform(string $invalidType, $value): void
+    public function testFailedTransform(string $invalidType, mixed $value): void
     {
         $this->expectException(\TypeError::class);
         $this->expectExceptionMessage(sprintf(
@@ -70,7 +68,7 @@ final class TraversableToCollectionTest extends TestCase
     /**
      * @phpstan-return iterable<array-key, array{string, mixed}>
      */
-    public function provideInvalidValues(): iterable
+    public function provideFailedTransformCases(): iterable
     {
         yield ['"NULL"', null];
         yield ['"integer"', 0];

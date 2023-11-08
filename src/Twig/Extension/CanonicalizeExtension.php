@@ -20,18 +20,13 @@ use Twig\TwigFunction;
 final class CanonicalizeExtension extends AbstractExtension
 {
     /**
-     * @var CanonicalizeRuntime
-     */
-    private $canonicalizeRuntime;
-
-    /**
      * NEXT_MAJOR: Remove this constructor.
      *
      * @internal This class should only be used through Twig
      */
-    public function __construct(CanonicalizeRuntime $canonicalizeRuntime)
-    {
-        $this->canonicalizeRuntime = $canonicalizeRuntime;
+    public function __construct(
+        private CanonicalizeRuntime $canonicalizeRuntime
+    ) {
     }
 
     /**

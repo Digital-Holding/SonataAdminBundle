@@ -16,7 +16,6 @@ namespace Sonata\AdminBundle\Tests\Admin;
 use Doctrine\Common\Collections\Collection;
 use Knp\Menu\FactoryInterface;
 use Knp\Menu\ItemInterface;
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Sonata\AdminBundle\Admin\AbstractAdmin;
 use Sonata\AdminBundle\Admin\AbstractAdminExtension;
@@ -64,17 +63,18 @@ use Sonata\AdminBundle\Tests\Fixtures\Admin\TagWithoutPostAdmin;
 use Sonata\AdminBundle\Tests\Fixtures\Bundle\Entity\BlogPost;
 use Sonata\AdminBundle\Tests\Fixtures\Bundle\Entity\Comment;
 use Sonata\AdminBundle\Tests\Fixtures\Bundle\Entity\CommentVote;
+use Sonata\AdminBundle\Tests\Fixtures\Bundle\Entity\NewsPost;
 use Sonata\AdminBundle\Tests\Fixtures\Bundle\Entity\Post;
 use Sonata\AdminBundle\Tests\Fixtures\Bundle\Entity\PostCategory;
 use Sonata\AdminBundle\Tests\Fixtures\Bundle\Entity\Tag;
 use Sonata\AdminBundle\Tests\Fixtures\Entity\FooToString;
-use Sonata\AdminBundle\Tests\Fixtures\Entity\FooToStringNull;
 use Sonata\AdminBundle\Tests\Fixtures\FieldDescription\FieldDescription;
 use Sonata\AdminBundle\Translator\LabelTranslatorStrategyInterface;
 use Sonata\AdminBundle\Translator\NoopLabelTranslatorStrategy;
 use Sonata\AdminBundle\Translator\UnderscoreLabelTranslatorStrategy;
 use Sonata\Doctrine\Adapter\AdapterInterface;
 use Symfony\Component\DependencyInjection\Container;
+use Symfony\Component\ExpressionLanguage\Expression;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Form\FormFactory;
 use Symfony\Component\Form\FormRegistry;
@@ -87,10 +87,7 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 
 final class AdminTest extends TestCase
 {
-    /**
-     * @var string
-     */
-    protected $cacheTempFolder;
+    protected string $cacheTempFolder;
 
     protected function setUp(): void
     {
@@ -332,72 +329,85 @@ final class AdminTest extends TestCase
 
     /**
      * @phpstan-return iterable<array-key, array{class-string, string}>
-     * @psalm-suppress InvalidReturnType, InvalidReturnStatement
+     *
+     * @psalm-suppress MoreSpecificReturnType
      */
     public function provideGetBaseRoutePattern(): iterable
     {
         // @phpstan-ignore-next-line
-        return [
-            [
-                'Application\Sonata\NewsBundle\Entity\Post',
-                '/sonata/news/post',
-            ],
-            [
-                'Application\Sonata\NewsBundle\Document\Post',
-                '/sonata/news/post',
-            ],
-            [
-                'MyApplication\MyBundle\Entity\Post',
-                '/myapplication/my/post',
-            ],
-            [
-                'MyApplication\MyBundle\Entity\Post\Category',
-                '/myapplication/my/post-category',
-            ],
-            [
-                'MyApplication\MyBundle\Entity\Product\Category',
-                '/myapplication/my/product-category',
-            ],
-            [
-                'MyApplication\MyBundle\Entity\Other\Product\Category',
-                '/myapplication/my/other-product-category',
-            ],
-            [
-                'Symfony\Cmf\Bundle\FooBundle\Document\Menu',
-                '/cmf/foo/menu',
-            ],
-            [
-                'Symfony\Cmf\Bundle\FooBundle\Doctrine\Phpcr\Menu',
-                '/cmf/foo/menu',
-            ],
-            [
-                'Symfony\Bundle\BarBarBundle\Doctrine\Phpcr\Menu',
-                '/symfony/barbar/menu',
-            ],
-            [
-                'Symfony\Bundle\BarBarBundle\Doctrine\Phpcr\Menu\Item',
-                '/symfony/barbar/menu-item',
-            ],
-            [
-                'Symfony\Cmf\Bundle\FooBundle\Doctrine\Orm\Menu',
-                '/cmf/foo/menu',
-            ],
-            [
-                'Symfony\Cmf\Bundle\FooBundle\Doctrine\MongoDB\Menu',
-                '/cmf/foo/menu',
-            ],
-            [
-                'Symfony\Cmf\Bundle\FooBundle\Doctrine\CouchDB\Menu',
-                '/cmf/foo/menu',
-            ],
-            [
-                'AppBundle\Entity\User',
-                '/app/user',
-            ],
-            [
-                'App\Entity\User',
-                '/app/user',
-            ],
+        yield [
+            'Application\Sonata\NewsBundle\Entity\Post',
+            '/sonata/news/post',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'Application\Sonata\NewsBundle\Document\Post',
+            '/sonata/news/post',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'MyApplication\MyBundle\Entity\Post',
+            '/myapplication/my/post',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'MyApplication\MyBundle\Entity\Post\Category',
+            '/myapplication/my/post-category',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'MyApplication\MyBundle\Entity\Product\Category',
+            '/myapplication/my/product-category',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'MyApplication\MyBundle\Entity\Other\Product\Category',
+            '/myapplication/my/other-product-category',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'Symfony\Cmf\Bundle\FooBundle\Document\Menu',
+            '/cmf/foo/menu',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'Symfony\Cmf\Bundle\FooBundle\Doctrine\Phpcr\Menu',
+            '/cmf/foo/menu',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'Symfony\Bundle\BarBarBundle\Doctrine\Phpcr\Menu',
+            '/symfony/barbar/menu',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'Symfony\Bundle\BarBarBundle\Doctrine\Phpcr\Menu\Item',
+            '/symfony/barbar/menu-item',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'Symfony\Cmf\Bundle\FooBundle\Doctrine\Orm\Menu',
+            '/cmf/foo/menu',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'Symfony\Cmf\Bundle\FooBundle\Doctrine\MongoDB\Menu',
+            '/cmf/foo/menu',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'Symfony\Cmf\Bundle\FooBundle\Doctrine\CouchDB\Menu',
+            '/cmf/foo/menu',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'AppBundle\Entity\User',
+            '/app/user',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'App\Entity\User',
+            '/app/user',
         ];
     }
 
@@ -486,72 +496,85 @@ final class AdminTest extends TestCase
 
     /**
      * @phpstan-return iterable<array-key, array{class-string, string}>
-     * @psalm-suppress InvalidReturnType, InvalidReturnStatement
+     *
+     * @psalm-suppress MoreSpecificReturnType
      */
     public function provideGetBaseRouteName(): iterable
     {
         // @phpstan-ignore-next-line
-        return [
-            [
-                'Application\Sonata\NewsBundle\Entity\Post',
-                'admin_sonata_news_post',
-            ],
-            [
-                'Application\Sonata\NewsBundle\Document\Post',
-                'admin_sonata_news_post',
-            ],
-            [
-                'MyApplication\MyBundle\Entity\Post',
-                'admin_myapplication_my_post',
-            ],
-            [
-                'MyApplication\MyBundle\Entity\Post\Category',
-                'admin_myapplication_my_post_category',
-            ],
-            [
-                'MyApplication\MyBundle\Entity\Product\Category',
-                'admin_myapplication_my_product_category',
-            ],
-            [
-                'MyApplication\MyBundle\Entity\Other\Product\Category',
-                'admin_myapplication_my_other_product_category',
-            ],
-            [
-                'Symfony\Cmf\Bundle\FooBundle\Document\Menu',
-                'admin_cmf_foo_menu',
-            ],
-            [
-                'Symfony\Cmf\Bundle\FooBundle\Doctrine\Phpcr\Menu',
-                'admin_cmf_foo_menu',
-            ],
-            [
-                'Symfony\Bundle\BarBarBundle\Doctrine\Phpcr\Menu',
-                'admin_symfony_barbar_menu',
-            ],
-            [
-                'Symfony\Bundle\BarBarBundle\Doctrine\Phpcr\Menu\Item',
-                'admin_symfony_barbar_menu_item',
-            ],
-            [
-                'Symfony\Cmf\Bundle\FooBundle\Doctrine\Orm\Menu',
-                'admin_cmf_foo_menu',
-            ],
-            [
-                'Symfony\Cmf\Bundle\FooBundle\Doctrine\MongoDB\Menu',
-                'admin_cmf_foo_menu',
-            ],
-            [
-                'Symfony\Cmf\Bundle\FooBundle\Doctrine\CouchDB\Menu',
-                'admin_cmf_foo_menu',
-            ],
-            [
-                'AppBundle\Entity\User',
-                'admin_app_user',
-            ],
-            [
-                'App\Entity\User',
-                'admin_app_user',
-            ],
+        yield [
+            'Application\Sonata\NewsBundle\Entity\Post',
+            'admin_sonata_news_post',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'Application\Sonata\NewsBundle\Document\Post',
+            'admin_sonata_news_post',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'MyApplication\MyBundle\Entity\Post',
+            'admin_myapplication_my_post',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'MyApplication\MyBundle\Entity\Post\Category',
+            'admin_myapplication_my_post_category',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'MyApplication\MyBundle\Entity\Product\Category',
+            'admin_myapplication_my_product_category',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'MyApplication\MyBundle\Entity\Other\Product\Category',
+            'admin_myapplication_my_other_product_category',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'Symfony\Cmf\Bundle\FooBundle\Document\Menu',
+            'admin_cmf_foo_menu',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'Symfony\Cmf\Bundle\FooBundle\Doctrine\Phpcr\Menu',
+            'admin_cmf_foo_menu',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'Symfony\Bundle\BarBarBundle\Doctrine\Phpcr\Menu',
+            'admin_symfony_barbar_menu',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'Symfony\Bundle\BarBarBundle\Doctrine\Phpcr\Menu\Item',
+            'admin_symfony_barbar_menu_item',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'Symfony\Cmf\Bundle\FooBundle\Doctrine\Orm\Menu',
+            'admin_cmf_foo_menu',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'Symfony\Cmf\Bundle\FooBundle\Doctrine\MongoDB\Menu',
+            'admin_cmf_foo_menu',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'Symfony\Cmf\Bundle\FooBundle\Doctrine\CouchDB\Menu',
+            'admin_cmf_foo_menu',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'AppBundle\Entity\User',
+            'admin_app_user',
+        ];
+        // @phpstan-ignore-next-line
+        yield [
+            'App\Entity\User',
+            'admin_app_user',
         ];
     }
 
@@ -635,6 +658,7 @@ final class AdminTest extends TestCase
     public function testToString(): void
     {
         $admin = new PostAdmin();
+        $admin->setModelManager($this->createStub(ModelManagerInterface::class));
 
         $s = new \stdClass();
 
@@ -642,19 +666,6 @@ final class AdminTest extends TestCase
 
         $s = new FooToString();
         static::assertSame('salut', $admin->toString($s));
-    }
-
-    public function testToStringNull(): void
-    {
-        if (\PHP_VERSION_ID >= 80000) {
-            static::markTestSkipped('PHP 8.0 does not allow __toString() method to return null');
-        }
-
-        $admin = new PostAdmin();
-
-        // To string method is implemented, but returns null
-        $s = new FooToStringNull();
-        static::assertNotEmpty($admin->toString($s));
     }
 
     public function testIsAclEnabled(): void
@@ -683,6 +694,7 @@ final class AdminTest extends TestCase
     {
         $admin = new PostAdmin();
         $admin->setModelClass(Post::class);
+        $admin->setModelManager($this->createStub(ModelManagerInterface::class));
 
         static::assertFalse($admin->hasSubClass('test'));
         static::assertFalse($admin->hasActiveSubClass());
@@ -694,10 +706,8 @@ final class AdminTest extends TestCase
         $admin->setSubject(new BlogPost());
         static::assertSame(BlogPost::class, $admin->getClass());
 
-        /** @var class-string $postExtended1 */
-        $postExtended1 = 'NewsBundle\Entity\PostExtended1';
-        /** @var class-string $postExtended2 */
-        $postExtended2 = 'NewsBundle\Entity\PostExtended2';
+        $postExtended1 = PostExtended1::class;
+        $postExtended2 = PostExtended2::class;
 
         $admin->setSubClasses([
             'extended1' => $postExtended1,
@@ -726,7 +736,7 @@ final class AdminTest extends TestCase
         );
         static::assertSame('extended1', $admin->getActiveSubclassCode());
         static::assertSame(
-            'NewsBundle\Entity\PostExtended1',
+            PostExtended1::class,
             $admin->getClass(),
             'getClass() should return the name of the sub class when passed through a request query parameter.'
         );
@@ -747,10 +757,8 @@ final class AdminTest extends TestCase
 
         $admin->setRequest(new Request(['subclass' => 'inject']));
 
-        /** @var class-string $postExtended1 */
-        $postExtended1 = 'NewsBundle\Entity\PostExtended1';
-        /** @var class-string $postExtended2 */
-        $postExtended2 = 'NewsBundle\Entity\PostExtended2';
+        $postExtended1 = PostExtended1::class;
+        $postExtended2 = PostExtended2::class;
 
         $admin->setSubClasses([
             'extended1' => $postExtended1,
@@ -772,8 +780,7 @@ final class AdminTest extends TestCase
         $admin = new PostAdmin();
         $admin->setModelClass(Post::class);
 
-        /** @var class-string $postExtended1 */
-        $postExtended1 = 'NewsBundle\Entity\PostExtended1';
+        $postExtended1 = PostExtended1::class;
         $admin->setSubClasses(['extended1' => $postExtended1]);
 
         $request = new Request(['subclass' => 'extended1']);
@@ -1197,10 +1204,8 @@ final class AdminTest extends TestCase
         $modelManager = $this->createStub(ModelManagerInterface::class);
         $modelManager
             ->method('getNormalizedIdentifier')
-            ->willReturnCallback(static function (?object $model = null): ?string {
-                // @phpstan-ignore-next-line
-                return $model ? $model->id : null;
-            });
+            // @phpstan-ignore-next-line
+            ->willReturnCallback(static fn (?object $model = null): ?string => $model ? $model->id : null);
 
         $admin->setModelManager($modelManager);
 
@@ -1211,17 +1216,8 @@ final class AdminTest extends TestCase
         $securityHandler
             ->expects(static::exactly(6))
             ->method('isGranted')
-            ->willReturnCallback(static function (
-                AdminInterface $adminIn,
-                string $attributes,
-                ?object $object = null
-            ) use (
-                $admin,
-                $entity1
-            ): bool {
-                return $admin === $adminIn && 'FOO' === $attributes &&
-                    ($object === $admin || $object === $entity1);
-            });
+            ->willReturnCallback(static fn (AdminInterface $adminIn, string $attributes, ?object $object = null): bool => $admin === $adminIn && 'FOO' === $attributes
+                && ($object === $admin || $object === $entity1));
 
         $admin->setSecurityHandler($securityHandler);
 
@@ -1258,6 +1254,8 @@ final class AdminTest extends TestCase
      * NEXT_MAJOR: Remove this test.
      *
      * @group legacy
+     *
+     * @psalm-suppress DeprecatedMethod, DeprecatedConstant
      */
     public function testShowIn(): void
     {
@@ -1266,9 +1264,7 @@ final class AdminTest extends TestCase
         $securityHandler = $this->createMock(AclSecurityHandlerInterface::class);
         $securityHandler
             ->method('isGranted')
-            ->willReturnCallback(static function (AdminInterface $adminIn, $attributes, ?object $object = null) use ($admin): bool {
-                return $admin === $adminIn && 'LIST' === $attributes;
-            });
+            ->willReturnCallback(static fn (AdminInterface $adminIn, string|Expression $attributes, ?object $object = null): bool => $admin === $adminIn && 'LIST' === $attributes);
 
         $admin->setSecurityHandler($securityHandler);
 
@@ -1550,7 +1546,7 @@ final class AdminTest extends TestCase
 
         $parameters = $commentAdmin->getFilterParameters();
 
-        static::assertTrue(isset($parameters['post__author']));
+        static::assertArrayHasKey('post__author', $parameters);
         static::assertSame(['value' => $authorId], $parameters['post__author']);
     }
 
@@ -1579,25 +1575,12 @@ final class AdminTest extends TestCase
             ->expects(static::exactly(3))
             ->method('create')
             ->willReturnCallback(static function (string $adminClass, string $name, array $filterOptions) use ($fooFieldDescription, $barFieldDescription, $bazFieldDescription): FieldDescriptionInterface {
-                switch ($name) {
-                    case 'foo':
-                        $fieldDescription = $fooFieldDescription;
-
-                        break;
-
-                    case 'bar':
-                        $fieldDescription = $barFieldDescription;
-
-                        break;
-
-                    case 'baz':
-                        $fieldDescription = $bazFieldDescription;
-
-                        break;
-
-                    default:
-                        throw new \RuntimeException(sprintf('Unknown filter name "%s"', $name));
-                }
+                $fieldDescription = match ($name) {
+                    'foo' => $fooFieldDescription,
+                    'bar' => $barFieldDescription,
+                    'baz' => $bazFieldDescription,
+                    default => throw new \RuntimeException(sprintf('Unknown filter name "%s"', $name)),
+                };
 
                 $fieldDescription->setName($name);
 
@@ -1685,21 +1668,17 @@ final class AdminTest extends TestCase
      */
     public function provideGetSubject(): iterable
     {
-        return [
-            [23],
-            ['azerty'],
-            ['4f69bbb5f14a13347f000092'],
-            ['0779ca8d-e2be-11e4-ac58-0242ac11000b'],
-            [sprintf('123%smy_type', AdapterInterface::ID_SEPARATOR)], // composite keys are supported
-        ];
+        yield [23];
+        yield ['azerty'];
+        yield ['4f69bbb5f14a13347f000092'];
+        yield ['0779ca8d-e2be-11e4-ac58-0242ac11000b'];
+        yield [sprintf('123%smy_type', AdapterInterface::ID_SEPARATOR)];
     }
 
     /**
-     * @param int|string $id
-     *
      * @dataProvider provideGetSubject
      */
-    public function testGetSubjectFailed($id): void
+    public function testGetSubjectFailed(int|string $id): void
     {
         $modelManager = $this->createMock(ModelManagerInterface::class);
         $modelManager
@@ -1717,11 +1696,9 @@ final class AdminTest extends TestCase
     }
 
     /**
-     * @param int|string $id
-     *
      * @dataProvider provideGetSubject
      */
-    public function testGetSubject($id): void
+    public function testGetSubject(int|string $id): void
     {
         $model = new Post();
 
@@ -1740,6 +1717,34 @@ final class AdminTest extends TestCase
         static::assertTrue($admin->hasSubject());
         static::assertSame($model, $admin->getSubject());
         static::assertSame($model, $admin->getSubject()); // model manager must be used only once
+    }
+
+    public function testSetSubject(): void
+    {
+        $this->expectNotToPerformAssertions();
+
+        $admin = new PostAdmin();
+        $admin->setModelClass(Post::class);
+
+        $admin->setSubject(new BlogPost());
+        $admin->setSubject(new NewsPost());
+        $admin->setSubject(new Post());
+        $admin->setSubject(null);
+    }
+
+    public function testSetSubjectNotAllowed(): void
+    {
+        $admin = new PostAdmin();
+        $admin->setModelClass(Post::class);
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage(sprintf(
+            'Admin "%s" does not allow this subject: %s, use the one register with this admin class %s',
+            PostAdmin::class,
+            Comment::class,
+            Post::class
+        ));
+        $admin->setSubject(new Comment());
     }
 
     public function testGetSubjectWithParentDescription(): void
@@ -1839,11 +1844,7 @@ final class AdminTest extends TestCase
 
     public function testGetActionButtonsListWithoutExtraChecks(): void
     {
-        /** @var AbstractAdmin<object>&MockObject $admin */
-        $admin = $this->getMockBuilder(AbstractAdmin::class)
-            ->disableOriginalConstructor()
-            ->setMethodsExcept(['getActionButtons', 'configureActionButtons'])
-            ->getMockForAbstractClass();
+        $admin = new PostAdmin();
 
         $securityHandler = $this->createStub(AclSecurityHandlerInterface::class);
         $admin->setSecurityHandler($securityHandler);
@@ -1886,9 +1887,7 @@ final class AdminTest extends TestCase
         $labelTranslatorStrategy = $this->createMock(LabelTranslatorStrategyInterface::class);
         $labelTranslatorStrategy
             ->method('getLabel')
-            ->willReturnCallback(static function (string $label, string $context = '', string $type = ''): string {
-                return sprintf('%s.%s_%s', $context, $type, $label);
-            });
+            ->willReturnCallback(static fn (string $label, string $context = '', string $type = ''): string => sprintf('%s.%s_%s', $context, $type, $label));
 
         $admin = new PostAdmin();
         $admin->setRouteBuilder($pathInfo);
@@ -1899,16 +1898,13 @@ final class AdminTest extends TestCase
         $routeGenerator
             ->expects(static::exactly(2))
             ->method('hasAdminRoute')
-            ->withConsecutive([$admin, 'batch'], [$admin, 'delete'])
             ->willReturn(true);
         $admin->setRouteGenerator($routeGenerator);
 
         $securityHandler = $this->createMock(SecurityHandlerInterface::class);
         $securityHandler
             ->method('isGranted')
-            ->willReturnCallback(static function (AdminInterface $adminIn, string $attributes, ?object $object = null) use ($admin): bool {
-                return $admin === $adminIn && 'DELETE' === $attributes;
-            });
+            ->willReturnCallback(static fn (AdminInterface $adminIn, string $attributes, ?object $object = null): bool => $admin === $adminIn && 'DELETE' === $attributes);
         $admin->setSecurityHandler($securityHandler);
 
         static::assertSame($expected, $admin->getBatchActions());
@@ -1940,7 +1936,7 @@ final class AdminTest extends TestCase
     }
 
     /**
-     * @dataProvider getListModeProvider
+     * @dataProvider provideGetListModeCases
      */
     public function testGetListMode(string $expected, ?Request $request = null): void
     {
@@ -1957,7 +1953,7 @@ final class AdminTest extends TestCase
     /**
      * @phpstan-return iterable<array-key, array{string, Request|null}>
      */
-    public function getListModeProvider(): iterable
+    public function provideGetListModeCases(): iterable
     {
         yield ['list', null];
 
@@ -1983,7 +1979,7 @@ final class AdminTest extends TestCase
     }
 
     /**
-     * @dataProvider getListModeProvider2
+     * @dataProvider provideGetListModeWithCustomListModesCases
      */
     public function testGetListModeWithCustomListModes(string $expected, ?Request $request = null): void
     {
@@ -2004,7 +2000,7 @@ final class AdminTest extends TestCase
     /**
      * @phpstan-return iterable<array-key, array{string, Request|null}>
      */
-    public function getListModeProvider2(): iterable
+    public function provideGetListModeWithCustomListModesCases(): iterable
     {
         yield ['mosaic', null];
 
@@ -2033,6 +2029,7 @@ final class AdminTest extends TestCase
      * @param class-string $objFqn
      *
      * @covers \Sonata\AdminBundle\Admin\AbstractAdmin::getDashboardActions
+     *
      * @dataProvider provideGetBaseRouteName
      */
     public function testDefaultDashboardActionsArePresent(string $objFqn, string $expected): void
@@ -2062,9 +2059,7 @@ final class AdminTest extends TestCase
         $securityHandler = $this->createStub(SecurityHandlerInterface::class);
         $securityHandler
             ->method('isGranted')
-            ->willReturnCallback(static function (AdminInterface $adminIn, string $attributes, ?object $object = null) use ($admin): bool {
-                return $admin === $adminIn && ('CREATE' === $attributes || 'LIST' === $attributes);
-            });
+            ->willReturnCallback(static fn (AdminInterface $adminIn, string $attributes, ?object $object = null): bool => $admin === $adminIn && ('CREATE' === $attributes || 'LIST' === $attributes));
 
         $admin->setSecurityHandler($securityHandler);
 
@@ -2221,22 +2216,34 @@ final class AdminTest extends TestCase
 
         // Workaround for static analysis
         $postAdminChildAdmin = $postAdmin->getCurrentLeafChildAdmin();
+        $commentAdminChildAdmin = $commentAdmin->getCurrentLeafChildAdmin();
+        $commentVoteAdminChildAdmin = $commentVoteAdmin->getCurrentLeafChildAdmin();
 
         static::assertNull($postAdminChildAdmin);
-        static::assertNull($commentAdmin->getCurrentLeafChildAdmin());
-        static::assertNull($commentVoteAdmin->getCurrentLeafChildAdmin());
+        static::assertNull($commentAdminChildAdmin);
+        static::assertNull($commentVoteAdminChildAdmin);
 
         $commentAdmin->setCurrentChild(true);
 
-        static::assertSame($commentAdmin, $postAdmin->getCurrentLeafChildAdmin());
-        static::assertNull($commentAdmin->getCurrentLeafChildAdmin());
-        static::assertNull($commentVoteAdmin->getCurrentLeafChildAdmin());
+        // Workaround for static analysis
+        $postAdminChildAdmin = $postAdmin->getCurrentLeafChildAdmin();
+        $commentAdminChildAdmin = $commentAdmin->getCurrentLeafChildAdmin();
+        $commentVoteAdminChildAdmin = $commentVoteAdmin->getCurrentLeafChildAdmin();
+
+        static::assertSame($commentAdmin, $postAdminChildAdmin);
+        static::assertNull($commentAdminChildAdmin);
+        static::assertNull($commentVoteAdminChildAdmin);
 
         $commentVoteAdmin->setCurrentChild(true);
 
-        static::assertSame($commentVoteAdmin, $postAdmin->getCurrentLeafChildAdmin());
-        static::assertSame($commentVoteAdmin, $commentAdmin->getCurrentLeafChildAdmin());
-        static::assertNull($commentVoteAdmin->getCurrentLeafChildAdmin());
+        // Workaround for static analysis
+        $postAdminChildAdmin = $postAdmin->getCurrentLeafChildAdmin();
+        $commentAdminChildAdmin = $commentAdmin->getCurrentLeafChildAdmin();
+        $commentVoteAdminChildAdmin = $commentVoteAdmin->getCurrentLeafChildAdmin();
+
+        static::assertSame($commentVoteAdmin, $postAdminChildAdmin);
+        static::assertSame($commentVoteAdmin, $commentAdminChildAdmin);
+        static::assertNull($commentVoteAdminChildAdmin);
     }
 
     public function testAdminAvoidInfiniteLoop(): void
@@ -2250,6 +2257,7 @@ final class AdminTest extends TestCase
         $admin->setModelClass(\stdClass::class);
         $admin->setSubject(new \stdClass());
 
+        $admin->setModelManager($this->createStub(ModelManagerInterface::class));
         $admin->setFormContractor(new FormContractor($formFactory, $registry));
 
         $admin->setShowBuilder(new ShowBuilder());
@@ -2285,9 +2293,7 @@ final class AdminTest extends TestCase
         $formFactory = new FormFactory(new FormRegistry([], new ResolvedFormTypeFactory()));
         $datagridBuilder = new DatagridBuilder($formFactory, $pager, $proxyQuery);
 
-        $translator->method('trans')->willReturnCallback(static function (string $label): string {
-            return sprintf('trans(%s)', $label);
-        });
+        $translator->method('trans')->willReturnCallback(static fn (string $label): string => sprintf('trans(%s)', $label));
 
         $modelManager->expects(static::once())->method('getExportFields')->willReturn([
             'key' => 'field',
@@ -2313,4 +2319,11 @@ final class AdminTest extends TestCase
 
         static::assertSame($sourceIterator, $admin->getDataSourceIterator());
     }
+}
+
+class PostExtended1
+{
+}
+class PostExtended2
+{
 }

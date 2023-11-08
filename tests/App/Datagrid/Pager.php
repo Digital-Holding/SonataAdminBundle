@@ -18,18 +18,13 @@ use Sonata\AdminBundle\Datagrid\ProxyQueryInterface;
 use Sonata\AdminBundle\Tests\App\Model\FooRepository;
 
 /**
- * @phpstan-implements PagerInterface<ProxyQueryInterface>
+ * @phpstan-implements PagerInterface<ProxyQueryInterface<object>>
  */
 final class Pager implements PagerInterface
 {
-    /**
-     * @var FooRepository
-     */
-    private $repository;
-
-    public function __construct(FooRepository $repository)
-    {
-        $this->repository = $repository;
+    public function __construct(
+        private FooRepository $repository
+    ) {
     }
 
     public function init(): void
@@ -84,7 +79,7 @@ final class Pager implements PagerInterface
         return false;
     }
 
-    public function getQuery(): ProxyQueryInterface
+    public function getQuery(): ?ProxyQueryInterface
     {
         return new ProxyQuery();
     }

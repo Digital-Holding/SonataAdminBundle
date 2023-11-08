@@ -25,30 +25,24 @@ use Symfony\Component\Translation\MessageCatalogue;
 
 final class AdminExtractorTest extends TestCase
 {
-    /**
-     * @var AdminExtractor
-     */
-    private $adminExtractor;
+    private AdminExtractor $adminExtractor;
 
-    /**
-     * @var Pool
-     */
-    private $pool;
+    private Pool $pool;
 
     /**
      * @var AdminInterface<object>&MockObject
      */
-    private $fooAdmin;
+    private AdminInterface $fooAdmin;
 
     /**
      * @var AdminInterface<object>&MockObject
      */
-    private $barAdmin;
+    private AdminInterface $barAdmin;
 
     /**
      * @var BreadcrumbsBuilderInterface&MockObject
      */
-    private $breadcrumbsBuilder;
+    private BreadcrumbsBuilderInterface $breadcrumbsBuilder;
 
     protected function setUp(): void
     {
@@ -57,8 +51,14 @@ final class AdminExtractorTest extends TestCase
 
         $this->fooAdmin->method('getShow')->willReturn(new FieldDescriptionCollection());
         $this->fooAdmin->method('getList')->willReturn(new FieldDescriptionCollection());
+        $this->fooAdmin
+            ->method('getClass')
+            ->willReturn(\stdClass::class);
         $this->barAdmin->method('getShow')->willReturn(new FieldDescriptionCollection());
         $this->barAdmin->method('getList')->willReturn(new FieldDescriptionCollection());
+        $this->barAdmin
+            ->method('getClass')
+            ->willReturn(\stdClass::class);
 
         $container = new Container();
         $container->set('foo_admin', $this->fooAdmin);
@@ -125,7 +125,7 @@ final class AdminExtractorTest extends TestCase
 
     public function testExtractCallsBreadcrumbs(): void
     {
-        $numberOfAdmins = \count($this->pool->getAdminServiceIds());
+        $numberOfAdmins = \count($this->pool->getAdminServiceCodes());
         $numberOfActionsToCheck = 6;
 
         $this->breadcrumbsBuilder->expects(static::exactly($numberOfAdmins * $numberOfActionsToCheck))

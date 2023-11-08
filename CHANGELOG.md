@@ -2,6 +2,248 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [4.28.0](https://github.com/sonata-project/SonataAdminBundle/compare/4.27.1...4.28.0) - 2023-10-19
+### Changed
+- [[#8116](https://github.com/sonata-project/SonataAdminBundle/pull/8116)] Automatically detect `base_template` and `admin` twig variable ([@core23](https://github.com/core23))
+
+### Deprecated
+- [[#8116](https://github.com/sonata-project/SonataAdminBundle/pull/8116)] Deprecate `CRUDController::renderWithExtraParams` method ([@core23](https://github.com/core23))
+- [[#8116](https://github.com/sonata-project/SonataAdminBundle/pull/8116)] Deprecate `CRUDController::addRenderExtraParams` method ([@core23](https://github.com/core23))
+- [[#8116](https://github.com/sonata-project/SonataAdminBundle/pull/8116)] Deprecate `CRUDController::getBaseTemplate` method ([@core23](https://github.com/core23))
+
+### Fixed
+- [[#8118](https://github.com/sonata-project/SonataAdminBundle/pull/8118)] Allow AdminExtractor to be used for abstract admins ([@core23](https://github.com/core23))
+- [[#8115](https://github.com/sonata-project/SonataAdminBundle/pull/8115)] `GroupMapper::removeTab` and `GroupMapper::removeGroup` ([@VincentLanglet](https://github.com/VincentLanglet))
+
+## [4.27.1](https://github.com/sonata-project/SonataAdminBundle/compare/4.27.0...4.27.1) - 2023-09-21
+### Added
+- [[#8105](https://github.com/sonata-project/SonataAdminBundle/pull/8105)] Allow to disable `icheck` and to be able to use still choice field mask with the expanded option ([@goetas](https://github.com/goetas))
+
+### Fixed
+- [[#8100](https://github.com/sonata-project/SonataAdminBundle/pull/8100)] Logic to handle show / hide column of table html element ([@nhung-le](https://github.com/nhung-le))
+- [[#8108](https://github.com/sonata-project/SonataAdminBundle/pull/8108)] Add missing type button on ModelList form widget ([@tdumalin](https://github.com/tdumalin))
+- [[#8099](https://github.com/sonata-project/SonataAdminBundle/pull/8099)] `label_catalogue` configuration node deprecation message ([@7ochem](https://github.com/7ochem))
+
+## [4.27.0](https://github.com/sonata-project/SonataAdminBundle/compare/4.26.1...4.27.0) - 2023-09-07
+### Added
+- [[#8083](https://github.com/sonata-project/SonataAdminBundle/pull/8083)] Autocomplete attr support for select2 ([@pietaj](https://github.com/pietaj))
+
+## [4.26.1](https://github.com/sonata-project/SonataAdminBundle/compare/4.26.0...4.26.1) - 2023-09-02
+### Fixed
+- [[#8091](https://github.com/sonata-project/SonataAdminBundle/pull/8091)] Fix display of enums for nullable property ([@bedfir](https://github.com/bedfir))
+
+## [4.26.0](https://github.com/sonata-project/SonataAdminBundle/compare/4.25.0...4.26.0) - 2023-07-29
+### Changed
+- [[#8079](https://github.com/sonata-project/SonataAdminBundle/pull/8079)] Update jQuery to `^3.7.0` ([@tonyaxo](https://github.com/tonyaxo))
+
+### Fixed
+- [[#8082](https://github.com/sonata-project/SonataAdminBundle/pull/8082)] Installing SonataAdminBundle without any persistence does not throw missing abstract argument definition ([@jordisala1991](https://github.com/jordisala1991))
+
+## [4.25.0](https://github.com/sonata-project/SonataAdminBundle/compare/4.24.0...4.25.0) - 2023-06-03
+### Added
+- [[#8072](https://github.com/sonata-project/SonataAdminBundle/pull/8072)] Support for SonataBlockBundle 5.0 ([@jordisala1991](https://github.com/jordisala1991))
+- [[#8070](https://github.com/sonata-project/SonataAdminBundle/pull/8070)] "enum_translation_domain" and "use_value" options for fields of type `FieldDescriptionInterface::TYPE_ENUM`. ([@phansys](https://github.com/phansys))
+
+## [4.24.0](https://github.com/sonata-project/SonataAdminBundle/compare/4.23.0...4.24.0) - 2023-05-13
+### Added
+- [[#8064](https://github.com/sonata-project/SonataAdminBundle/pull/8064)] Support for `sonata-project/form-extensions` 2.0 ([@jordisala1991](https://github.com/jordisala1991))
+- [[#7838](https://github.com/sonata-project/SonataAdminBundle/pull/7838)] Stimulus dependency and initialization inside main `app.js` ([@jordisala1991](https://github.com/jordisala1991))
+
+### Fixed
+- [[#8061](https://github.com/sonata-project/SonataAdminBundle/pull/8061)] ExplainAdminCommand no longer complains about missing subject on admin ([@VincentLanglet](https://github.com/VincentLanglet))
+- [[#8055](https://github.com/sonata-project/SonataAdminBundle/pull/8055)] Child admins not related directly to a parent now handle show, edit and delete actions correctly. ([@maMykola](https://github.com/maMykola))
+
+## [4.23.0](https://github.com/sonata-project/SonataAdminBundle/compare/4.22.6...4.23.0) - 2023-04-24
+### Fixed
+- [[#8041](https://github.com/sonata-project/SonataAdminBundle/pull/8041)] Top nav bar menu for user is shown if there is a user logged in ([@jordisala1991](https://github.com/jordisala1991))
+- [[#8041](https://github.com/sonata-project/SonataAdminBundle/pull/8041)] Top nav bar menu for creating admin entities is shown even is there is no user logged in ([@jordisala1991](https://github.com/jordisala1991))
+
+### Removed
+- [[#8044](https://github.com/sonata-project/SonataAdminBundle/pull/8044)] Support for Symfony 4 ([@jordisala1991](https://github.com/jordisala1991))
+- [[#8044](https://github.com/sonata-project/SonataAdminBundle/pull/8044)] Support for Twig 2 ([@jordisala1991](https://github.com/jordisala1991))
+
+## [4.22.6](https://github.com/sonata-project/SonataAdminBundle/compare/4.22.5...4.22.6) - 2023-04-12
+### Fixed
+- [[#8039](https://github.com/sonata-project/SonataAdminBundle/pull/8039)] Fix display of enums for nullable property ([@AirBair](https://github.com/AirBair))
+
+## [4.22.5](https://github.com/sonata-project/SonataAdminBundle/compare/4.22.4...4.22.5) - 2023-03-30
+### Changed
+- [[#8029](https://github.com/sonata-project/SonataAdminBundle/pull/8029)] Use `symfony/string` instead of `doctrine/inflector` to convert words from "snake_case" to "camelCase" ([@jordisala1991](https://github.com/jordisala1991))
+
+### Fixed
+- [[#8026](https://github.com/sonata-project/SonataAdminBundle/pull/8026)] Fix errors not being displayed in modal ([@antoinemineau](https://github.com/antoinemineau))
+- [[#8025](https://github.com/sonata-project/SonataAdminBundle/pull/8025)] Message when the admin class declared on the container does not exist. ([@jordisala1991](https://github.com/jordisala1991))
+
+### Removed
+- [[#8016](https://github.com/sonata-project/SonataAdminBundle/pull/8016)] Support for PHP 7.4 ([@SonataCI](https://github.com/SonataCI))
+- [[#8016](https://github.com/sonata-project/SonataAdminBundle/pull/8016)] Support for Symfony 6.0 and 6.1 ([@SonataCI](https://github.com/SonataCI))
+
+## [4.22.4](https://github.com/sonata-project/SonataAdminBundle/compare/4.22.3...4.22.4) - 2023-01-26
+### Fixed
+- [[#8009](https://github.com/sonata-project/SonataAdminBundle/pull/8009)] Fix response_item_callback option for `ModelAutocompleteType` form field. ([@aleksvaganoff](https://github.com/aleksvaganoff))
+- [[#7891](https://github.com/sonata-project/SonataAdminBundle/pull/7891)] Fix Sortable drag and drop for `ModelType` form field. ([@jorrit](https://github.com/jorrit))
+
+## [4.22.3](https://github.com/sonata-project/SonataAdminBundle/compare/4.22.2...4.22.3) - 2023-01-11
+### Fixed
+- [[#8003](https://github.com/sonata-project/SonataAdminBundle/pull/8003)] Value resolver deprecations using Symfony 6.2 ([@franmomu](https://github.com/franmomu))
+
+## [4.22.2](https://github.com/sonata-project/SonataAdminBundle/compare/4.22.1...4.22.2) - 2023-01-05
+### Fixed
+- [[#8001](https://github.com/sonata-project/SonataAdminBundle/pull/8001)] Admin extension declaration with priority ([@VincentLanglet](https://github.com/VincentLanglet))
+
+## [4.22.1](https://github.com/sonata-project/SonataAdminBundle/compare/4.22.0...4.22.1) - 2023-01-05
+### Fixed
+- [[#7998](https://github.com/sonata-project/SonataAdminBundle/pull/7998)] ExtensionCompilerPass usage with parameters class string. ([@VincentLanglet](https://github.com/VincentLanglet))
+
+## [4.22.0](https://github.com/sonata-project/SonataAdminBundle/compare/4.21.1...4.22.0) - 2023-01-03
+### Added
+- [[#7994](https://github.com/sonata-project/SonataAdminBundle/pull/7994)] Added usage of ExporterInterface instead of Exporter class. ([@pkameisha](https://github.com/pkameisha))
+- [[#7964](https://github.com/sonata-project/SonataAdminBundle/pull/7964)] Ability to configure admin extension in the `sonata_admin.extensions` config with the admin class rather than the model class thanks to `admin_implements`, `admin_instanceof`, `admin_extends` and `admin_use` options. ([@VincentLanglet](https://github.com/VincentLanglet))
+- [[#7964](https://github.com/sonata-project/SonataAdminBundle/pull/7964)] `excludes`, `extends`, `implements`, `instanceof`, `uses`, `admin_implements`, `admin_instanceof`, `admin_extends` and `admin_use` options are now available directly when tagging an admin extension. ([@VincentLanglet](https://github.com/VincentLanglet))
+
+## [4.21.1](https://github.com/sonata-project/SonataAdminBundle/compare/4.21.0...4.21.1) - 2022-12-08
+### Fixed
+- [[#7985](https://github.com/sonata-project/SonataAdminBundle/pull/7985)] Fixed an issue with integer indexed form children within `FormBuilderIterator` ([@dmaicher](https://github.com/dmaicher))
+- [[#7981](https://github.com/sonata-project/SonataAdminBundle/pull/7981)] `data-sonata-select2-maximumSelectionLength` attribute ([@sterrien](https://github.com/sterrien))
+
+## [4.21.0](https://github.com/sonata-project/SonataAdminBundle/compare/4.20.0...4.21.0) - 2022-11-09
+### Added
+- [[#7960](https://github.com/sonata-project/SonataAdminBundle/pull/7960)] Added support for `doctrine/collections` 2 ([@franmomu](https://github.com/franmomu))
+
+### Changed
+- [[#7962](https://github.com/sonata-project/SonataAdminBundle/pull/7962)] Made `AbstractAdmin::setSubject()` use `getModelClass()` instead of `getClass()` to check is the subject is allowed ([@7ochem](https://github.com/7ochem))
+
+### Fixed
+- [[#7963](https://github.com/sonata-project/SonataAdminBundle/pull/7963)] Fix `appendFormFieldElement` on nested collection named the same as one of the parent fields ([@fgueguen](https://github.com/fgueguen))
+- [[#7961](https://github.com/sonata-project/SonataAdminBundle/pull/7961)] Fixes ChoiceFieldMaskType behavior inside CollectionType ([@Darkabso](https://github.com/Darkabso))
+- [[#7952](https://github.com/sonata-project/SonataAdminBundle/pull/7952)] Fix an issue that an exception will be thrown by `Pool::getAdminByClass()` when the admin code is different from its service id. ([@tamcy](https://github.com/tamcy))
+- [[#7952](https://github.com/sonata-project/SonataAdminBundle/pull/7952)] Fix a typo in the deprecation message which is triggered when multiple `sonata.admin` tags are found in the same service definition. ([@tamcy](https://github.com/tamcy))
+
+## [4.20.0](https://github.com/sonata-project/SonataAdminBundle/compare/4.19.0...4.20.0) - 2022-10-20
+### Added
+- [[#7937](https://github.com/sonata-project/SonataAdminBundle/pull/7937)] Allow manually reorder tagged admin services using the `priority` attribute. ([@tamcy](https://github.com/tamcy))
+
+### Deprecated
+- [[#7941](https://github.com/sonata-project/SonataAdminBundle/pull/7941)] Applying the service tag `sonata.admin` to a service more than once is deprecated. This is not meant to be supported and will not work as intended, as only one of the tag attributes will be applied to the service. ([@tamcy](https://github.com/tamcy))
+
+### Fixed
+- [[#7949](https://github.com/sonata-project/SonataAdminBundle/pull/7949)] Fix validation errors while editting many to one|many relations in a modal. ([@jordisala1991](https://github.com/jordisala1991))
+- [[#7948](https://github.com/sonata-project/SonataAdminBundle/pull/7948)] Violations error handling ([@ggabrovski](https://github.com/ggabrovski))
+- [[#7940](https://github.com/sonata-project/SonataAdminBundle/pull/7940)] Fix an issue that exception is thrown when the admin code is different from its service id. ([@tamcy](https://github.com/tamcy))
+
+## [4.19.0](https://github.com/sonata-project/SonataAdminBundle/compare/4.18.0...4.19.0) - 2022-09-27
+### Changed
+- [[#7922](https://github.com/sonata-project/SonataAdminBundle/pull/7922)] [BC break] Change json error output for ajax calls to create or edit admin endpoints. ([@jordisala1991](https://github.com/jordisala1991))
+
+### Deprecated
+- [[#7927](https://github.com/sonata-project/SonataAdminBundle/pull/7927)] BCLabelTranslatorStrategy ([@VincentLanglet](https://github.com/VincentLanglet))
+- [[#7930](https://github.com/sonata-project/SonataAdminBundle/pull/7930)] `ModelManager::getIdentifierValues` ([@VincentLanglet](https://github.com/VincentLanglet))
+- [[#7930](https://github.com/sonata-project/SonataAdminBundle/pull/7930)] `ModelManager::getIdentifierFieldNames` ([@VincentLanglet](https://github.com/VincentLanglet))
+
+### Fixed
+- [[#7930](https://github.com/sonata-project/SonataAdminBundle/pull/7930)] ModelToIdPropertyTransformer now supports composite identifiers ([@VincentLanglet](https://github.com/VincentLanglet))
+- [[#7926](https://github.com/sonata-project/SonataAdminBundle/pull/7926)] Fix missing default translation for actions label on list view. ([@jordisala1991](https://github.com/jordisala1991))
+
+## [4.18.0](https://github.com/sonata-project/SonataAdminBundle/compare/4.17.0...4.18.0) - 2022-08-21
+### Added
+- [[#7913](https://github.com/sonata-project/SonataAdminBundle/pull/7913)] Security attributes can be string or symfony expression language expressions ([@VincentLanglet](https://github.com/VincentLanglet))
+- [[#7909](https://github.com/sonata-project/SonataAdminBundle/pull/7909)] Added generics to the ProxyQueryInterface ([@VincentLanglet](https://github.com/VincentLanglet))
+
+## [4.17.0](https://github.com/sonata-project/SonataAdminBundle/compare/4.16.0...4.17.0) - 2022-08-15
+### Added
+- [[#7906](https://github.com/sonata-project/SonataAdminBundle/pull/7906)] Added ProxyManagerInterface ([@VincentLanglet](https://github.com/VincentLanglet))
+
+### Deprecated
+- [[#7906](https://github.com/sonata-project/SonataAdminBundle/pull/7906)] Relying on doctrine `ClassUtils::getClass` to resolve proxy classes. The ModelManager have to implements the ProxyManagerInterface instead. ([@VincentLanglet](https://github.com/VincentLanglet))
+
+### Fixed
+- [[#7899](https://github.com/sonata-project/SonataAdminBundle/pull/7899)] AdminMaker service option ([@joerndyherrn](https://github.com/joerndyherrn))
+
+## [4.16.0](https://github.com/sonata-project/SonataAdminBundle/compare/4.15.0...4.16.0) - 2022-08-02
+### Added
+- [[#7894](https://github.com/sonata-project/SonataAdminBundle/pull/7894)] Support for twig-extensions 2 ([@VincentLanglet](https://github.com/VincentLanglet))
+- [[#7887](https://github.com/sonata-project/SonataAdminBundle/pull/7887)] Support for `sonata-project/doctrine-extensions` ^2 ([@VincentLanglet](https://github.com/VincentLanglet))
+- [[#7886](https://github.com/sonata-project/SonataAdminBundle/pull/7886)] Support for `sonata-project/exporter ^3` ([@VincentLanglet](https://github.com/VincentLanglet))
+
+### Changed
+- [[#7885](https://github.com/sonata-project/SonataAdminBundle/pull/7885)] Sidebar menu is now non-shared. (new instance is created everytime its requested) ([@Warxcell](https://github.com/Warxcell))
+
+### Fixed
+- [[#7893](https://github.com/sonata-project/SonataAdminBundle/pull/7893)] Allow ChildAdmin for Unidirectional References ([@VincentLanglet](https://github.com/VincentLanglet))
+- [[#7890](https://github.com/sonata-project/SonataAdminBundle/pull/7890)] Do not try to check access for created object ([@VincentLanglet](https://github.com/VincentLanglet))
+
+## [4.15.0](https://github.com/sonata-project/SonataAdminBundle/compare/4.14.0...4.15.0) - 2022-07-23
+### Added
+- [[#7867](https://github.com/sonata-project/SonataAdminBundle/pull/7867)] Added `AbstractAdmin::generateBaseRoutePattern()` ([@VincentLanglet](https://github.com/VincentLanglet))
+- [[#7867](https://github.com/sonata-project/SonataAdminBundle/pull/7867)] Added `AbstractAdmin::generateBaseRouteName()` ([@VincentLanglet](https://github.com/VincentLanglet))
+
+### Changed
+- [[#7878](https://github.com/sonata-project/SonataAdminBundle/pull/7878)] Bump moment to 2.29.4 ([@dependabot[bot]](https://github.com/apps/dependabot))
+
+### Deprecated
+- [[#7867](https://github.com/sonata-project/SonataAdminBundle/pull/7867)] Added `AbstractAdmin::$baseRoutePattern` property ([@VincentLanglet](https://github.com/VincentLanglet))
+- [[#7867](https://github.com/sonata-project/SonataAdminBundle/pull/7867)] Added `AbstractAdmin::$baseRouteName` property ([@VincentLanglet](https://github.com/VincentLanglet))
+
+## [4.14.0](https://github.com/sonata-project/SonataAdminBundle/compare/4.13.1...4.14.0) - 2022-07-12
+### Added
+- [[#7841](https://github.com/sonata-project/SonataAdminBundle/pull/7841)] Support for a FilterInterface::getFormOptions method. ([@VincentLanglet](https://github.com/VincentLanglet))
+
+### Deprecated
+- [[#7841](https://github.com/sonata-project/SonataAdminBundle/pull/7841)] FilterInterface::getRenderSettigns ([@VincentLanglet](https://github.com/VincentLanglet))
+- [[#7841](https://github.com/sonata-project/SonataAdminBundle/pull/7841)] All the `Sonata\AdminBundle\Form\Type\Filter\*Type` except the FilterDataType. ([@VincentLanglet](https://github.com/VincentLanglet))
+
+### Fixed
+- [[#7868](https://github.com/sonata-project/SonataAdminBundle/pull/7868)] Batch action ProxyQueryInterface parameter don't have to be named $query anymore. ([@mpoiriert](https://github.com/mpoiriert))
+
+## [4.13.1](https://github.com/sonata-project/SonataAdminBundle/compare/4.13.0...4.13.1) - 2022-07-05
+### Fixed
+- [[#7861](https://github.com/sonata-project/SonataAdminBundle/pull/7861)] AdminInterface phpdoc ([@VincentLanglet](https://github.com/VincentLanglet))
+
+## [4.13.0](https://github.com/sonata-project/SonataAdminBundle/compare/4.12.0...4.13.0) - 2022-06-25
+### Added
+- [[#7819](https://github.com/sonata-project/SonataAdminBundle/pull/7819)] Added support to batch action via another controller with 'controller' configuration ([@mpoiriert](https://github.com/mpoiriert))
+
+### Deprecated
+- [[#7819](https://github.com/sonata-project/SonataAdminBundle/pull/7819)] BatchAction{actionName}IsRelevant will be remove in version 5.0. Move logic to your action. ([@mpoiriert](https://github.com/mpoiriert))
+- [[#7835](https://github.com/sonata-project/SonataAdminBundle/pull/7835)] FormMapper::create() ([@VincentLanglet](https://github.com/VincentLanglet))
+
+### Fixed
+- [[#7851](https://github.com/sonata-project/SonataAdminBundle/pull/7851)] Model Auto Complete failing in create flow of admin with subclasses ([@mpoiriert](https://github.com/mpoiriert))
+- [[#7847](https://github.com/sonata-project/SonataAdminBundle/pull/7847)] AdminValueResolver does support generic AdminInterface type. ([@mpoiriert](https://github.com/mpoiriert))
+- [[#7845](https://github.com/sonata-project/SonataAdminBundle/pull/7845)] Fix the subclass query parameter conflict in the sonata.admin.action.get_short_object_description controller. ([@mpoiriert](https://github.com/mpoiriert))
+- [[#7836](https://github.com/sonata-project/SonataAdminBundle/pull/7836)] Command deprecations using Symfony 6.1 ([@franmomu](https://github.com/franmomu))
+
+### Removed
+- [[#7837](https://github.com/sonata-project/SonataAdminBundle/pull/7837)] Support of Symfony 5.3 ([@franmomu](https://github.com/franmomu))
+
+## [4.12.0](https://github.com/sonata-project/SonataAdminBundle/compare/4.11.1...4.12.0) - 2022-05-21
+### Added
+- [[#7823](https://github.com/sonata-project/SonataAdminBundle/pull/7823)] Support for abstract class subject in `RetrieveAutocompleteItemsAction`. ([@Geekimo](https://github.com/Geekimo))
+
+### Changed
+- [[#7824](https://github.com/sonata-project/SonataAdminBundle/pull/7824)] Update jQuery to `^3.6` ([@jordisala1991](https://github.com/jordisala1991))
+- [[#7809](https://github.com/sonata-project/SonataAdminBundle/pull/7809)] Use datetime picker library from `sonata-project/form-extensions`. ([@jordisala1991](https://github.com/jordisala1991))
+
+### Removed
+- [[#7814](https://github.com/sonata-project/SonataAdminBundle/pull/7814)] Removed `doctrine/persistence` dependency ([@franmomu](https://github.com/franmomu))
+
+## [4.11.1](https://github.com/sonata-project/SonataAdminBundle/compare/4.11.0...4.11.1) - 2022-04-29
+### Fixed
+- [[#7803](https://github.com/sonata-project/SonataAdminBundle/pull/7803)] Fix vulnerabilities on several frontend dependencies by upgrading them: `async`, `minimist`, `ansi-regex` and `moment`, ([@jordisala1991](https://github.com/jordisala1991))
+
+## [4.11.0](https://github.com/sonata-project/SonataAdminBundle/compare/4.10.1...4.11.0) - 2022-04-27
+### Changed
+- [[#7792](https://github.com/sonata-project/SonataAdminBundle/pull/7792)] In preparation for SonataBlockBundle 5.0 we are not rendering block responses as private anymore ([@dmaicher](https://github.com/dmaicher))
+
+### Fixed
+- [[#7785](https://github.com/sonata-project/SonataAdminBundle/pull/7785)] Correctly pass the class to the ModelHiddentType when using child admin without parentAssociationMapping. ([@VincentLanglet](https://github.com/VincentLanglet))
+
+## [4.10.1](https://github.com/sonata-project/SonataAdminBundle/compare/4.10.0...4.10.1) - 2022-03-29
+### Fixed
+- [[#7781](https://github.com/sonata-project/SonataAdminBundle/pull/7781)] Correctly set the parent object in AdminType with CollectionType passed by reference ([@VincentLanglet](https://github.com/VincentLanglet))
+- [[#7779](https://github.com/sonata-project/SonataAdminBundle/pull/7779)] ProxyQueryInterface::setSortBy phpdoc ([@VincentLanglet](https://github.com/VincentLanglet))
+- [[#7776](https://github.com/sonata-project/SonataAdminBundle/pull/7776)] Fixed display of list items when there are no results and using an entity with inheritance ([@jordisala1991](https://github.com/jordisala1991))
+
 ## [4.10.0](https://github.com/sonata-project/SonataAdminBundle/compare/4.9.0...4.10.0) - 2022-03-21
 ### Changed
 - [[#7761](https://github.com/sonata-project/SonataAdminBundle/pull/7761)] CrudController::handleModelManagerThrowable can now return a custom error message to display in the flashbag instead of the generic one from Sonata. ([@VincentLanglet](https://github.com/VincentLanglet))

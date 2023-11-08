@@ -26,24 +26,21 @@ use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
- * @phpstan-import-type Group from \Sonata\AdminBundle\Admin\Pool
+ * @phpstan-import-type Group from Pool
  */
 final class MenuBuilderTest extends TestCase
 {
     /**
      * @var MenuProviderInterface&MockObject
      */
-    private $provider;
+    private MenuProviderInterface $provider;
 
-    /**
-     * @var MenuFactory
-     */
-    private $factory;
+    private MenuFactory $factory;
 
     /**
      * @var MockObject&EventDispatcherInterface
      */
-    private $eventDispatcher;
+    private EventDispatcherInterface $eventDispatcher;
 
     protected function setUp(): void
     {

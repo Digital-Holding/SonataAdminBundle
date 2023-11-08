@@ -31,20 +31,14 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class AdminSearchBlockServiceTest extends BlockServiceTestCase
 {
-    /**
-     * @var Pool
-     */
-    private $pool;
+    private Pool $pool;
 
-    /**
-     * @var SearchHandler
-     */
-    private $searchHandler;
+    private SearchHandler $searchHandler;
 
     /**
      * @var TemplateRegistryInterface&MockObject
      */
-    private $templateRegistry;
+    private TemplateRegistryInterface $templateRegistry;
 
     protected function setUp(): void
     {

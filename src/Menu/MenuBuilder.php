@@ -28,36 +28,12 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
  */
 final class MenuBuilder
 {
-    /**
-     * @var Pool
-     */
-    private $pool;
-
-    /**
-     * @var FactoryInterface
-     */
-    private $factory;
-
-    /**
-     * @var MenuProviderInterface
-     */
-    private $provider;
-
-    /**
-     * @var EventDispatcherInterface
-     */
-    private $eventDispatcher;
-
     public function __construct(
-        Pool $pool,
-        FactoryInterface $factory,
-        MenuProviderInterface $provider,
-        EventDispatcherInterface $eventDispatcher
+        private Pool $pool,
+        private FactoryInterface $factory,
+        private MenuProviderInterface $provider,
+        private EventDispatcherInterface $eventDispatcher
     ) {
-        $this->pool = $pool;
-        $this->factory = $factory;
-        $this->provider = $provider;
-        $this->eventDispatcher = $eventDispatcher;
     }
 
     /**

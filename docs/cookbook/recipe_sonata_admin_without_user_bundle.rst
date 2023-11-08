@@ -1,8 +1,8 @@
-SonataAdmin without FOSUserBundle/SonataUserBundle
-==================================================
+SonataAdmin without SonataUserBundle
+====================================
 
 Here we will explain how you can use SonataAdmin with Symfony Guard instead
-of using FOSUserBundle or SonataUserBundle.
+of using SonataUserBundle.
 
 Code used in this short guide can be found `here <https://github.com/kunicmarko20/guard-talk-example>`__
 with support for different Symfony versions.
@@ -28,35 +28,26 @@ This represents your security user, you can read more about it
 
     namespace App\Entity;
 
+    use Doctrine\DBAL\Types\Types;
     use Doctrine\ORM\Mapping as ORM;
     use Symfony\Component\Security\Core\User\UserInterface;
 
-    /**
-     * @ORM\Entity
-     */
-    final class User implements UserInterface
+    #[ORM\Entity]
+    class User implements UserInterface
     {
-        /**
-         * @ORM\Id
-         * @ORM\Column(type="integer")
-         * @ORM\GeneratedValue(strategy="AUTO")
-         */
-        private $id;
+        #[ORM\Id]
+        #[ORM\Column(type: Types::INTEGER)]
+        #[ORM\GeneratedValue]
+        private ?int $id = null;
 
-        /**
-         * @ORM\Column(name="email", type="string", unique=true)
-         */
-        private $email;
+        #[ORM\Column(type: Types::STRING, unique: true)]
+        private ?string $email = null;
 
-        /**
-         * @ORM\Column(name="password", type="string", nullable=true)
-         */
-        private $password;
+        #[ORM\Column(type: Types::STRING, nullable: true)]
+        private ?string $password = null;
 
-        /**
-         * @ORM\Column(name="roles", type="json_array")
-         */
-        private $roles;
+        #[ORM\Column(type: Types::ARRAY)]
+        private array $roles = [];
     }
 
 UserProvider
@@ -75,10 +66,7 @@ more about it `here <https://symfony.com/doc/5.4/security.html#b-the-user-provid
 
     final class UserProvider implements UserProviderInterface
     {
-        /**
-         * @var EntityManagerInterface
-         */
-        private $entityManager;
+        private EntityManagerInterface $entityManager;
 
         public function __construct(EntityManagerInterface $entityManager)
         {
@@ -176,20 +164,11 @@ more about it `here <https://symfony.com/doc/5.4/security/guard_authentication.h
 
     final class AdminLoginAuthenticator extends AbstractFormLoginAuthenticator implements AuthenticatorInterface
     {
-        /**
-         * @var FormFactoryInterface
-         */
-        private $formFactory;
+        private FormFactoryInterface $formFactory;
 
-        /**
-         * @var RouterInterface
-         */
-        private $router;
+        private RouterInterface $router;
 
-        /**
-         * @var UserPasswordEncoderInterface
-         */
-        private $passwordEncoder;
+        private UserPasswordEncoderInterface $passwordEncoder;
 
         public function __construct(
             FormFactoryInterface $formFactory,
@@ -264,19 +243,14 @@ this will be handled by Symfony, but we still need to register that route::
 
     final class AdminLoginController extends AbstractController
     {
-        /**
-         * @var AuthenticationUtils
-         */
-        private $authenticationUtils;
+        private AuthenticationUtils $authenticationUtils;
 
         public function __construct(AuthenticationUtils $authenticationUtils)
         {
             $this->authenticationUtils = $authenticationUtils;
         }
 
-        /**
-         * @Route("/admin/login", name="admin_login")
-         */
+        #[Route('/admin/login', name: 'admin_login')]
         public function loginAction(): Response
         {
             $form = $this->createForm(AdminLoginForm::class, [
@@ -290,9 +264,7 @@ this will be handled by Symfony, but we still need to register that route::
             ]);
         }
 
-        /**
-         * @Route("/admin/logout", name="admin_logout")
-         */
+        #[Route('/admin/logout', name: 'admin_logout')]
         public function logoutAction(): void
         {
             // Left empty intentionally because this will be handled by Symfony.
@@ -353,7 +325,7 @@ Setup firewall in ``security.yaml``
 Login template resembling Sonata style
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. code-block:: html+jinja
+.. code-block:: html+twig
 
     {# templates/security/login.html.twig #}
 

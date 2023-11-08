@@ -22,18 +22,13 @@ use Twig\TwigFunction;
 final class BreadcrumbsExtension extends AbstractExtension
 {
     /**
-     * @var BreadcrumbsRuntime
-     */
-    private $breadcrumbsRuntime;
-
-    /**
      * NEXT_MAJOR: Remove this constructor.
      *
      * @internal This class should only be used through Twig
      */
-    public function __construct(BreadcrumbsRuntime $breadcrumbsRuntime)
-    {
-        $this->breadcrumbsRuntime = $breadcrumbsRuntime;
+    public function __construct(
+        private BreadcrumbsRuntime $breadcrumbsRuntime
+    ) {
     }
 
     /**

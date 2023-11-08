@@ -33,20 +33,14 @@ use Twig\Extra\String\StringExtension;
  */
 final class BreadcrumbsExtensionTest extends TestCase
 {
-    /**
-     * @var BreadcrumbsExtension
-     */
-    private $breadcrumbsExtension;
+    private BreadcrumbsExtension $breadcrumbsExtension;
 
-    /**
-     * @var Environment
-     */
-    private $environment;
+    private Environment $environment;
 
     /**
      * @var Stub&BreadcrumbsBuilderInterface
      */
-    private $breadcrumbBuilder;
+    private BreadcrumbsBuilderInterface $breadcrumbBuilder;
 
     protected function setUp(): void
     {
@@ -67,6 +61,9 @@ final class BreadcrumbsExtensionTest extends TestCase
         $this->breadcrumbsExtension = new BreadcrumbsExtension(new BreadcrumbsRuntime($this->breadcrumbBuilder));
     }
 
+    /**
+     * @psalm-suppress DeprecatedMethod
+     */
     public function testBreadcrumbsForTitle(): void
     {
         $item = $this->createMock(ItemInterface::class);
@@ -76,14 +73,10 @@ final class BreadcrumbsExtensionTest extends TestCase
             ->willReturn('Label for item 2');
         $item2
             ->method('getExtra')
-            ->withConsecutive(
-                ['translation_domain'],
-                ['translation_params']
-            )
-            ->willReturnOnConsecutiveCalls(
-                false,
-                []
-            );
+            ->willReturnMap([
+                ['translation_domain', 'messages', false],
+                ['translation_params', [], []],
+            ]);
 
         $item3 = $this->createMock(ItemInterface::class);
         $item3
@@ -91,14 +84,10 @@ final class BreadcrumbsExtensionTest extends TestCase
             ->willReturn('Label for item 3 with %parameter%');
         $item3
             ->method('getExtra')
-            ->withConsecutive(
-                ['translation_domain'],
-                ['translation_params']
-            )
-            ->willReturnOnConsecutiveCalls(
-                'custom_translation_domain',
-                ['%parameter%' => 'custom_parameter']
-            );
+            ->willReturnMap([
+                ['translation_domain', 'messages', 'custom_translation_domain'],
+                ['translation_params', [], ['%parameter%' => 'custom_parameter']],
+            ]);
 
         $this->breadcrumbBuilder
             ->method('getBreadcrumbs')
@@ -114,6 +103,9 @@ final class BreadcrumbsExtensionTest extends TestCase
         );
     }
 
+    /**
+     * @psalm-suppress DeprecatedMethod
+     */
     public function testBreadcrumbs(): void
     {
         $item = $this->createMock(ItemInterface::class);
@@ -122,14 +114,10 @@ final class BreadcrumbsExtensionTest extends TestCase
             ->willReturn('Label for item 1');
         $item
             ->method('getExtra')
-            ->withConsecutive(
-                ['translation_domain'],
-                ['translation_params']
-            )
-            ->willReturnOnConsecutiveCalls(
-                false,
-                []
-            );
+            ->willReturnMap([
+                ['translation_domain', 'messages', false],
+                ['translation_params', [], []],
+            ]);
 
         $item2 = $this->createMock(ItemInterface::class);
         $item2
@@ -140,14 +128,10 @@ final class BreadcrumbsExtensionTest extends TestCase
             ->willReturn('https://sonata-project.org');
         $item2
             ->method('getExtra')
-            ->withConsecutive(
-                ['translation_domain'],
-                ['translation_params']
-            )
-            ->willReturnOnConsecutiveCalls(
-                'custom_translation_domain',
-                ['%parameter%' => 'custom_parameter']
-            );
+            ->willReturnMap([
+                ['translation_domain', 'messages', 'custom_translation_domain'],
+                ['translation_params', [], ['%parameter%' => 'custom_parameter']],
+            ]);
 
         $item3 = $this->createMock(ItemInterface::class);
         $item3
@@ -155,14 +139,10 @@ final class BreadcrumbsExtensionTest extends TestCase
             ->willReturn('Label for item 3');
         $item3
             ->method('getExtra')
-            ->withConsecutive(
-                ['translation_domain'],
-                ['translation_params']
-            )
-            ->willReturnOnConsecutiveCalls(
-                false,
-                []
-            );
+            ->willReturnMap([
+                ['translation_domain', 'messages', false],
+                ['translation_params', [], []],
+            ]);
 
         $this->breadcrumbBuilder
             ->method('getBreadcrumbs')

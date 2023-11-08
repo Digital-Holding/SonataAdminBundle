@@ -31,40 +31,25 @@ use Twig\Loader\FilesystemLoader;
 
 final class SonataAdminRuntimeTest extends TestCase
 {
-    /**
-     * @var SonataAdminRuntime
-     */
-    private $sonataAdminRuntime;
+    private SonataAdminRuntime $sonataAdminRuntime;
 
-    /**
-     * @var Environment
-     */
-    private $environment;
+    private Environment $environment;
 
     /**
      * @var AdminInterface<\stdClass>&MockObject
      */
-    private $admin;
+    private AdminInterface $admin;
 
     /**
      * @var AdminInterface<\stdClass>&MockObject
      */
-    private $adminBar;
+    private AdminInterface $adminBar;
 
-    /**
-     * @var \stdClass
-     */
-    private $object;
+    private \stdClass $object;
 
-    /**
-     * @var Pool
-     */
-    private $pool;
+    private Pool $pool;
 
-    /**
-     * @var Container
-     */
-    private $container;
+    private Container $container;
 
     protected function setUp(): void
     {
@@ -161,7 +146,7 @@ final class SonataAdminRuntimeTest extends TestCase
         static::assertSame('1234567', $sonataAdminRuntime->getUrlSafeIdentifier($model));
     }
 
-    public function testGetUrlsafeIdentifier_GivenAdmin_Foo(): void
+    public function testGetUrlsafeIdentifierGivenAdminFoo(): void
     {
         $model = new \stdClass();
 
@@ -191,7 +176,7 @@ final class SonataAdminRuntimeTest extends TestCase
         static::assertSame('1234567', $sonataAdminRuntime->getUrlSafeIdentifier($model, $this->admin));
     }
 
-    public function testGetUrlsafeIdentifier_GivenAdmin_Bar(): void
+    public function testGetUrlsafeIdentifierGivenAdminBar(): void
     {
         $model = new \stdClass();
 

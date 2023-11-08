@@ -27,18 +27,11 @@ use Symfony\Component\Security\Acl\Permission\MaskBuilderInterface;
 final class AdminAclManipulator implements AdminAclManipulatorInterface
 {
     /**
-     * @var string
-     *
-     * @phpstan-var class-string<MaskBuilderInterface>
-     */
-    private $maskBuilderClass;
-
-    /**
      * @phpstan-param class-string<MaskBuilderInterface> $maskBuilderClass
      */
-    public function __construct(string $maskBuilderClass)
-    {
-        $this->maskBuilderClass = $maskBuilderClass;
+    public function __construct(
+        private string $maskBuilderClass
+    ) {
     }
 
     public function configureAcls(OutputInterface $output, AdminInterface $admin): void
@@ -64,7 +57,7 @@ final class AdminAclManipulator implements AdminAclManipulatorInterface
         if ($configResult) {
             $securityHandler->updateAcl($acl);
         } else {
-            $output->writeln(sprintf('   - %s , no roles and permissions found', ($newAcl ? 'skip' : 'removed')));
+            $output->writeln(sprintf('   - %s , no roles and permissions found', $newAcl ? 'skip' : 'removed'));
             $securityHandler->deleteAcl($objectIdentity);
         }
     }
@@ -99,7 +92,7 @@ final class AdminAclManipulator implements AdminAclManipulatorInterface
                         $action = 'update';
                     }
 
-                    $output->writeln(sprintf('   - %s role: %s, permissions: %s', $action, $role, json_encode($roleAdminPermissions)));
+                    $output->writeln(sprintf('   - %s role: %s, permissions: %s', $action, $role, json_encode($roleAdminPermissions, \JSON_THROW_ON_ERROR)));
 
                     $builder->reset();
                 } elseif (false !== $aceIndex) {

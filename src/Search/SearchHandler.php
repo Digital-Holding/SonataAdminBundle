@@ -26,17 +26,14 @@ final class SearchHandler
     /**
      * @var array<string, bool>
      */
-    private $adminsSearchConfig = [];
+    private array $adminsSearchConfig = [];
 
     /**
-     * @param AdminInterface<object> $admin
-     *
      * @throws \RuntimeException
-     *
-     * @return PagerInterface<ProxyQueryInterface>
      *
      * @phpstan-template T of object
      * @phpstan-param AdminInterface<T> $admin
+     * @phpstan-return PagerInterface<ProxyQueryInterface<T>>|null
      */
     public function search(AdminInterface $admin, string $term, int $page = 0, int $offset = 20): ?PagerInterface
     {

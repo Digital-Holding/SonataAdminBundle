@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Functional\Controller;
 
-use Sonata\AdminBundle\Tests\App\AppKernel;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,7 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
 final class AdminAsParameterControllerTest extends WebTestCase
 {
     /**
-     * @dataProvider urlIsSuccessfulDataProvider
+     * @dataProvider provideUrlIsSuccessfulCases
      */
     public function testUrlIsSuccessful(string $url): void
     {
@@ -34,16 +33,9 @@ final class AdminAsParameterControllerTest extends WebTestCase
     /**
      * @phpstan-return iterable<array-key, array{string}>
      */
-    public function urlIsSuccessfulDataProvider(): iterable
+    public function provideUrlIsSuccessfulCases(): iterable
     {
-        return [
-            ['/admin/tests/app/admin-as-parameter/test?uniqid=test'],
-            ['/admin/tests/app/admin-as-parameter/invokable?uniqid=invokable'],
-        ];
-    }
-
-    protected static function getKernelClass(): string
-    {
-        return AppKernel::class;
+        yield ['/admin/tests/app/admin-as-parameter/test?uniqid=test'];
+        yield ['/admin/tests/app/admin-as-parameter/invokable?uniqid=invokable'];
     }
 }

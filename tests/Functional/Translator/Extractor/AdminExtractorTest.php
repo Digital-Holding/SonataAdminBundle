@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Tests\Functional\Translator\Extractor;
 
-use Sonata\AdminBundle\Tests\App\AppKernel;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -23,7 +22,16 @@ final class AdminExtractorTest extends KernelTestCase
     public function testDebugMissingMessages(): void
     {
         $tester = $this->createCommandTester();
-        $tester->execute(['locale' => 'en']);
+        try {
+            $tester->execute(['locale' => 'en']);
+        } catch (\Throwable $t) {
+            // until https://github.com/symfony/symfony/issues/48422 is fixed
+            if (str_contains($t->getMessage(), 'Undefined property: PhpParser\Node\VariadicPlaceholder')) {
+                static::markTestSkipped();
+            }
+
+            throw $t;
+        }
 
         static::assertMatchesRegularExpression('/group_label/', $tester->getDisplay());
         static::assertMatchesRegularExpression('/admin_label/', $tester->getDisplay());
@@ -31,11 +39,6 @@ final class AdminExtractorTest extends KernelTestCase
         static::assertMatchesRegularExpression('/Name List/', $tester->getDisplay());
         static::assertMatchesRegularExpression('/Name Form/', $tester->getDisplay());
         static::assertMatchesRegularExpression('/Date Published/', $tester->getDisplay());
-    }
-
-    protected static function getKernelClass(): string
-    {
-        return AppKernel::class;
     }
 
     private function createCommandTester(): CommandTester

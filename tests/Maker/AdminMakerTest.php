@@ -23,13 +23,11 @@ use Symfony\Bundle\MakerBundle\FileManager;
 use Symfony\Bundle\MakerBundle\Generator;
 use Symfony\Bundle\MakerBundle\Util\AutoloaderUtil;
 use Symfony\Bundle\MakerBundle\Util\MakerFileLinkFormatter;
-use Symfony\Bundle\MakerBundle\Util\PhpCompatUtil;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputDefinition;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Output\StreamOutput;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -38,45 +36,22 @@ use Symfony\Component\Filesystem\Filesystem;
  */
 final class AdminMakerTest extends TestCase
 {
-    /**
-     * @var string
-     */
-    private $projectDirectory;
+    private string $projectDirectory;
 
     /**
      * @var array<string, ModelManagerInterface<object>>
      */
-    private $modelManagers = [];
+    private array $modelManagers = [];
 
-    /**
-     * @var InputInterface
-     */
-    private $input;
+    private ?InputInterface $input = null;
 
-    /**
-     * @var OutputInterface
-     */
-    private $output;
+    private ?ConsoleStyle $io = null;
 
-    /**
-     * @var ConsoleStyle
-     */
-    private $io;
+    private ?Generator $generator = null;
 
-    /**
-     * @var Generator
-     */
-    private $generator;
+    private string $servicesFile;
 
-    /**
-     * @var string
-     */
-    private $servicesFile;
-
-    /**
-     * @var Filesystem
-     */
-    private $filesystem;
+    private Filesystem $filesystem;
 
     protected function setUp(): void
     {
@@ -120,15 +95,12 @@ final class AdminMakerTest extends TestCase
 
         $stream = fopen('php://memory', 'w', false);
         static::assertIsResource($stream);
-        $this->output = new StreamOutput($stream);
 
-        $this->io = new ConsoleStyle($this->input, $this->output);
+        $this->io = new ConsoleStyle($this->input, new StreamOutput($stream));
         $autoloaderUtil = $this->createMock(AutoloaderUtil::class);
         $autoloaderUtil
             ->method('getPathForFutureClass')
-            ->willReturnCallback(function (string $className): string {
-                return sprintf('%s/%s.php', $this->projectDirectory, str_replace('\\', '/', $className));
-            });
+            ->willReturnCallback(fn (string $className): string => sprintf('%s/%s.php', $this->projectDirectory, str_replace('\\', '/', $className)));
 
         $fileManager = new FileManager(
             $this->filesystem,
@@ -140,8 +112,7 @@ final class AdminMakerTest extends TestCase
 
         $this->generator = new Generator(
             $fileManager,
-            'Sonata\AdminBundle\Tests',
-            new PhpCompatUtil($fileManager)
+            'Sonata\AdminBundle\Tests'
         );
         $maker->generate($this->input, $this->io, $this->generator);
     }

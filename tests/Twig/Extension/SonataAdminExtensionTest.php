@@ -35,40 +35,25 @@ use Twig\Loader\FilesystemLoader;
  */
 final class SonataAdminExtensionTest extends TestCase
 {
-    /**
-     * @var SonataAdminExtension
-     */
-    private $twigExtension;
+    private SonataAdminExtension $twigExtension;
 
-    /**
-     * @var Environment
-     */
-    private $environment;
+    private Environment $environment;
 
     /**
      * @var AdminInterface<\stdClass>&MockObject
      */
-    private $admin;
+    private AdminInterface $admin;
 
     /**
      * @var AdminInterface<\stdClass>&MockObject
      */
-    private $adminBar;
+    private AdminInterface $adminBar;
 
-    /**
-     * @var \stdClass
-     */
-    private $object;
+    private \stdClass $object;
 
-    /**
-     * @var Pool
-     */
-    private $pool;
+    private Pool $pool;
 
-    /**
-     * @var Container
-     */
-    private $container;
+    private Container $container;
 
     protected function setUp(): void
     {
@@ -142,6 +127,9 @@ final class SonataAdminExtensionTest extends TestCase
         $this->container->set('sonata_admin_bar_service', $this->adminBar);
     }
 
+    /**
+     * @psalm-suppress DeprecatedMethod
+     */
     public function testGetUrlsafeIdentifier(): void
     {
         $model = new \stdClass();
@@ -165,7 +153,10 @@ final class SonataAdminExtensionTest extends TestCase
         static::assertSame('1234567', $twigExtension->getUrlSafeIdentifier($model));
     }
 
-    public function testGetUrlsafeIdentifier_GivenAdmin_Foo(): void
+    /**
+     * @psalm-suppress DeprecatedMethod
+     */
+    public function testGetUrlsafeIdentifierGivenAdminFoo(): void
     {
         $model = new \stdClass();
 
@@ -195,7 +186,10 @@ final class SonataAdminExtensionTest extends TestCase
         static::assertSame('1234567', $twigExtension->getUrlSafeIdentifier($model, $this->admin));
     }
 
-    public function testGetUrlsafeIdentifier_GivenAdmin_Bar(): void
+    /**
+     * @psalm-suppress DeprecatedMethod
+     */
+    public function testGetUrlsafeIdentifierGivenAdminBar(): void
     {
         $model = new \stdClass();
 

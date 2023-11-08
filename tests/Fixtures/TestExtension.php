@@ -24,26 +24,21 @@ final class TestExtension implements FormExtensionInterface
     /**
      * @var array<string, FormTypeInterface>
      */
-    private $types = [];
+    private array $types = [];
 
     /**
      * @var array<string, array<FormTypeExtensionInterface>>
      */
-    private $extensions = [];
+    private array $extensions = [];
 
-    /**
-     * @var FormTypeGuesserInterface|null
-     */
-    private $guesser;
-
-    public function __construct(?FormTypeGuesserInterface $guesser)
-    {
-        $this->guesser = $guesser;
+    public function __construct(
+        private ?FormTypeGuesserInterface $guesser
+    ) {
     }
 
     public function addType(FormTypeInterface $type): void
     {
-        $this->types[\get_class($type)] = $type;
+        $this->types[$type::class] = $type;
     }
 
     public function getType($name): FormTypeInterface

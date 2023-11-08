@@ -13,61 +13,48 @@ For the rest of the tutorial, you'll need some sort of model. In this tutorial,
 
     // src/Entity/BlogPost.php
 
-    final class BlogPost
+    namespace App\Entity;
+
+    use Doctrine\DBAL\Types\Types;
+    use Doctrine\ORM\Mapping as ORM;
+
+    class BlogPost
     {
         // ...
 
-        /**
-         * @var string
-         *
-         * @ORM\Column(name="title", type="string")
-         */
-        private $title;
+        #[ORM\Column(type: Types::STRING)]
+        private ?string $title = null;
 
-        /**
-         * @var string
-         *
-         * @ORM\Column(name="body", type="text")
-         */
-        private $body;
+        #[ORM\Column(type: Types::TEXT)]
+        private ?string $body = null;
 
-        /**
-         * @var bool
-         *
-         * @ORM\Column(name="draft", type="boolean")
-         */
-        private $draft = false;
+        #[ORM\Column(type: Types::BOOLEAN)]
+        private bool $draft = false;
 
-        /**
-         * @ORM\ManyToOne(targetEntity="Category", inversedBy="blogPosts")
-         */
-        private $category;
+        #[ORM\ManyToOne(targetEntity: Category::class, inversedBy: 'blogPosts')]
+        private ?Category $category = null;
     }
 
 .. code-block:: php
 
     // src/Entity/Category.php
 
+    namespace App\Entity;
+
     use Doctrine\Common\Collections\ArrayCollection;
     use Doctrine\Common\Collections\Collection;
+    use Doctrine\DBAL\Types\Types;
+    use Doctrine\ORM\Mapping as ORM;
 
-    final class Category
+    class Category
     {
         // ...
 
-        /**
-         * @var string
-         *
-         * @ORM\Column(name="name", type="string")
-         */
-        private $name;
+        #[ORM\Column(type: Types::STRING)]
+        private ?string $name = null;
 
-        /**
-         * @var Collection
-         *
-         * @ORM\OneToMany(targetEntity="BlogPost", mappedBy="category")
-         */
-        private $blogPosts;
+        #[ORM\OneToMany(targetEntity: BlogPost::class, mappedBy: 'category')]
+        private Collection $blogPosts;
 
         public function __construct()
         {
@@ -166,18 +153,16 @@ SonataAdminBundle to know that this Admin class exists. To tell the
 SonataAdminBundle of the existence of this Admin class, you have to create a
 service and tag it with the ``sonata.admin`` tag:
 
-.. configuration-block::
+.. code-block:: yaml
 
-    .. code-block:: yaml
+    # config/services.yaml
 
-        # config/services.yaml
-
-        services:
-            # ...
-            admin.category:
-                class: App\Admin\CategoryAdmin
-                tags:
-                    - { name: sonata.admin, model_class: App\Entity\Category, manager_type: orm, label: Category }
+    services:
+        # ...
+        admin.category:
+            class: App\Admin\CategoryAdmin
+            tags:
+                - { name: sonata.admin, model_class: App\Entity\Category, manager_type: orm, label: Category }
 
 +---------------------------------------+-----------------------------------------------------------------------------------------+
 | Tag option                            | Description                                                                             |
@@ -206,17 +191,15 @@ Step 3: Register SonataAdmin custom Routes
 SonataAdminBundle generates routes for the Admin classes on the fly. To load these
 routes, you have to make sure the routing loader of the SonataAdminBundle is executed:
 
-.. configuration-block::
+.. code-block:: yaml
 
-    .. code-block:: yaml
+    # config/routes/sonata_admin.yaml
 
-        # config/routes/sonata_admin.yaml
-
-        # ...
-        _sonata_admin:
-            resource: .
-            type: sonata_admin
-            prefix: /admin
+    # ...
+    _sonata_admin:
+        resource: .
+        type: sonata_admin
+        prefix: /admin
 
 View the Category Admin Interface
 ---------------------------------

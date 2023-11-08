@@ -21,9 +21,9 @@ use Sonata\AdminBundle\Model\ModelManagerInterface;
 final class ModelToIdTransformerTest extends TestCase
 {
     /**
-     * @var ModelManagerInterface<object>&MockObject
+     * @var ModelManagerInterface<\stdClass>&MockObject
      */
-    private $modelManager;
+    private ModelManagerInterface $modelManager;
 
     protected function setUp(): void
     {
@@ -31,11 +31,9 @@ final class ModelToIdTransformerTest extends TestCase
     }
 
     /**
-     * @param int|string $value
-     *
-     * @dataProvider getReverseTransformValues
+     * @dataProvider provideReverseTransformCases
      */
-    public function testReverseTransform($value): void
+    public function testReverseTransform(int|string $value): void
     {
         $className = \stdClass::class;
         $transformer = new ModelToIdTransformer($this->modelManager, $className);
@@ -50,14 +48,12 @@ final class ModelToIdTransformerTest extends TestCase
     }
 
     /**
-     * @return array<array{int|string}>
+     * @return iterable<array{int|string}>
      */
-    public function getReverseTransformValues(): array
+    public function provideReverseTransformCases(): iterable
     {
-        return [
-            [0],
-            ['0'],
-        ];
+        yield [0];
+        yield ['0'];
     }
 
     public function testReverseTransformEmpty(): void

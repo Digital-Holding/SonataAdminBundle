@@ -26,33 +26,19 @@ use Symfony\Component\Form\DataTransformerInterface;
 final class ArrayToModelTransformer implements DataTransformerInterface
 {
     /**
-     * @var ModelManagerInterface
-     * @phpstan-var ModelManagerInterface<T>
-     */
-    private $modelManager;
-
-    /**
-     * @var string
-     *
-     * @phpstan-var class-string<T>
-     */
-    private $className;
-
-    /**
      * @phpstan-param ModelManagerInterface<T> $modelManager
      * @phpstan-param class-string<T>          $className
      */
-    public function __construct(ModelManagerInterface $modelManager, string $className)
-    {
-        $this->modelManager = $modelManager;
-        $this->className = $className;
+    public function __construct(
+        private ModelManagerInterface $modelManager,
+        private string $className
+    ) {
     }
 
     /**
      * @param object|array<string, mixed>|null $value
      *
      * @phpstan-param T|array<string, mixed>|null $value
-     *
      * @phpstan-return T
      */
     public function reverseTransform($value): object
@@ -77,13 +63,10 @@ final class ArrayToModelTransformer implements DataTransformerInterface
     /**
      * @param object|null $value
      *
-     * @return object|null
-     *
      * @phpstan-param T|null $value
-     *
      * @phpstan-return T|null
      */
-    public function transform($value)
+    public function transform($value): ?object
     {
         return $value;
     }

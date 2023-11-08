@@ -72,139 +72,73 @@ abstract class AbstractTaggedAdmin implements TaggedAdminInterface
     /**
      * The class name managed by the admin class.
      *
-     * @var string|null
-     *
      * @phpstan-var class-string<T>|null
      */
-    private $modelClass;
+    private ?string $modelClass = null;
 
-    /**
-     * @var string|null
-     */
-    private $label;
+    private ?string $label = null;
 
     /**
      * @var non-empty-array<string, array<string, mixed>>
      */
-    private $listModes = TaggedAdminInterface::DEFAULT_LIST_MODES;
+    private array $listModes = TaggedAdminInterface::DEFAULT_LIST_MODES;
 
-    /**
-     * @var string
-     */
-    private $pagerType = Pager::TYPE_DEFAULT;
+    private string $pagerType = Pager::TYPE_DEFAULT;
 
     /**
      * The manager type to use for the admin.
-     *
-     * @var string|null
      */
-    private $managerType;
+    private ?string $managerType = null;
 
     /**
      * Roles and permissions per role.
      *
      * @var array<string, string[]> 'role' => ['permission1', 'permission2']
      */
-    private $securityInformation = [];
+    private array $securityInformation = [];
 
     /**
      * Component responsible for persisting filters.
-     *
-     * @var FilterPersisterInterface|null
      */
-    private $filterPersister;
+    private ?FilterPersisterInterface $filterPersister = null;
 
     /**
      * The Entity or Document manager.
      *
-     * @var ModelManagerInterface|null
      * @phpstan-var ModelManagerInterface<T>|null
      */
-    private $modelManager;
+    private ?ModelManagerInterface $modelManager = null;
+
+    private ?DataSourceInterface $dataSource = null;
+
+    private ?FormContractorInterface $formContractor = null;
+
+    private ?ShowBuilderInterface $showBuilder = null;
+
+    private ?ListBuilderInterface $listBuilder = null;
 
     /**
-     * @var DataSourceInterface|null
+     * @phpstan-var DatagridBuilderInterface<ProxyQueryInterface<T>>|null
      */
-    private $dataSource;
+    private ?DatagridBuilderInterface $datagridBuilder = null;
 
-    /**
-     * The related form contractor.
-     *
-     * @var FormContractorInterface|null
-     */
-    private $formContractor;
+    private ?TranslatorInterface $translator = null;
 
-    /**
-     * The related view builder.
-     *
-     * @var ShowBuilderInterface|null
-     */
-    private $showBuilder;
+    private ?Pool $configurationPool = null;
 
-    /**
-     * The related list builder.
-     *
-     * @var ListBuilderInterface|null
-     */
-    private $listBuilder;
+    private ?RouteGeneratorInterface $routeGenerator = null;
 
-    /**
-     * The related datagrid builder.
-     *
-     * @var DatagridBuilderInterface<ProxyQueryInterface>|null
-     */
-    private $datagridBuilder;
+    private ?SecurityHandlerInterface $securityHandler = null;
 
-    /**
-     * The translator component.
-     *
-     * @var TranslatorInterface|null
-     */
-    private $translator;
+    private ?FactoryInterface $menuFactory = null;
 
-    /**
-     * The configuration pool.
-     *
-     * @var Pool|null
-     */
-    private $configurationPool;
+    private ?RouteBuilderInterface $routeBuilder = null;
 
-    /**
-     * The router instance.
-     *
-     * @var RouteGeneratorInterface|null
-     */
-    private $routeGenerator;
+    private ?LabelTranslatorStrategyInterface $labelTranslatorStrategy = null;
 
-    /**
-     * @var SecurityHandlerInterface|null
-     */
-    private $securityHandler;
+    private ?FieldDescriptionFactoryInterface $fieldDescriptionFactory = null;
 
-    /**
-     * @var FactoryInterface|null
-     */
-    private $menuFactory;
-
-    /**
-     * @var RouteBuilderInterface|null
-     */
-    private $routeBuilder;
-
-    /**
-     * @var LabelTranslatorStrategyInterface|null
-     */
-    private $labelTranslatorStrategy;
-
-    /**
-     * @var FieldDescriptionFactoryInterface|null
-     */
-    private $fieldDescriptionFactory;
-
-    /**
-     * @var MutableTemplateRegistryInterface|null
-     */
-    private $templateRegistry;
+    private ?MutableTemplateRegistryInterface $templateRegistry = null;
 
     /**
      * NEXT_MAJOR: Remove the __construct method.
@@ -226,7 +160,14 @@ abstract class AbstractTaggedAdmin implements TaggedAdminInterface
         if (null !== $code) {
             $this->code = $code;
         }
+
+        /**
+         * NEXT_MAJOR: Remove this assignment.
+         *
+         * @psalm-suppress DeprecatedProperty
+         */
         $this->class = $class;
+
         $this->modelClass = $class;
 
         if (null !== $baseControllerName) {
@@ -243,11 +184,7 @@ abstract class AbstractTaggedAdmin implements TaggedAdminInterface
 
     final public function getCode(): string
     {
-        if (null === $this->code) {
-            return static::class;
-        }
-
-        return $this->code;
+        return $this->code ?? static::class;
     }
 
     /**
@@ -354,11 +291,13 @@ abstract class AbstractTaggedAdmin implements TaggedAdminInterface
         if (!$this->hasFilterPersister()) {
             throw new \LogicException(sprintf('Admin "%s" has no filter persister.', static::class));
         }
-        \assert(null !== $this->filterPersister);
 
         return $this->filterPersister;
     }
 
+    /**
+     * @phpstan-assert-if-true !null $this->filterPersister
+     */
     final public function hasFilterPersister(): bool
     {
         return null !== $this->filterPersister;
@@ -565,14 +504,16 @@ abstract class AbstractTaggedAdmin implements TaggedAdminInterface
 
     final public function getTemplateRegistry(): MutableTemplateRegistryInterface
     {
-        if (false === $this->hasTemplateRegistry()) {
+        if (!$this->hasTemplateRegistry()) {
             throw new \LogicException(sprintf('Unable to find the template registry for admin `%s`.', static::class));
         }
-        \assert(null !== $this->templateRegistry);
 
         return $this->templateRegistry;
     }
 
+    /**
+     * @phpstan-assert-if-true !null $this->templateRegistry
+     */
     final public function hasTemplateRegistry(): bool
     {
         return null !== $this->templateRegistry;

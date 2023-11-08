@@ -16,8 +16,16 @@ namespace Sonata\AdminBundle\Tests\Translator;
 use PHPUnit\Framework\TestCase;
 use Sonata\AdminBundle\Translator\BCLabelTranslatorStrategy;
 
+/**
+ * NEXT_MAJOR: Remove this class.
+ *
+ * @group legacy
+ */
 final class BCLabelTranslatorStrategyTest extends TestCase
 {
+    /**
+     * @psalm-suppress DeprecatedClass
+     */
     public function testLabel(): void
     {
         $strategy = new BCLabelTranslatorStrategy();

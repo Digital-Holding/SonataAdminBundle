@@ -21,6 +21,12 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ *
+ * NEXT_MAJOR: Remove this form.
+ *
+ * @psalm-suppress MissingTemplateParam https://github.com/phpstan/phpstan-symfony/issues/320
+ *
+ * @deprecated since sonata-project/admin-bundle version 4.14 use the FilterDataType instead
  */
 final class DateTimeRangeType extends AbstractType
 {

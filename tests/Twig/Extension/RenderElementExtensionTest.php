@@ -49,40 +49,28 @@ use Twig\RuntimeLoader\FactoryRuntimeLoader;
  */
 final class RenderElementExtensionTest extends TestCase
 {
-    /**
-     * @var RenderElementExtension
-     */
-    private $twigExtension;
+    private RenderElementExtension $twigExtension;
 
-    /**
-     * @var Environment
-     */
-    private $environment;
+    private Environment $environment;
 
     /**
      * @var AdminInterface<object>&MockObject
      */
-    private $admin;
+    private AdminInterface $admin;
 
     /**
      * @var FieldDescriptionInterface&MockObject
      */
-    private $fieldDescription;
+    private FieldDescriptionInterface $fieldDescription;
 
-    /**
-     * @var \stdClass
-     */
-    private $object;
+    private \stdClass $object;
 
-    /**
-     * @var TranslatorInterface
-     */
-    private $translator;
+    private TranslatorInterface $translator;
 
     /**
      * @var MutableTemplateRegistryInterface&MockObject
      */
-    private $templateRegistry;
+    private MutableTemplateRegistryInterface $templateRegistry;
 
     protected function setUp(): void
     {
@@ -197,12 +185,13 @@ final class RenderElementExtensionTest extends TestCase
     }
 
     /**
-     * @param mixed                $value
      * @param array<string, mixed> $options
      *
-     * @dataProvider getRenderListElementTests
+     * @dataProvider provideRenderListElementCases
+     *
+     * @psalm-suppress DeprecatedMethod
      */
-    public function testRenderListElement(string $expected, string $type, $value, array $options): void
+    public function testRenderListElement(string $expected, string $type, mixed $value, array $options): void
     {
         $this->admin
             ->method('getPersistentParameters')
@@ -229,15 +218,11 @@ final class RenderElementExtensionTest extends TestCase
 
         $this->fieldDescription
             ->method('getOption')
-            ->willReturnCallback(static function (string $name, $default = null) use ($options) {
-                return $options[$name] ?? $default;
-            });
+            ->willReturnCallback(static fn (string $name, mixed $default = null): mixed => $options[$name] ?? $default);
 
         $this->fieldDescription
             ->method('getTemplate')
-            ->willReturnCallback(static function () use ($type): ?string {
-                return TemplateRegistryInterface::LIST_TEMPLATES[$type] ?? null;
-            });
+            ->willReturnCallback(static fn (): ?string => TemplateRegistryInterface::LIST_TEMPLATES[$type] ?? null);
 
         static::assertSame(
             $this->removeExtraWhitespace($expected),
@@ -249,6 +234,9 @@ final class RenderElementExtensionTest extends TestCase
         );
     }
 
+    /**
+     * @psalm-suppress DeprecatedMethod
+     */
     public function testRenderListElementWithAdditionalValuesInArray(): void
     {
         $this->templateRegistry->method('getTemplate')->with('base_list_field')
@@ -268,6 +256,9 @@ final class RenderElementExtensionTest extends TestCase
         );
     }
 
+    /**
+     * @psalm-suppress DeprecatedMethod
+     */
     public function testRenderWithDebug(): void
     {
         $this->fieldDescription
@@ -294,14 +285,14 @@ final class RenderElementExtensionTest extends TestCase
         static::assertSame(
             $this->removeExtraWhitespace(
                 <<<'EOT'
-<!-- START
-    fieldName: fd_name
-    template: @SonataAdmin/CRUD/base_list_field.html.twig
-    compiled template: @SonataAdmin/CRUD/base_list_field.html.twig
--->
-    <td class="sonata-ba-list-field sonata-ba-list-field-" objectId="12345"> foo </td>
-<!-- END - fieldName: fd_name -->
-EOT
+                    <!-- START
+                        fieldName: fd_name
+                        template: @SonataAdmin/CRUD/base_list_field.html.twig
+                        compiled template: @SonataAdmin/CRUD/base_list_field.html.twig
+                    -->
+                        <td class="sonata-ba-list-field sonata-ba-list-field-" objectId="12345"> foo </td>
+                    <!-- END - fieldName: fd_name -->
+                    EOT
             ),
             $this->removeExtraWhitespace(
                 $this->twigExtension->renderListElement($this->environment, $this->object, $this->fieldDescription, $parameters)
@@ -310,12 +301,13 @@ EOT
     }
 
     /**
-     * @param mixed                $value
      * @param array<string, mixed> $options
      *
-     * @dataProvider getRenderViewElementTests
+     * @dataProvider provideRenderViewElementCases
+     *
+     * @psalm-suppress DeprecatedMethod
      */
-    public function testRenderViewElement(string $expected, string $type, $value, array $options): void
+    public function testRenderViewElement(string $expected, string $type, mixed $value, array $options): void
     {
         $this->fieldDescription
             ->method('getValue')
@@ -331,15 +323,11 @@ EOT
 
         $this->fieldDescription
             ->method('getOption')
-            ->willReturnCallback(static function (string $name, $default = null) use ($options) {
-                return $options[$name] ?? $default;
-            });
+            ->willReturnCallback(static fn (string $name, mixed $default = null): mixed => $options[$name] ?? $default);
 
         $this->fieldDescription
             ->method('getTemplate')
-            ->willReturnCallback(static function () use ($type): ?string {
-                return TemplateRegistryInterface::SHOW_TEMPLATES[$type] ?? null;
-            });
+            ->willReturnCallback(static fn (): ?string => TemplateRegistryInterface::SHOW_TEMPLATES[$type] ?? null);
 
         static::assertSame(
             $this->removeExtraWhitespace($expected),
@@ -354,13 +342,19 @@ EOT
     }
 
     /**
-     * @param mixed                $value
      * @param array<string, mixed> $options
      *
-     * @dataProvider getRenderViewElementCompareTests
+     * @dataProvider provideRenderViewElementCompareCases
+     *
+     * @psalm-suppress DeprecatedMethod
      */
-    public function testRenderViewElementCompare(string $expected, string $type, $value, array $options, ?string $objectName): void
-    {
+    public function testRenderViewElementCompare(
+        string $expected,
+        string $type,
+        mixed $value,
+        array $options,
+        ?string $objectName
+    ): void {
         $this->fieldDescription
             ->method('getValue')
             ->willReturn($value);
@@ -375,9 +369,7 @@ EOT
 
         $this->fieldDescription
             ->method('getOption')
-            ->willReturnCallback(static function (string $name, $default = null) use ($options) {
-                return $options[$name] ?? $default;
-            });
+            ->willReturnCallback(static fn (string $name, mixed $default = null): mixed => $options[$name] ?? $default);
 
         $this->fieldDescription
             ->method('getTemplate')
@@ -410,30 +402,41 @@ EOT
         );
     }
 
+    /**
+     * @psalm-suppress DeprecatedMethod
+     */
     public function testRenderRelationElementNoObject(): void
     {
         static::assertSame('foo', $this->twigExtension->renderRelationElement('foo', $this->fieldDescription));
     }
 
+    /**
+     * @psalm-suppress DeprecatedMethod
+     */
     public function testRenderRelationElementToString(): void
     {
         $this->fieldDescription->expects(static::once())
             ->method('getOption')
-            ->willReturnCallback(static function (string $value, $default = null) {
+            ->willReturnCallback(static function (string $value, mixed $default = null): mixed {
                 if ('associated_property' === $value) {
                     return $default;
                 }
+
+                return null;
             });
 
         $element = new FooToString();
         static::assertSame('salut', $this->twigExtension->renderRelationElement($element, $this->fieldDescription));
     }
 
+    /**
+     * @psalm-suppress DeprecatedMethod
+     */
     public function testRenderRelationElementCustomToString(): void
     {
         $this->fieldDescription->expects(static::once())
             ->method('getOption')
-            ->willReturnCallback(static function (string $value, $default = null) {
+            ->willReturnCallback(static function (string $value, mixed $default = null): mixed {
                 if ('associated_property' === $value) {
                     return 'customToString';
                 }
@@ -451,11 +454,14 @@ EOT
         static::assertSame('fooBar', $this->twigExtension->renderRelationElement($element, $this->fieldDescription));
     }
 
+    /**
+     * @psalm-suppress DeprecatedMethod
+     */
     public function testRenderRelationElementMethodNotExist(): void
     {
         $this->fieldDescription->expects(static::once())
             ->method('getOption')
-            ->willReturnCallback(static function (string $value, $default = null) {
+            ->willReturnCallback(static function (string $value, mixed $default = null): mixed {
                 if ('associated_property' === $value) {
                     return null;
                 }
@@ -470,12 +476,15 @@ EOT
         $this->twigExtension->renderRelationElement($element, $this->fieldDescription);
     }
 
+    /**
+     * @psalm-suppress DeprecatedMethod
+     */
     public function testRenderRelationElementWithPropertyPath(): void
     {
         $this->fieldDescription->expects(static::once())
             ->method('getOption')
 
-            ->willReturnCallback(static function (string $value, $default = null) {
+            ->willReturnCallback(static function (string $value, mixed $default = null): mixed {
                 if ('associated_property' === $value) {
                     return 'foo';
                 }
@@ -489,15 +498,16 @@ EOT
         static::assertSame('bar', $this->twigExtension->renderRelationElement($element, $this->fieldDescription));
     }
 
+    /**
+     * @psalm-suppress DeprecatedMethod
+     */
     public function testRenderRelationElementWithClosure(): void
     {
         $this->fieldDescription->expects(static::once())
             ->method('getOption')
-            ->willReturnCallback(static function (string $value, $default = null) {
+            ->willReturnCallback(static function (string $value, mixed $default = null): mixed {
                 if ('associated_property' === $value) {
-                    return static function ($element): string {
-                        return sprintf('closure %s', $element->foo);
-                    };
+                    return static fn (object $element): string => property_exists($element, 'foo') ? sprintf('closure %s', $element->foo) : '';
                 }
 
                 return $default;
@@ -513,9 +523,9 @@ EOT
     }
 
     /**
-     * @phpstan-return array<array{string, string, mixed, array<string, mixed>}>
+     * @phpstan-return iterable<array{string, string, mixed, array<string, mixed>}>
      */
-    public function getRenderListElementTests(): array
+    public function provideRenderListElementCases(): iterable
     {
         $elements = [
             [
@@ -840,20 +850,20 @@ EOT
             ],
             [
                 <<<'EOT'
-<td class="sonata-ba-list-field sonata-ba-list-field-boolean" objectId="12345">
-    <span
-        class="x-editable"
-        data-type="select"
-        data-value="1"
-        data-title="Data"
-        data-pk="12345"
-        data-url="/core/set-object-field-value?_sonata_admin=sonata_admin_foo_service&amp;context=list&amp;field=fd_name&amp;objectId=12345"
-        data-source="[{value: 0, text: 'no'},{value: 1, text: 'yes'}]"
-    >
-        <span class="label label-success">yes</span>
-    </span>
-</td>
-EOT
+                    <td class="sonata-ba-list-field sonata-ba-list-field-boolean" objectId="12345">
+                        <span
+                            class="x-editable"
+                            data-type="select"
+                            data-value="1"
+                            data-title="Data"
+                            data-pk="12345"
+                            data-url="/core/set-object-field-value?_sonata_admin=sonata_admin_foo_service&amp;context=list&amp;field=fd_name&amp;objectId=12345"
+                            data-source="[{value: 0, text: 'no'},{value: 1, text: 'yes'}]"
+                        >
+                            <span class="label label-success">yes</span>
+                        </span>
+                    </td>
+                    EOT
             ,
                 FieldDescriptionInterface::TYPE_BOOLEAN,
                 true,
@@ -861,19 +871,19 @@ EOT
             ],
             [
                 <<<'EOT'
-<td class="sonata-ba-list-field sonata-ba-list-field-boolean" objectId="12345">
-    <span
-        class="x-editable"
-        data-type="select"
-        data-value="0"
-        data-title="Data"
-        data-pk="12345"
-        data-url="/core/set-object-field-value?_sonata_admin=sonata_admin_foo_service&amp;context=list&amp;field=fd_name&amp;objectId=12345"
-        data-source="[{value: 0, text: 'no'},{value: 1, text: 'yes'}]"
-    >
-    <span class="label label-danger">no</span> </span>
-</td>
-EOT
+                    <td class="sonata-ba-list-field sonata-ba-list-field-boolean" objectId="12345">
+                        <span
+                            class="x-editable"
+                            data-type="select"
+                            data-value="0"
+                            data-title="Data"
+                            data-pk="12345"
+                            data-url="/core/set-object-field-value?_sonata_admin=sonata_admin_foo_service&amp;context=list&amp;field=fd_name&amp;objectId=12345"
+                            data-source="[{value: 0, text: 'no'},{value: 1, text: 'yes'}]"
+                        >
+                        <span class="label label-danger">no</span> </span>
+                    </td>
+                    EOT
                 ,
                 FieldDescriptionInterface::TYPE_BOOLEAN,
                 false,
@@ -881,18 +891,18 @@ EOT
             ],
             [
                 <<<'EOT'
-<td class="sonata-ba-list-field sonata-ba-list-field-boolean" objectId="12345">
-    <span
-        class="x-editable"
-        data-type="select"
-        data-value="0"
-        data-title="Data"
-        data-pk="12345"
-        data-url="/core/set-object-field-value?_sonata_admin=sonata_admin_foo_service&amp;context=list&amp;field=fd_name&amp;objectId=12345"
-        data-source="[{value: 0, text: 'no'},{value: 1, text: 'yes'}]" >
-        <span class="label label-danger">no</span> </span>
-</td>
-EOT
+                    <td class="sonata-ba-list-field sonata-ba-list-field-boolean" objectId="12345">
+                        <span
+                            class="x-editable"
+                            data-type="select"
+                            data-value="0"
+                            data-title="Data"
+                            data-pk="12345"
+                            data-url="/core/set-object-field-value?_sonata_admin=sonata_admin_foo_service&amp;context=list&amp;field=fd_name&amp;objectId=12345"
+                            data-source="[{value: 0, text: 'no'},{value: 1, text: 'yes'}]" >
+                            <span class="label label-danger">no</span> </span>
+                    </td>
+                    EOT
                 ,
                 FieldDescriptionInterface::TYPE_BOOLEAN,
                 null,
@@ -1049,20 +1059,20 @@ EOT
                 ], 'multiple' => true], ],
             [
                 <<<'EOT'
-<td class="sonata-ba-list-field sonata-ba-list-field-choice" objectId="12345">
-    <span
-        class="x-editable"
-        data-type="select"
-        data-value="Status1"
-        data-title="Data"
-        data-pk="12345"
-        data-url="/core/set-object-field-value?_sonata_admin=sonata_admin_foo_service&amp;context=list&amp;field=fd_name&amp;objectId=12345"
-        data-source="[]"
-    >
-        Status1
-    </span>
-</td>
-EOT
+                    <td class="sonata-ba-list-field sonata-ba-list-field-choice" objectId="12345">
+                        <span
+                            class="x-editable"
+                            data-type="select"
+                            data-value="Status1"
+                            data-title="Data"
+                            data-pk="12345"
+                            data-url="/core/set-object-field-value?_sonata_admin=sonata_admin_foo_service&amp;context=list&amp;field=fd_name&amp;objectId=12345"
+                            data-source="[]"
+                        >
+                            Status1
+                        </span>
+                    </td>
+                    EOT
                 ,
                 FieldDescriptionInterface::TYPE_CHOICE,
                 'Status1',
@@ -1070,18 +1080,18 @@ EOT
             ],
             [
                 <<<'EOT'
-<td class="sonata-ba-list-field sonata-ba-list-field-choice" objectId="12345">
-    <span
-        class="x-editable"
-        data-type="select"
-        data-value="Status1"
-        data-title="Data"
-        data-pk="12345"
-        data-url="/core/set-object-field-value?_sonata_admin=sonata_admin_foo_service&amp;context=list&amp;field=fd_name&amp;objectId=12345"
-        data-source="[{&quot;value&quot;:&quot;Status1&quot;,&quot;text&quot;:&quot;Alias1&quot;},{&quot;value&quot;:&quot;Status2&quot;,&quot;text&quot;:&quot;Alias2&quot;},{&quot;value&quot;:&quot;Status3&quot;,&quot;text&quot;:&quot;Alias3&quot;}]" >
-        Alias1 </span>
-</td>
-EOT
+                    <td class="sonata-ba-list-field sonata-ba-list-field-choice" objectId="12345">
+                        <span
+                            class="x-editable"
+                            data-type="select"
+                            data-value="Status1"
+                            data-title="Data"
+                            data-pk="12345"
+                            data-url="/core/set-object-field-value?_sonata_admin=sonata_admin_foo_service&amp;context=list&amp;field=fd_name&amp;objectId=12345"
+                            data-source="[{&quot;value&quot;:&quot;Status1&quot;,&quot;text&quot;:&quot;Alias1&quot;},{&quot;value&quot;:&quot;Status2&quot;,&quot;text&quot;:&quot;Alias2&quot;},{&quot;value&quot;:&quot;Status3&quot;,&quot;text&quot;:&quot;Alias3&quot;}]" >
+                            Alias1 </span>
+                    </td>
+                    EOT
                 ,
                 FieldDescriptionInterface::TYPE_CHOICE,
                 'Status1',
@@ -1096,19 +1106,19 @@ EOT
             ],
             [
                 <<<'EOT'
-<td class="sonata-ba-list-field sonata-ba-list-field-choice" objectId="12345">
-    <span
-        class="x-editable"
-        data-type="select"
-        data-value=""
-        data-title="Data"
-        data-pk="12345"
-        data-url="/core/set-object-field-value?_sonata_admin=sonata_admin_foo_service&amp;context=list&amp;field=fd_name&amp;objectId=12345"
-        data-source="[{&quot;value&quot;:&quot;Status1&quot;,&quot;text&quot;:&quot;Alias1&quot;},{&quot;value&quot;:&quot;Status2&quot;,&quot;text&quot;:&quot;Alias2&quot;},{&quot;value&quot;:&quot;Status3&quot;,&quot;text&quot;:&quot;Alias3&quot;}]" >
+                    <td class="sonata-ba-list-field sonata-ba-list-field-choice" objectId="12345">
+                        <span
+                            class="x-editable"
+                            data-type="select"
+                            data-value=""
+                            data-title="Data"
+                            data-pk="12345"
+                            data-url="/core/set-object-field-value?_sonata_admin=sonata_admin_foo_service&amp;context=list&amp;field=fd_name&amp;objectId=12345"
+                            data-source="[{&quot;value&quot;:&quot;Status1&quot;,&quot;text&quot;:&quot;Alias1&quot;},{&quot;value&quot;:&quot;Status2&quot;,&quot;text&quot;:&quot;Alias2&quot;},{&quot;value&quot;:&quot;Status3&quot;,&quot;text&quot;:&quot;Alias3&quot;}]" >
 
-    </span>
-</td>
-EOT
+                        </span>
+                    </td>
+                    EOT
                 ,
                 FieldDescriptionInterface::TYPE_CHOICE,
                 null,
@@ -1123,18 +1133,18 @@ EOT
             ],
             [
                 <<<'EOT'
-<td class="sonata-ba-list-field sonata-ba-list-field-choice" objectId="12345">
-    <span
-        class="x-editable"
-        data-type="select"
-        data-value="NoValidKeyInChoices"
-        data-title="Data" data-pk="12345"
-        data-url="/core/set-object-field-value?_sonata_admin=sonata_admin_foo_service&amp;context=list&amp;field=fd_name&amp;objectId=12345"
-        data-source="[{&quot;value&quot;:&quot;Status1&quot;,&quot;text&quot;:&quot;Alias1&quot;},{&quot;value&quot;:&quot;Status2&quot;,&quot;text&quot;:&quot;Alias2&quot;},{&quot;value&quot;:&quot;Status3&quot;,&quot;text&quot;:&quot;Alias3&quot;}]" >
-        NoValidKeyInChoices
-    </span>
-</td>
-EOT
+                    <td class="sonata-ba-list-field sonata-ba-list-field-choice" objectId="12345">
+                        <span
+                            class="x-editable"
+                            data-type="select"
+                            data-value="NoValidKeyInChoices"
+                            data-title="Data" data-pk="12345"
+                            data-url="/core/set-object-field-value?_sonata_admin=sonata_admin_foo_service&amp;context=list&amp;field=fd_name&amp;objectId=12345"
+                            data-source="[{&quot;value&quot;:&quot;Status1&quot;,&quot;text&quot;:&quot;Alias1&quot;},{&quot;value&quot;:&quot;Status2&quot;,&quot;text&quot;:&quot;Alias2&quot;},{&quot;value&quot;:&quot;Status3&quot;,&quot;text&quot;:&quot;Alias3&quot;}]" >
+                            NoValidKeyInChoices
+                        </span>
+                    </td>
+                    EOT
                 ,
                 FieldDescriptionInterface::TYPE_CHOICE,
                 'NoValidKeyInChoices',
@@ -1149,19 +1159,19 @@ EOT
             ],
             [
                 <<<'EOT'
-<td class="sonata-ba-list-field sonata-ba-list-field-choice" objectId="12345">
-    <span
-        class="x-editable"
-        data-type="select"
-        data-value="Foo"
-        data-title="Data"
-        data-pk="12345"
-        data-url="/core/set-object-field-value?_sonata_admin=sonata_admin_foo_service&amp;context=list&amp;field=fd_name&amp;objectId=12345"
-        data-source="[{&quot;value&quot;:&quot;Foo&quot;,&quot;text&quot;:&quot;Delete&quot;},{&quot;value&quot;:&quot;Status2&quot;,&quot;text&quot;:&quot;Alias2&quot;},{&quot;value&quot;:&quot;Status3&quot;,&quot;text&quot;:&quot;Alias3&quot;}]" >
-         Delete
-    </span>
-</td>
-EOT
+                    <td class="sonata-ba-list-field sonata-ba-list-field-choice" objectId="12345">
+                        <span
+                            class="x-editable"
+                            data-type="select"
+                            data-value="Foo"
+                            data-title="Data"
+                            data-pk="12345"
+                            data-url="/core/set-object-field-value?_sonata_admin=sonata_admin_foo_service&amp;context=list&amp;field=fd_name&amp;objectId=12345"
+                            data-source="[{&quot;value&quot;:&quot;Foo&quot;,&quot;text&quot;:&quot;Delete&quot;},{&quot;value&quot;:&quot;Status2&quot;,&quot;text&quot;:&quot;Alias2&quot;},{&quot;value&quot;:&quot;Status3&quot;,&quot;text&quot;:&quot;Alias3&quot;}]" >
+                             Delete
+                        </span>
+                    </td>
+                    EOT
                 ,
                 FieldDescriptionInterface::TYPE_CHOICE,
                 'Foo',
@@ -1428,14 +1438,14 @@ EOT
 
             [
                 <<<'EOT'
-<td class="sonata-ba-list-field sonata-ba-list-field-string" objectId="12345">
-<div
-    class="sonata-readmore"
-    data-readmore-height="40"
-    data-readmore-more="Read more"
-    data-readmore-less="Close">A very long string</div>
-</td>
-EOT
+                    <td class="sonata-ba-list-field sonata-ba-list-field-string" objectId="12345">
+                    <div
+                        class="sonata-readmore"
+                        data-readmore-height="40"
+                        data-readmore-more="Read more"
+                        data-readmore-less="Close">A very long string</div>
+                    </td>
+                    EOT
                 ,
                 FieldDescriptionInterface::TYPE_STRING,
                 'A very long string',
@@ -1445,14 +1455,14 @@ EOT
             ],
             [
                 <<<'EOT'
-<td class="sonata-ba-list-field sonata-ba-list-field-string" objectId="12345">
-<div
-    class="sonata-readmore"
-    data-readmore-height="10"
-    data-readmore-more="More"
-    data-readmore-less="Less">A very long string</div>
-</td>
-EOT
+                    <td class="sonata-ba-list-field sonata-ba-list-field-string" objectId="12345">
+                    <div
+                        class="sonata-readmore"
+                        data-readmore-height="10"
+                        data-readmore-more="More"
+                        data-readmore-less="Less">A very long string</div>
+                    </td>
+                    EOT
                 ,
                 FieldDescriptionInterface::TYPE_STRING,
                 'A very long string',
@@ -1466,19 +1476,19 @@ EOT
             ],
             [
                 <<<'EOT'
-<td class="sonata-ba-list-field sonata-ba-list-field-choice" objectId="12345">
-    <span
-        class="x-editable"
-        data-type="checklist"
-        data-value="[&quot;Status1&quot;,&quot;Status2&quot;]"
-        data-title="Data"
-        data-pk="12345"
-        data-url="/core/set-object-field-value?_sonata_admin=sonata_admin_foo_service&amp;context=list&amp;field=fd_name&amp;objectId=12345"
-        data-source="[{&quot;value&quot;:&quot;Status1&quot;,&quot;text&quot;:&quot;Delete&quot;},{&quot;value&quot;:&quot;Status2&quot;,&quot;text&quot;:&quot;Alias2&quot;},{&quot;value&quot;:&quot;Status3&quot;,&quot;text&quot;:&quot;Alias3&quot;}]" >
-         Delete, Alias2
-    </span>
-</td>
-EOT
+                    <td class="sonata-ba-list-field sonata-ba-list-field-choice" objectId="12345">
+                        <span
+                            class="x-editable"
+                            data-type="checklist"
+                            data-value="[&quot;Status1&quot;,&quot;Status2&quot;]"
+                            data-title="Data"
+                            data-pk="12345"
+                            data-url="/core/set-object-field-value?_sonata_admin=sonata_admin_foo_service&amp;context=list&amp;field=fd_name&amp;objectId=12345"
+                            data-source="[{&quot;value&quot;:&quot;Status1&quot;,&quot;text&quot;:&quot;Delete&quot;},{&quot;value&quot;:&quot;Status2&quot;,&quot;text&quot;:&quot;Alias2&quot;},{&quot;value&quot;:&quot;Status3&quot;,&quot;text&quot;:&quot;Alias3&quot;}]" >
+                             Delete, Alias2
+                        </span>
+                    </td>
+                    EOT
                 ,
                 FieldDescriptionInterface::TYPE_CHOICE,
                 [
@@ -1499,22 +1509,49 @@ EOT
         ];
 
         // TODO: Remove the "if" check when dropping support of PHP < 8.1 and add the case to the list
-        if (\PHP_VERSION_ID >= 80100) {
-            $elements[] = [
-                '<td class="sonata-ba-list-field sonata-ba-list-field-enum" objectId="12345"> Hearts </td>',
-                FieldDescriptionInterface::TYPE_ENUM,
-                Suit::Hearts,
-                [],
-            ];
+        if (\PHP_VERSION_ID < 80100) {
+            return $elements;
         }
+
+        $elements[] = [
+            '<td class="sonata-ba-list-field sonata-ba-list-field-enum" objectId="12345"> &nbsp; </td>',
+            FieldDescriptionInterface::TYPE_ENUM,
+            null,
+            [],
+        ];
+
+        $elements[] = [
+            '<td class="sonata-ba-list-field sonata-ba-list-field-enum" objectId="12345"> Hearts </td>',
+            FieldDescriptionInterface::TYPE_ENUM,
+            Suit::Hearts,
+            [],
+        ];
+
+        $elements[] = [
+            '<td class="sonata-ba-list-field sonata-ba-list-field-enum" objectId="12345"> Clubs </td>',
+            FieldDescriptionInterface::TYPE_ENUM,
+            Suit::Clubs,
+            [
+                'use_value' => false,
+            ],
+        ];
+
+        $elements[] = [
+            '<td class="sonata-ba-list-field sonata-ba-list-field-enum" objectId="12345"> C </td>',
+            FieldDescriptionInterface::TYPE_ENUM,
+            Suit::Clubs,
+            [
+                'use_value' => true,
+            ],
+        ];
 
         return $elements;
     }
 
     /**
-     * @phpstan-return array<array{string, string, mixed, array<string, mixed>}>
+     * @phpstan-return iterable<array{string, string, mixed, array<string, mixed>}>
      */
-    public function getRenderViewElementTests(): array
+    public function provideRenderViewElementCases(): iterable
     {
         $elements = [
             ['<th>Data</th> <td>Example</td>', FieldDescriptionInterface::TYPE_STRING, 'Example', ['safe' => false]],
@@ -1974,14 +2011,14 @@ EOT
             ],
             [
                 <<<'EOT'
-<th>Data</th> <td><div
-        class="sonata-readmore"
-        data-readmore-height="40"
-        data-readmore-more="Read more"
-        data-readmore-less="Close">
-            A very long string
-</div></td>
-EOT
+                    <th>Data</th> <td><div
+                            class="sonata-readmore"
+                            data-readmore-height="40"
+                            data-readmore-more="Read more"
+                            data-readmore-less="Close">
+                                A very long string
+                    </div></td>
+                    EOT
                 ,
                 FieldDescriptionInterface::TYPE_STRING,
                 ' A very long string ',
@@ -1992,14 +2029,14 @@ EOT
             ],
             [
                 <<<'EOT'
-<th>Data</th> <td><div
-        class="sonata-readmore"
-        data-readmore-height="10"
-        data-readmore-more="More"
-        data-readmore-less="Less">
-            A very long string
-</div></td>
-EOT
+                    <th>Data</th> <td><div
+                            class="sonata-readmore"
+                            data-readmore-height="10"
+                            data-readmore-more="More"
+                            data-readmore-less="Less">
+                                A very long string
+                    </div></td>
+                    EOT
                 ,
                 FieldDescriptionInterface::TYPE_STRING,
                 ' A very long string ',
@@ -2015,61 +2052,61 @@ EOT
         ];
 
         // TODO: Remove the "if" check when dropping support of PHP < 8.1 and add the case to the list
-        if (\PHP_VERSION_ID >= 80100) {
-            $elements[] = [
-                '<th>Data</th> <td>Hearts</td>',
-                FieldDescriptionInterface::TYPE_ENUM,
-                Suit::Hearts,
-                [],
-            ];
+        if (\PHP_VERSION_ID < 80100) {
+            return $elements;
         }
+
+        $elements[] = [
+            '<th>Data</th> <td>Hearts</td>',
+            FieldDescriptionInterface::TYPE_ENUM,
+            Suit::Hearts,
+            [],
+        ];
 
         return $elements;
     }
 
     /**
-     * @phpstan-return array<array{string, string, mixed, array<string, mixed>, string|null}>
+     * @phpstan-return iterable<array{string, string, mixed, array<string, mixed>, string|null}>
      */
-    public function getRenderViewElementCompareTests(): iterable
+    public function provideRenderViewElementCompareCases(): iterable
     {
-        return [
-            ['<th>Data</th> <td>Example</td><td>Example</td>', FieldDescriptionInterface::TYPE_STRING, 'Example', ['safe' => false], null],
-            ['<th>Data</th> <td>Example</td><td>Example</td>', FieldDescriptionInterface::TYPE_STRING, 'Example', ['safe' => false], null],
-            ['<th>Data</th> <td>Example</td><td>Example</td>', FieldDescriptionInterface::TYPE_TEXTAREA, 'Example', ['safe' => false], null],
-            ['<th>Data</th> <td>SonataAdmin<br/>Example</td><td>SonataAdmin<br/>Example</td>', 'virtual_field', 'Example', ['template' => 'custom_show_field.html.twig', 'safe' => false], 'SonataAdmin'],
-            ['<th class="diff">Data</th> <td>SonataAdmin<br/>Example</td><td>sonata-project/admin-bundle<br/>Example</td>', 'virtual_field', 'Example', ['template' => 'custom_show_field.html.twig', 'safe' => false], 'sonata-project/admin-bundle'],
-            [
-                '<th>Data</th> <td><time datetime="2020-05-27T09:11:12+00:00" title="2020-05-27T09:11:12+00:00"> May 27, 2020 10:11 </time></td>'
-                .'<td><time datetime="2020-05-27T09:11:12+00:00" title="2020-05-27T09:11:12+00:00"> May 27, 2020 10:11 </time></td>',
-                FieldDescriptionInterface::TYPE_DATETIME,
-                new \DateTime('2020-05-27 10:11:12', new \DateTimeZone('Europe/London')),
-                [],
-                null,
-            ],
-            [
-                '<th>Data</th> <td><time datetime="2020-05-27T09:11:12+00:00" title="2020-05-27T09:11:12+00:00"> 27.05.2020 10:11:12 </time></td>'
-                .'<td><time datetime="2020-05-27T09:11:12+00:00" title="2020-05-27T09:11:12+00:00"> 27.05.2020 10:11:12 </time></td>',
-                FieldDescriptionInterface::TYPE_DATETIME,
-                new \DateTime('2020-05-27 10:11:12', new \DateTimeZone('Europe/London')),
-                ['format' => 'd.m.Y H:i:s'],
-                null,
-            ],
-            [
-                '<th>Data</th> <td><time datetime="2020-05-27T10:11:12+00:00" title="2020-05-27T10:11:12+00:00"> May 27, 2020 18:11 </time></td>'
-                .'<td><time datetime="2020-05-27T10:11:12+00:00" title="2020-05-27T10:11:12+00:00"> May 27, 2020 18:11 </time></td>',
-                FieldDescriptionInterface::TYPE_DATETIME,
-                new \DateTime('2020-05-27 10:11:12', new \DateTimeZone('UTC')),
-                ['timezone' => 'Asia/Hong_Kong'],
-                null,
-            ],
-            [
-                '<th>Data</th> <td><time datetime="2020-05-27" title="2020-05-27"> May 27, 2020 </time></td>'
-                .'<td><time datetime="2020-05-27" title="2020-05-27"> May 27, 2020 </time></td>',
-                FieldDescriptionInterface::TYPE_DATE,
-                new \DateTime('2020-05-27 10:11:12', new \DateTimeZone('Europe/London')),
-                [],
-                null,
-            ],
+        yield ['<th>Data</th> <td>Example</td><td>Example</td>', FieldDescriptionInterface::TYPE_STRING, 'Example', ['safe' => false], null];
+        yield ['<th>Data</th> <td>Example</td><td>Example</td>', FieldDescriptionInterface::TYPE_STRING, 'Example', ['safe' => false], null];
+        yield ['<th>Data</th> <td>Example</td><td>Example</td>', FieldDescriptionInterface::TYPE_TEXTAREA, 'Example', ['safe' => false], null];
+        yield ['<th>Data</th> <td>SonataAdmin<br/>Example</td><td>SonataAdmin<br/>Example</td>', 'virtual_field', 'Example', ['template' => 'custom_show_field.html.twig', 'safe' => false], 'SonataAdmin'];
+        yield ['<th class="diff">Data</th> <td>SonataAdmin<br/>Example</td><td>sonata-project/admin-bundle<br/>Example</td>', 'virtual_field', 'Example', ['template' => 'custom_show_field.html.twig', 'safe' => false], 'sonata-project/admin-bundle'];
+        yield [
+            '<th>Data</th> <td><time datetime="2020-05-27T09:11:12+00:00" title="2020-05-27T09:11:12+00:00"> May 27, 2020 10:11 </time></td>'
+            .'<td><time datetime="2020-05-27T09:11:12+00:00" title="2020-05-27T09:11:12+00:00"> May 27, 2020 10:11 </time></td>',
+            FieldDescriptionInterface::TYPE_DATETIME,
+            new \DateTime('2020-05-27 10:11:12', new \DateTimeZone('Europe/London')),
+            [],
+            null,
+        ];
+        yield [
+            '<th>Data</th> <td><time datetime="2020-05-27T09:11:12+00:00" title="2020-05-27T09:11:12+00:00"> 27.05.2020 10:11:12 </time></td>'
+            .'<td><time datetime="2020-05-27T09:11:12+00:00" title="2020-05-27T09:11:12+00:00"> 27.05.2020 10:11:12 </time></td>',
+            FieldDescriptionInterface::TYPE_DATETIME,
+            new \DateTime('2020-05-27 10:11:12', new \DateTimeZone('Europe/London')),
+            ['format' => 'd.m.Y H:i:s'],
+            null,
+        ];
+        yield [
+            '<th>Data</th> <td><time datetime="2020-05-27T10:11:12+00:00" title="2020-05-27T10:11:12+00:00"> May 27, 2020 18:11 </time></td>'
+            .'<td><time datetime="2020-05-27T10:11:12+00:00" title="2020-05-27T10:11:12+00:00"> May 27, 2020 18:11 </time></td>',
+            FieldDescriptionInterface::TYPE_DATETIME,
+            new \DateTime('2020-05-27 10:11:12', new \DateTimeZone('UTC')),
+            ['timezone' => 'Asia/Hong_Kong'],
+            null,
+        ];
+        yield [
+            '<th>Data</th> <td><time datetime="2020-05-27" title="2020-05-27"> May 27, 2020 </time></td>'
+            .'<td><time datetime="2020-05-27" title="2020-05-27"> May 27, 2020 </time></td>',
+            FieldDescriptionInterface::TYPE_DATE,
+            new \DateTime('2020-05-27 10:11:12', new \DateTimeZone('Europe/London')),
+            [],
+            null,
         ];
     }
 
@@ -2097,9 +2134,7 @@ EOT
         $this->environment->addExtension(new StringExtension());
 
         $this->environment->addRuntimeLoader(new FactoryRuntimeLoader([
-            XEditableRuntime::class => function (): XEditableRuntime {
-                return new XEditableRuntime($this->translator);
-            },
+            XEditableRuntime::class => fn (): XEditableRuntime => new XEditableRuntime($this->translator),
         ]));
 
         $this->registerRoutingExtension();

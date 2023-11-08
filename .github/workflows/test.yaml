@@ -9,10 +9,12 @@ on:
         - cron: '30 0 * * *'
     push:
         branches:
-            - 3.x
             - 4.x
             - 5.x
     pull_request:
+
+permissions:
+    contents: read
 
 jobs:
     test:
@@ -28,42 +30,41 @@ jobs:
         strategy:
             matrix:
                 php-version:
-                    - '7.4'
                     - '8.0'
                     - '8.1'
+                    - '8.2'
                 dependencies: [highest]
                 allowed-to-fail: [false]
                 symfony-require: ['']
                 variant: [normal]
                 include:
-                    - php-version: '7.4'
+                    - php-version: '8.0'
                       dependencies: lowest
                       allowed-to-fail: false
                       variant: normal
-                    - php-version: '8.1'
+                    - php-version: '8.2'
                       dependencies: highest
                       allowed-to-fail: false
-                      symfony-require: 4.4.*
-                      variant: symfony/symfony:"4.4.*"
-                    - php-version: '8.1'
-                      dependencies: highest
-                      allowed-to-fail: false
-                      symfony-require: 5.3.*
-                      variant: symfony/symfony:"5.3.*"
-                    - php-version: '8.1'
+                      variant: sonata-project/block-bundle:"5.0.0-alpha-1"
+                    - php-version: '8.2'
                       dependencies: highest
                       allowed-to-fail: false
                       symfony-require: 5.4.*
                       variant: symfony/symfony:"5.4.*"
-                    - php-version: '8.1'
+                    - php-version: '8.2'
                       dependencies: highest
                       allowed-to-fail: false
-                      symfony-require: 6.0.*
-                      variant: symfony/symfony:"6.0.*"
+                      symfony-require: 6.2.*
+                      variant: symfony/symfony:"6.2.*"
+                    - php-version: '8.2'
+                      dependencies: highest
+                      allowed-to-fail: false
+                      symfony-require: 6.3.*
+                      variant: symfony/symfony:"6.3.*"
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v2
+              uses: actions/checkout@v3
 
             - name: Install PHP with extensions
               uses: shivammathur/setup-php@v2
@@ -77,7 +78,9 @@ jobs:
 
             - name: Globally install symfony/flex
               if: matrix.symfony-require != ''
-              run: composer global require --no-progress --no-scripts --no-plugins symfony/flex
+              run: |
+                  composer global config --no-plugins allow-plugins.symfony/flex true
+                  composer global require --no-progress --no-scripts --no-plugins symfony/flex
 
             - name: Install variant
               if: matrix.variant != 'normal' && !startsWith(matrix.variant, 'symfony/symfony')
@@ -87,12 +90,11 @@ jobs:
               uses: ramsey/composer-install@v2
               with:
                   dependency-versions: ${{ matrix.dependencies }}
-                  composer-options: --prefer-dist --prefer-stable
 
             - name: Run Tests with coverage
               run: make coverage
 
             - name: Send coverage to Codecov
-              uses: codecov/codecov-action@v2
+              uses: codecov/codecov-action@v3
               with:
-                  file: build/logs/clover.xml
+                  files: build/logs/clover.xml

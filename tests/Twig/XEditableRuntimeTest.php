@@ -24,7 +24,7 @@ final class XEditableRuntimeTest extends TestCase
      * @param array<string, mixed>         $options
      * @param array<array<string, string>> $expectedChoices
      *
-     * @dataProvider xEditablechoicesProvider
+     * @dataProvider provideGetXEditableChoicesIsIdempotentCases
      */
     public function testGetXEditableChoicesIsIdempotent(array $options, array $expectedChoices): void
     {
@@ -33,70 +33,62 @@ final class XEditableRuntimeTest extends TestCase
         $fieldDescription = $this->createMock(FieldDescriptionInterface::class);
         $fieldDescription
             ->method('getOption')
-            ->withConsecutive(
-                ['choices', []],
-                ['catalogue'],
-                ['choice_translation_domain'],
-                ['required'],
-                ['multiple']
-            )
-            ->will(static::onConsecutiveCalls(
-                $options['choices'],
-                'MyCatalogue',
-                'MyCatalogue',
-                $options['multiple'] ?? null
-            ));
+            ->willReturnMap([
+                ['choices', [], $options['choices']],
+                ['catalogue', null, 'MyCatalogue'],
+                ['choice_translation_domain', null, 'MyCatalogue'],
+                ['required', null, $options['multiple'] ?? null],
+                ['multiple', null, null],
+            ]);
 
         static::assertSame($expectedChoices, $xEditableRuntime->getXEditableChoices($fieldDescription));
     }
 
     /**
-     * @phpstan-return array<string, array{
-     *	array<string, mixed>,
-     *	array<array{value: string, text: string}>
+     * @phpstan-return iterable<string, array{
+     *     array<string, mixed>,
+     *     array<array{value: string, text: string}>
      * }>
      */
-    public function xEditableChoicesProvider(): iterable
+    public function provideGetXEditableChoicesIsIdempotentCases(): iterable
     {
-        return [
-            'needs processing' => [
-                ['choices' => ['Status1' => 'Alias1', 'Status2' => 'Alias2']],
-                [
-                    ['value' => 'Status1', 'text' => 'Alias1'],
-                    ['value' => 'Status2', 'text' => 'Alias2'],
-                ],
+        yield 'needs processing' => [
+            ['choices' => ['Status1' => 'Alias1', 'Status2' => 'Alias2']],
+            [
+                ['value' => 'Status1', 'text' => 'Alias1'],
+                ['value' => 'Status2', 'text' => 'Alias2'],
             ],
-            'already processed' => [
-                ['choices' => [
-                    ['value' => 'Status1', 'text' => 'Alias1'],
-                    ['value' => 'Status2', 'text' => 'Alias2'],
-                ]],
-                [
-                    ['value' => 'Status1', 'text' => 'Alias1'],
-                    ['value' => 'Status2', 'text' => 'Alias2'],
-                ],
+        ];
+        yield 'already processed' => [
+            ['choices' => [
+                ['value' => 'Status1', 'text' => 'Alias1'],
+                ['value' => 'Status2', 'text' => 'Alias2'],
+            ]],
+            [
+                ['value' => 'Status1', 'text' => 'Alias1'],
+                ['value' => 'Status2', 'text' => 'Alias2'],
             ],
-            'not required' => [
-                [
-                    'required' => false,
-                    'choices' => ['' => '', 'Status1' => 'Alias1', 'Status2' => 'Alias2'],
-                ],
-                [
-                    ['value' => '', 'text' => ''],
-                    ['value' => 'Status1', 'text' => 'Alias1'],
-                    ['value' => 'Status2', 'text' => 'Alias2'],
-                ],
+        ];
+        yield 'not required' => [
+            [
+                'required' => false,
+                'choices' => ['' => '', 'Status1' => 'Alias1', 'Status2' => 'Alias2'],
             ],
-            'not required multiple' => [
-                [
-                    'required' => false,
-                    'multiple' => true,
-                    'choices' => ['Status1' => 'Alias1', 'Status2' => 'Alias2'],
-                ],
-                [
-                    ['value' => 'Status1', 'text' => 'Alias1'],
-                    ['value' => 'Status2', 'text' => 'Alias2'],
-                ],
+            [
+                ['value' => '', 'text' => ''],
+                ['value' => 'Status1', 'text' => 'Alias1'],
+                ['value' => 'Status2', 'text' => 'Alias2'],
+            ],
+        ];
+        yield 'not required multiple' => [
+            [
+                'required' => false,
+                'multiple' => true,
+                'choices' => ['Status1' => 'Alias1', 'Status2' => 'Alias2'],
+            ],
+            [
+                ['value' => 'Status1', 'text' => 'Alias1'],
+                ['value' => 'Status2', 'text' => 'Alias2'],
             ],
         ];
     }

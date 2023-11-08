@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Security\Handler;
 
 use Sonata\AdminBundle\Admin\AdminInterface;
+use Symfony\Component\ExpressionLanguage\Expression;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationCredentialsNotFoundException;
 
@@ -23,22 +24,17 @@ use Symfony\Component\Security\Core\Exception\AuthenticationCredentialsNotFoundE
 final class RoleSecurityHandler implements SecurityHandlerInterface
 {
     /**
-     * @var AuthorizationCheckerInterface
-     */
-    private $authorizationChecker;
-
-    /**
      * @var string[]
      */
-    private $superAdminRoles = [];
+    private array $superAdminRoles = [];
 
     /**
      * @param string|string[] $superAdminRoles
      */
-    public function __construct(AuthorizationCheckerInterface $authorizationChecker, $superAdminRoles)
-    {
-        $this->authorizationChecker = $authorizationChecker;
-
+    public function __construct(
+        private AuthorizationCheckerInterface $authorizationChecker,
+        $superAdminRoles
+    ) {
         // NEXT_MAJOR: Keep only the elseif part and add typehint.
         if (\is_array($superAdminRoles)) {
             @trigger_error(sprintf(
@@ -54,7 +50,7 @@ final class RoleSecurityHandler implements SecurityHandlerInterface
             throw new \TypeError(sprintf(
                 'Argument 1 passed to "%s()" must be of type "array" or "string", %s given.',
                 __METHOD__,
-                \is_object($superAdminRoles) ? 'instance of "'.\get_class($superAdminRoles).'"' : '"'.\gettype($superAdminRoles).'"'
+                \is_object($superAdminRoles) ? 'instance of "'.$superAdminRoles::class.'"' : '"'.\gettype($superAdminRoles).'"'
             ));
         }
     }
@@ -79,7 +75,7 @@ final class RoleSecurityHandler implements SecurityHandlerInterface
         $useAll = false;
         foreach ($attributes as $pos => $attribute) {
             // If the attribute is not already a ROLE_ we generate the related role.
-            if (0 !== strpos($attribute, 'ROLE_')) {
+            if (\is_string($attribute) && !str_starts_with($attribute, 'ROLE_')) {
                 $attributes[$pos] = sprintf($this->getBaseRole($admin), $attribute);
                 // All the admin related role are available when you have the `_ALL` role.
                 $useAll = true;
@@ -93,7 +89,7 @@ final class RoleSecurityHandler implements SecurityHandlerInterface
             return $this->isAnyGranted($this->superAdminRoles)
                 || $this->isAnyGranted($attributes, $object)
                 || $useAll && $this->isAnyGranted([$allRole], $object);
-        } catch (AuthenticationCredentialsNotFoundException $e) {
+        } catch (AuthenticationCredentialsNotFoundException) {
             return false;
         }
     }
@@ -117,7 +113,7 @@ final class RoleSecurityHandler implements SecurityHandlerInterface
     }
 
     /**
-     * @param string[] $attributes
+     * @param array<string|Expression> $attributes
      */
     private function isAnyGranted(array $attributes, ?object $subject = null): bool
     {

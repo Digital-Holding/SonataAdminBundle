@@ -19,23 +19,18 @@ namespace Sonata\AdminBundle\Filter\Model;
 final class FilterData
 {
     /**
-     * @var ?int
-     */
-    private $type;
-
-    /**
      * @var mixed
      */
     private $value;
 
-    /**
-     * @var bool
-     */
-    private $hasValue;
-
-    private function __construct()
-    {
-        $this->hasValue = false;
+    private function __construct(
+        private ?int $type,
+        private bool $hasValue,
+        mixed $value = null
+    ) {
+        if ($hasValue) {
+            $this->value = $value;
+        }
     }
 
     /**
@@ -45,25 +40,20 @@ final class FilterData
      */
     public static function fromArray(array $data): self
     {
-        $filterData = new self();
-
         if (isset($data['type'])) {
             if (!\is_int($data['type']) && (!\is_string($data['type']) || !is_numeric($data['type']))) {
                 throw new \InvalidArgumentException(sprintf(
                     'The "type" parameter MUST be of type "integer" or "null", %s given.',
-                    \is_object($data['type']) ? 'instance of "'.\get_class($data['type']).'"' : '"'.\gettype($data['type']).'"'
+                    \is_object($data['type']) ? 'instance of "'.$data['type']::class.'"' : '"'.\gettype($data['type']).'"'
                 ));
             }
 
-            $filterData->type = (int) $data['type'];
+            $type = (int) $data['type'];
+        } else {
+            $type = null;
         }
 
-        if (\array_key_exists('value', $data)) {
-            $filterData->value = $data['value'];
-            $filterData->hasValue = true;
-        }
-
-        return $filterData;
+        return new self($type, \array_key_exists('value', $data), $data['value'] ?? null);
     }
 
     /**
@@ -78,10 +68,7 @@ final class FilterData
         return $this->value;
     }
 
-    /**
-     * @param mixed $value
-     */
-    public function changeValue($value): self
+    public function changeValue(mixed $value): self
     {
         return self::fromArray([
             'type' => $this->getType(),

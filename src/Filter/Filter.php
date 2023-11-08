@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Filter;
 
+use Sonata\AdminBundle\Form\Type\Filter\FilterDataType;
 use Sonata\AdminBundle\Search\ChainableFilterInterface;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 
@@ -36,15 +37,9 @@ abstract class Filter implements FilterInterface, ChainableFilterInterface
      */
     protected $condition;
 
-    /**
-     * @var bool
-     */
-    private $active = false;
+    private bool $active = false;
 
-    /**
-     * @var FilterInterface|null
-     */
-    private $previousFilter;
+    private ?FilterInterface $previousFilter = null;
 
     final public function initialize(string $name, array $options = []): void
     {
@@ -222,14 +217,35 @@ abstract class Filter implements FilterInterface, ChainableFilterInterface
         if (!$this->hasPreviousFilter()) {
             throw new \LogicException(sprintf('Filter "%s" has no previous filter.', $this->getName()));
         }
-        \assert(null !== $this->previousFilter);
 
         return $this->previousFilter;
     }
 
+    /**
+     * @phpstan-assert-if-true !null $this->previousFilter
+     */
     final public function hasPreviousFilter(): bool
     {
         return null !== $this->previousFilter;
+    }
+
+    /**
+     * NEXT_MAJOR: Remove this method.
+     */
+    public function getRenderSettings(): array
+    {
+        // @phpstan-ignore-next-line
+        if (!method_exists($this, 'getFormOptions')) {
+            throw new \BadMethodCallException('You MUST implement `getFormOptions()`.');
+        }
+
+        /** @var array<string, mixed> $formOptions */
+        $formOptions = $this->getFormOptions();
+
+        return [
+            FilterDataType::class,
+            $formOptions,
+        ];
     }
 
     final protected function setActive(bool $active): void

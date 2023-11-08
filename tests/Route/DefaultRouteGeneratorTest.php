@@ -28,10 +28,7 @@ final class DefaultRouteGeneratorTest extends TestCase
 {
     private const ROUTER_DOMAIN = 'http://sonata-project';
 
-    /**
-     * @var string
-     */
-    protected $cacheTempFolder;
+    private string $cacheTempFolder;
 
     protected function setUp(): void
     {
@@ -56,7 +53,7 @@ final class DefaultRouteGeneratorTest extends TestCase
     /**
      * @param array<string, mixed> $parameters
      *
-     * @dataProvider getGenerateUrlTests
+     * @dataProvider provideGenerateUrlCases
      */
     public function testGenerateUrl(
         string $expected,
@@ -92,14 +89,11 @@ final class DefaultRouteGeneratorTest extends TestCase
                     $params .= '?'.http_build_query($parameters);
                 }
 
-                switch ($name) {
-                    case 'admin_acme_foo':
-                        return sprintf('%s/foo%s', $domain, $params);
-                    case 'admin_acme_child_bar':
-                        return sprintf('%s/foo/bar%s', $domain, $params);
-                    default:
-                        throw new \LogicException('Not implemented');
-                }
+                return match ($name) {
+                    'admin_acme_foo' => sprintf('%s/foo%s', $domain, $params),
+                    'admin_acme_child_bar' => sprintf('%s/foo/bar%s', $domain, $params),
+                    default => throw new \LogicException('Not implemented'),
+                };
             });
 
         $cache = new RoutesCache($this->cacheTempFolder, true);
@@ -110,20 +104,18 @@ final class DefaultRouteGeneratorTest extends TestCase
     }
 
     /**
-     * @phpstan-return array<array{string, string, array<string, mixed>}>
+     * @phpstan-return iterable<array{0: string, 1: string, 2: array<string, mixed>, 3?: int}>
      */
-    public function getGenerateUrlTests(): array
+    public function provideGenerateUrlCases(): iterable
     {
-        return [
-            ['/foo?abc=a123&efg=e456&default_param=default_val', 'foo', ['default_param' => 'default_val']],
-            ['/foo/bar?abc=a123&efg=e456&default_param=default_val', 'base.Code.Bar.bar', ['default_param' => 'default_val']],
-            ['/foo/bar?abc=a123&efg=e456&default_param=default_val', 'base.Code.Bar.bar', ['default_param' => 'default_val'], RouterInterface::ABSOLUTE_PATH],
-            [
-                sprintf('%s/foo/bar?abc=a123&efg=e456&default_param=default_val', self::ROUTER_DOMAIN),
-                'base.Code.Bar.bar',
-                ['default_param' => 'default_val'],
-                RouterInterface::ABSOLUTE_URL,
-            ],
+        yield ['/foo?abc=a123&efg=e456&default_param=default_val', 'foo', ['default_param' => 'default_val']];
+        yield ['/foo/bar?abc=a123&efg=e456&default_param=default_val', 'base.Code.Bar.bar', ['default_param' => 'default_val']];
+        yield ['/foo/bar?abc=a123&efg=e456&default_param=default_val', 'base.Code.Bar.bar', ['default_param' => 'default_val'], RouterInterface::ABSOLUTE_PATH];
+        yield [
+            sprintf('%s/foo/bar?abc=a123&efg=e456&default_param=default_val', self::ROUTER_DOMAIN),
+            'base.Code.Bar.bar',
+            ['default_param' => 'default_val'],
+            RouterInterface::ABSOLUTE_URL,
         ];
     }
 
@@ -153,7 +145,7 @@ final class DefaultRouteGeneratorTest extends TestCase
     /**
      * @param array<string, mixed> $parameters
      *
-     * @dataProvider getGenerateUrlChildTests
+     * @dataProvider provideGenerateUrlChildCases
      */
     public function testGenerateUrlChild(string $type, string $expected, string $name, array $parameters): void
     {
@@ -215,16 +207,12 @@ final class DefaultRouteGeneratorTest extends TestCase
                     $params .= '?'.http_build_query($parameters);
                 }
 
-                switch ($name) {
-                    case 'admin_acme_foo':
-                        return sprintf('/foo%s', $params);
-                    case 'admin_acme_child_bar':
-                        return sprintf('/foo/bar%s', $params);
-                    case 'admin_child_bar':
-                        return sprintf('/bar%s', $params);
-                    default:
-                        throw new \LogicException('Not implemented');
-                }
+                return match ($name) {
+                    'admin_acme_foo' => sprintf('/foo%s', $params),
+                    'admin_acme_child_bar' => sprintf('/foo/bar%s', $params),
+                    'admin_child_bar' => sprintf('/bar%s', $params),
+                    default => throw new \LogicException('Not implemented'),
+                };
             });
 
         $cache = new RoutesCache($this->cacheTempFolder, true);
@@ -235,24 +223,22 @@ final class DefaultRouteGeneratorTest extends TestCase
     }
 
     /**
-     * @phpstan-return array<array{string, string, string, array<string, mixed>}>
+     * @phpstan-return iterable<array{string, string, string, array<string, mixed>}>
      */
-    public function getGenerateUrlChildTests(): array
+    public function provideGenerateUrlChildCases(): iterable
     {
-        return [
-            ['parent', '/foo?id=123&default_param=default_val', 'foo', ['id' => 123, 'default_param' => 'default_val']],
-            ['parent', '/foo?id=123&default_param=default_val', 'base.Code.Parent.foo', ['id' => 123, 'default_param' => 'default_val']],
-            ['parent', '/foo/bar?id=123&default_param=default_val', 'base.Code.Child.bar', ['id' => 123, 'default_param' => 'default_val']],
-            ['parent', '/foo/bar?id=123&default_param=default_val', 'base.Code.Parent|base.Code.Child.bar', ['id' => 123, 'default_param' => 'default_val']],
-            ['child', '/foo/bar?abc=a123&efg=e456&default_param=default_val&childId=987654', 'bar', ['id' => 123, 'default_param' => 'default_val']],
-            ['child', '/foo/bar?abc=a123&efg=e456&default_param=default_val&childId=987654', 'base.Code.Parent|base.Code.Child.bar', ['id' => 123, 'default_param' => 'default_val']],
-        ];
+        yield ['parent', '/foo?id=123&default_param=default_val', 'foo', ['id' => 123, 'default_param' => 'default_val']];
+        yield ['parent', '/foo?id=123&default_param=default_val', 'base.Code.Parent.foo', ['id' => 123, 'default_param' => 'default_val']];
+        yield ['parent', '/foo/bar?id=123&default_param=default_val', 'base.Code.Child.bar', ['id' => 123, 'default_param' => 'default_val']];
+        yield ['parent', '/foo/bar?id=123&default_param=default_val', 'base.Code.Parent|base.Code.Child.bar', ['id' => 123, 'default_param' => 'default_val']];
+        yield ['child', '/foo/bar?abc=a123&efg=e456&default_param=default_val&childId=987654', 'bar', ['id' => 123, 'default_param' => 'default_val']];
+        yield ['child', '/foo/bar?abc=a123&efg=e456&default_param=default_val&childId=987654', 'base.Code.Parent|base.Code.Child.bar', ['id' => 123, 'default_param' => 'default_val']];
     }
 
     /**
      * @param array<string, mixed> $parameters
      *
-     * @dataProvider getGenerateUrlParentFieldDescriptionTests
+     * @dataProvider provideGenerateUrlParentFieldDescriptionCases
      */
     public function testGenerateUrlParentFieldDescription(string $expected, string $name, array $parameters): void
     {
@@ -284,14 +270,11 @@ final class DefaultRouteGeneratorTest extends TestCase
                     $params .= '?'.http_build_query($parameters);
                 }
 
-                switch ($name) {
-                    case 'admin_acme_foo':
-                        return sprintf('/foo%s', $params);
-                    case 'admin_acme_child_bar':
-                        return sprintf('/foo/bar%s', $params);
-                    default:
-                        throw new \LogicException('Not implemented');
-                }
+                return match ($name) {
+                    'admin_acme_foo' => sprintf('/foo%s', $params),
+                    'admin_acme_child_bar' => sprintf('/foo/bar%s', $params),
+                    default => throw new \LogicException('Not implemented'),
+                };
             });
 
         $fieldDescription = $this->createMock(FieldDescriptionInterface::class);
@@ -313,21 +296,19 @@ final class DefaultRouteGeneratorTest extends TestCase
     }
 
     /**
-     * @phpstan-return array<array{string, string, array<string, mixed>}>
+     * @phpstan-return iterable<array{string, string, array<string, mixed>}>
      */
-    public function getGenerateUrlParentFieldDescriptionTests(): array
+    public function provideGenerateUrlParentFieldDescriptionCases(): iterable
     {
-        return [
-            ['/foo?abc=a123&efg=e456&default_param=default_val&uniqid=foo_uniqueid&code=base.Code.Parent&pcode=parent_foo_code&puniqid=parent_foo_uniqueid', 'foo', ['default_param' => 'default_val']],
-            // this second test does not make sense as we cannot have embeded admin with nested admin....
-            ['/foo/bar?abc=a123&efg=e456&default_param=default_val&uniqid=foo_uniqueid&code=base.Code.Parent&pcode=parent_foo_code&puniqid=parent_foo_uniqueid', 'base.Code.Child.bar', ['default_param' => 'default_val']],
-        ];
+        yield ['/foo?abc=a123&efg=e456&default_param=default_val&uniqid=foo_uniqueid&code=base.Code.Parent&pcode=parent_foo_code&puniqid=parent_foo_uniqueid', 'foo', ['default_param' => 'default_val']];
+        // this second test does not make sense as we cannot have embeded admin with nested admin....
+        yield ['/foo/bar?abc=a123&efg=e456&default_param=default_val&uniqid=foo_uniqueid&code=base.Code.Parent&pcode=parent_foo_code&puniqid=parent_foo_uniqueid', 'base.Code.Child.bar', ['default_param' => 'default_val']];
     }
 
     /**
      * @param array<string, mixed> $parameters
      *
-     * @dataProvider getGenerateUrlLoadCacheTests
+     * @dataProvider provideGenerateUrlLoadCacheCases
      */
     public function testGenerateUrlLoadCache(string $expected, string $name, array $parameters): void
     {
@@ -398,14 +379,11 @@ final class DefaultRouteGeneratorTest extends TestCase
                     $params .= '?'.http_build_query($parameters);
                 }
 
-                switch ($name) {
-                    case 'admin_acme_child_bar':
-                        return sprintf('/foo/bar%s', $params);
-                    case 'admin_acme_child_standalone_bar':
-                        return sprintf('/bar%s', $params);
-                    default:
-                        throw new \LogicException('Not implemented');
-                }
+                return match ($name) {
+                    'admin_acme_child_bar' => sprintf('/foo/bar%s', $params),
+                    'admin_acme_child_standalone_bar' => sprintf('/bar%s', $params),
+                    default => throw new \LogicException('Not implemented'),
+                };
             });
 
         $cache = new RoutesCache($this->cacheTempFolder, true);
@@ -418,12 +396,10 @@ final class DefaultRouteGeneratorTest extends TestCase
     }
 
     /**
-     * @phpstan-return array<array{string, string, array<string, mixed>}>
+     * @phpstan-return iterable<array{string, string, array<string, mixed>}>
      */
-    public function getGenerateUrlLoadCacheTests(): array
+    public function provideGenerateUrlLoadCacheCases(): iterable
     {
-        return [
-            ['/bar?abc=a123&efg=e456&id=123&default_param=default_val', 'bar', ['id' => 123, 'default_param' => 'default_val']],
-        ];
+        yield ['/bar?abc=a123&efg=e456&id=123&default_param=default_val', 'bar', ['id' => 123, 'default_param' => 'default_val']];
     }
 }

@@ -19,18 +19,14 @@ use Sonata\AdminBundle\Filter\Model\FilterData;
 final class FilterDataTest extends TestCase
 {
     /**
-     * @dataProvider getInvalidTypes
-     *
-     * @param mixed $type
-     *
-     * @psalm-suppress InvalidArgument
+     * @dataProvider provideTypeMustBeNumericOrNullCases
      */
-    public function testTypeMustBeNumericOrNull($type): void
+    public function testTypeMustBeNumericOrNull(mixed $type): void
     {
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage(sprintf(
             'The "type" parameter MUST be of type "integer" or "null", %s given.',
-            \is_object($type) ? 'instance of "'.\get_class($type).'"' : '"'.\gettype($type).'"'
+            \is_object($type) ? 'instance of "'.$type::class.'"' : '"'.\gettype($type).'"'
         ));
 
         // @phpstan-ignore-next-line
@@ -40,7 +36,7 @@ final class FilterDataTest extends TestCase
     /**
      * @return iterable<array<mixed>>
      */
-    public function getInvalidTypes(): iterable
+    public function provideTypeMustBeNumericOrNullCases(): iterable
     {
         yield ['string'];
         yield [new \stdClass()];
@@ -63,13 +59,11 @@ final class FilterDataTest extends TestCase
     }
 
     /**
-     * @dataProvider getTypes
-     *
-     * @param int|string|null $type
+     * @dataProvider provideGetTypeCases
      *
      * @phpstan-param int|numeric-string|null $type
      */
-    public function testGetType(?int $expected, $type): void
+    public function testGetType(?int $expected, int|string|null $type): void
     {
         static::assertSame($expected, FilterData::fromArray(['type' => $type])->getType());
     }
@@ -77,7 +71,7 @@ final class FilterDataTest extends TestCase
     /**
      * @phpstan-return iterable<array-key, array{int|null, int|numeric-string|null}>
      */
-    public function getTypes(): iterable
+    public function provideGetTypeCases(): iterable
     {
         yield 'nullable' => [null, null];
         yield 'int' => [3, 3];
@@ -85,11 +79,9 @@ final class FilterDataTest extends TestCase
     }
 
     /**
-     * @dataProvider getValues
-     *
-     * @param mixed $value
+     * @dataProvider provideGetValueCases
      */
-    public function testGetValue($value): void
+    public function testGetValue(mixed $value): void
     {
         static::assertSame($value, FilterData::fromArray(['value' => $value])->getValue());
     }
@@ -97,7 +89,7 @@ final class FilterDataTest extends TestCase
     /**
      * @return iterable<array<mixed>>
      */
-    public function getValues(): iterable
+    public function provideGetValueCases(): iterable
     {
         yield [null];
         yield [new \stdClass()];

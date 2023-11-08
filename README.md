@@ -28,7 +28,7 @@ Check out the documentation on the [official website](https://docs.sonata-projec
 
 ## Support
 
-For general support and questions, please use [StackOverflow](http://stackoverflow.com/questions/tagged/sonata).
+For general support and questions, please use [StackOverflow](https://stackoverflow.com/questions/tagged/sonata).
 
 If you think you found a bug or you have a feature idea to propose, feel free to open an issue
 **after looking** at the [contributing guide](CONTRIBUTING.md).
@@ -42,9 +42,9 @@ This package is available under the [MIT license](LICENSE).
 [test_unstable_badge]: https://github.com/sonata-project/SonataAdminBundle/workflows/Test/badge.svg?branch=5.x
 [test_unstable_link]: https://github.com/sonata-project/SonataAdminBundle/actions?query=workflow:test+branch:5.x
 [coverage_stable_badge]: https://codecov.io/gh/sonata-project/SonataAdminBundle/branch/4.x/graph/badge.svg
-[coverage_stable_link]: https://codecov.io/gh/sonata-project/SonataAdminBundle/branch/4.x
+[coverage_stable_link]: https://app.codecov.io/gh/sonata-project/SonataAdminBundle/tree/4.x
 [coverage_unstable_badge]: https://codecov.io/gh/sonata-project/SonataAdminBundle/branch/5.x/graph/badge.svg
-[coverage_unstable_link]: https://codecov.io/gh/sonata-project/SonataAdminBundle/branch/5.x
+[coverage_unstable_link]: https://app.codecov.io/gh/sonata-project/SonataAdminBundle/tree/5.x
 [shepherd_stable_badge]: https://shepherd.dev/github/sonata-project/SonataAdminBundle/coverage.svg
 [shepherd_stable_link]: https://shepherd.dev/github/sonata-project/SonataAdminBundle
 [documentation_stable_badge]: https://readthedocs.org/projects/sonata-project-sonataadminbundle/badge/?version=4.x

@@ -17,7 +17,6 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Sonata\AdminBundle\Admin\AbstractAdmin;
 use Sonata\AdminBundle\Admin\Pool;
-use Sonata\AdminBundle\Mapper\BaseGroupedMapper;
 use Sonata\AdminBundle\Tests\Fixtures\Mapper\AbstractDummyGroupedMapper;
 use Sonata\AdminBundle\Translator\LabelTranslatorStrategyInterface;
 use Symfony\Component\DependencyInjection\Container;
@@ -28,32 +27,28 @@ use Symfony\Component\DependencyInjection\Container;
 final class BaseGroupedMapperTest extends TestCase
 {
     /**
-     * @var BaseGroupedMapper<object>&MockObject
+     * @var AbstractDummyGroupedMapper&MockObject
      */
     protected $baseGroupedMapper;
 
     /**
      * @var array<string, array<string, mixed>>
      */
-    private $tabs;
+    private array $tabs;
 
     /**
      * @var array<string, array<string, mixed>>
      */
-    private $groups;
+    private array $groups;
 
     protected function setUp(): void
     {
-        $admin = $this->getMockBuilder(AbstractAdmin::class)
-            ->disableOriginalConstructor()
-            ->getMock();
+        $admin = $this->createMock(AbstractAdmin::class);
 
         $labelStrategy = $this->createMock(LabelTranslatorStrategyInterface::class);
         $labelStrategy
             ->method('getLabel')
-            ->willReturnCallback(static function (string $label): string {
-                return sprintf('label_%s', strtolower($label));
-            });
+            ->willReturnCallback(static fn (string $label): string => sprintf('label_%s', strtolower($label)));
 
         $admin->setLabelTranslatorStrategy($labelStrategy);
 
@@ -73,9 +68,7 @@ final class BaseGroupedMapperTest extends TestCase
 
         $this->baseGroupedMapper
             ->method('getTabs')
-            ->willReturnCallback(function (): array {
-                return $this->getTabs();
-            });
+            ->willReturnCallback(fn (): array => $this->getTabs());
 
         $this->baseGroupedMapper
             ->method('setTabs')
@@ -85,9 +78,7 @@ final class BaseGroupedMapperTest extends TestCase
 
         $this->baseGroupedMapper
             ->method('getGroups')
-            ->willReturnCallback(function (): array {
-                return $this->getTestGroups();
-            });
+            ->willReturnCallback(fn (): array => $this->getTestGroups());
 
         $this->baseGroupedMapper
             ->method('setGroups')
@@ -125,6 +116,50 @@ final class BaseGroupedMapperTest extends TestCase
         static::assertCount(0, $this->groups);
         static::assertSame($this->baseGroupedMapper, $this->baseGroupedMapper->with('fooTab', ['tab' => true]));
         static::assertCount(1, $this->tabs);
+        static::assertCount(0, $this->groups);
+    }
+
+    public function testRemoveGroup(): void
+    {
+        static::assertCount(0, $this->tabs);
+        static::assertCount(0, $this->groups);
+
+        $this->baseGroupedMapper
+            ->tab('fooTab1')
+            ->with('fooGroup1')
+            ->add('field1', 'name1')
+            ->end()
+            ->end();
+
+        static::assertCount(1, $this->tabs);
+        static::assertCount(1, $this->groups);
+
+        $this->baseGroupedMapper->expects(static::once())->method('remove')->with('field1');
+        $this->baseGroupedMapper->removeGroup('fooGroup1', 'fooTab1');
+
+        static::assertCount(1, $this->tabs);
+        static::assertCount(0, $this->groups);
+    }
+
+    public function testRemoveTab(): void
+    {
+        static::assertCount(0, $this->tabs);
+        static::assertCount(0, $this->groups);
+
+        $this->baseGroupedMapper
+            ->tab('fooTab1')
+            ->with('fooGroup1')
+            ->add('field1', 'name1')
+            ->end()
+            ->end();
+
+        static::assertCount(1, $this->tabs);
+        static::assertCount(1, $this->groups);
+
+        $this->baseGroupedMapper->expects(static::once())->method('remove')->with('field1');
+        $this->baseGroupedMapper->removeTab('fooTab1');
+
+        static::assertCount(0, $this->tabs);
         static::assertCount(0, $this->groups);
     }
 
@@ -212,20 +247,18 @@ final class BaseGroupedMapperTest extends TestCase
     }
 
     /**
-     * @phpstan-return array<array{string, string, string|null, string}>
+     * @phpstan-return iterable<array{string, string, string|null, string}>
      */
-    public function labelDataProvider(): array
+    public function provideLabelCases(): iterable
     {
-        return [
-            'nominal use case not translated' => ['label_default', 'fooGroup1', null, 'label_foogroup1'],
-            'nominal use case translated' => ['label_default', 'fooGroup1', null, 'label_foogroup1'],
-            'custom label not translated' => ['label_default', 'fooGroup1', 'custom_label', 'custom_label'],
-            'custom label translated' => ['label_default', 'fooGroup1', 'custom_label', 'custom_label'],
-        ];
+        yield 'nominal use case not translated' => ['label_default', 'fooGroup1', null, 'label_foogroup1'];
+        yield 'nominal use case translated' => ['label_default', 'fooGroup1', null, 'label_foogroup1'];
+        yield 'custom label not translated' => ['label_default', 'fooGroup1', 'custom_label', 'custom_label'];
+        yield 'custom label translated' => ['label_default', 'fooGroup1', 'custom_label', 'custom_label'];
     }
 
     /**
-     * @dataProvider labelDataProvider
+     * @dataProvider provideLabelCases
      */
     public function testLabel(string $translated, string $name, ?string $label, string $expectedLabel): void
     {

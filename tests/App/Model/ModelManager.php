@@ -19,23 +19,17 @@ use Sonata\AdminBundle\Model\ModelManagerInterface;
 
 /**
  * @phpstan-template T of EntityInterface
- *
  * @phpstan-implements LockInterface<T>
  * @phpstan-implements ModelManagerInterface<T>
  */
 final class ModelManager implements ModelManagerInterface, LockInterface
 {
     /**
-     * @var RepositoryInterface<T>
-     */
-    private $repository;
-
-    /**
      * @param RepositoryInterface<T> $repository
      */
-    public function __construct(RepositoryInterface $repository)
-    {
-        $this->repository = $repository;
+    public function __construct(
+        private RepositoryInterface $repository
+    ) {
     }
 
     public function create(object $object): void

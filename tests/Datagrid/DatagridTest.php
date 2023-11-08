@@ -23,7 +23,7 @@ use Sonata\AdminBundle\Datagrid\ProxyQueryInterface;
 use Sonata\AdminBundle\FieldDescription\FieldDescriptionCollection;
 use Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface;
 use Sonata\AdminBundle\Filter\FilterInterface;
-use Sonata\AdminBundle\Form\Type\Filter\DefaultType;
+use Sonata\AdminBundle\Form\Type\Filter\FilterDataType;
 use Symfony\Component\Form\Exception\UnexpectedTypeException;
 use Symfony\Component\Form\Form;
 use Symfony\Component\Form\FormBuilder;
@@ -36,37 +36,39 @@ use Symfony\Component\Form\Forms;
 final class DatagridTest extends TestCase
 {
     /**
-     * @var Datagrid<ProxyQueryInterface&Stub>
+     * @var Datagrid<ProxyQueryInterface<object>&Stub>
      */
-    private $datagrid;
+    private Datagrid $datagrid;
 
     /**
-     * @var PagerInterface<ProxyQueryInterface&Stub>&MockObject
+     * @var PagerInterface<ProxyQueryInterface<object>&Stub>&MockObject
      */
-    private $pager;
+    private PagerInterface $pager;
 
     /**
-     * @var ProxyQueryInterface&Stub
+     * @var ProxyQueryInterface<object>&Stub
      */
-    private $query;
+    private ProxyQueryInterface $query;
 
     /**
      * @var FieldDescriptionCollection<FieldDescriptionInterface>
      */
-    private $columns;
+    private FieldDescriptionCollection $columns;
 
-    /**
-     * @var FormBuilderInterface
-     */
-    private $formBuilder;
+    private FormBuilderInterface $formBuilder;
 
     protected function setUp(): void
     {
-        $this->query = $this->createStub(ProxyQueryInterface::class);
+        /** @var ProxyQueryInterface<object>&Stub $query */
+        $query = $this->createStub(ProxyQueryInterface::class);
+        $this->query = $query;
         $this->columns = new FieldDescriptionCollection();
-        $this->pager = $this->createMock(PagerInterface::class);
         $this->formBuilder = Forms::createFormFactoryBuilder()->getFormFactory()->createBuilder();
-        $this->datagrid = new Datagrid($this->query, $this->columns, $this->pager, $this->formBuilder, []);
+
+        /** @var PagerInterface<ProxyQueryInterface<object>&Stub>&MockObject $pager */
+        $pager = $this->createMock(PagerInterface::class);
+        $this->pager = $pager;
+        $this->datagrid = new Datagrid($this->query, $this->columns, $pager, $this->formBuilder, []);
     }
 
     public function testGetPager(): void
@@ -315,7 +317,9 @@ final class DatagridTest extends TestCase
 
     public function testBuildPager(): void
     {
-        $filter1 = $this->createMock(FilterInterface::class);
+        $filter1 = $this->getMockBuilder(FilterInterface::class)
+            ->addMethods(['getFormOptions'])
+            ->getMockForAbstractClass();
         $filter1->expects(static::once())
             ->method('getName')
             ->willReturn('foo');
@@ -326,12 +330,14 @@ final class DatagridTest extends TestCase
             ->method('isActive')
             ->willReturn(false);
         $filter1
-            ->method('getRenderSettings')
-            ->willReturn([DefaultType::class, ['operator_options' => ['help' => 'baz1']]]);
+            ->method('getFormOptions')
+            ->willReturn(['operator_options' => ['help' => 'baz1']]);
 
         $this->datagrid->addFilter($filter1);
 
-        $filter2 = $this->createMock(FilterInterface::class);
+        $filter2 = $this->getMockBuilder(FilterInterface::class)
+            ->addMethods(['getFormOptions'])
+            ->getMockForAbstractClass();
         $filter2->expects(static::once())
             ->method('getName')
             ->willReturn('bar');
@@ -342,8 +348,8 @@ final class DatagridTest extends TestCase
             ->method('isActive')
             ->willReturn(true);
         $filter2
-            ->method('getRenderSettings')
-            ->willReturn([DefaultType::class, ['operator_options' => ['help' => 'baz2']]]);
+            ->method('getFormOptions')
+            ->willReturn(['operator_options' => ['help' => 'baz2']]);
 
         $this->datagrid->addFilter($filter2);
 
@@ -367,12 +373,37 @@ final class DatagridTest extends TestCase
     {
         $this->datagrid->setValue('fooFormName', $type, $value);
 
+        $filter = $this->getMockBuilder(FilterInterface::class)
+            ->addMethods(['getFormOptions'])
+            ->getMockForAbstractClass();
+        $filter->expects(static::once())->method('getName')->willReturn('foo');
+        $filter->method('getFormName')->willReturn('fooFormName');
+        $filter->method('isActive')->willReturn(false);
+        $filter->method('getFormOptions')->willReturn(['operator_options' => ['help' => 'baz2']]);
+        $filter->expects(static::exactly($applyCallNumber))->method('apply');
+
+        $this->datagrid->addFilter($filter);
+
+        $this->datagrid->buildPager();
+    }
+
+    /**
+     * NEXT_MAJOR: Remove this test.
+     *
+     * @group legacy
+     *
+     * @dataProvider applyFilterDataProvider
+     */
+    public function testLegacyApplyFilter(?string $type, ?string $value, int $applyCallNumber): void
+    {
+        $this->datagrid->setValue('fooFormName', $type, $value);
+
         $filter = $this->createMock(FilterInterface::class);
         $filter->expects(static::once())->method('getName')->willReturn('foo');
         $filter->method('getFormName')->willReturn('fooFormName');
         $filter->method('isActive')->willReturn(false);
         $filter->method('getRenderSettings')
-            ->willReturn([DefaultType::class, ['operator_options' => ['help' => 'baz2']]]);
+            ->willReturn([FilterDataType::class, ['operator_options' => ['help' => 'baz2']]]);
         $filter->expects(static::exactly($applyCallNumber))->method('apply');
 
         $this->datagrid->addFilter($filter);
@@ -398,7 +429,9 @@ final class DatagridTest extends TestCase
 
     public function testBuildPagerWithException(): void
     {
-        $filter = $this->createMock(FilterInterface::class);
+        $filter = $this->getMockBuilder(FilterInterface::class)
+            ->addMethods(['getFormOptions'])
+            ->getMockForAbstractClass();
         $filter->expects(static::once())
             ->method('getName')
             ->willReturn('foo');
@@ -411,8 +444,8 @@ final class DatagridTest extends TestCase
             ->method('isActive')
             ->willReturn(false);
         $filter
-            ->method('getRenderSettings')
-            ->willReturn([DefaultType::class, ['operator_options' => ['help' => 'baz']]]);
+            ->method('getFormOptions')
+            ->willReturn(['operator_options' => ['help' => 'baz']]);
 
         $this->datagrid->addFilter($filter);
 
@@ -441,7 +474,9 @@ final class DatagridTest extends TestCase
 
         $this->datagrid = new Datagrid($this->query, $this->columns, $this->pager, $this->formBuilder, [DatagridInterface::SORT_BY => $sortBy]);
 
-        $filter = $this->createMock(FilterInterface::class);
+        $filter = $this->getMockBuilder(FilterInterface::class)
+            ->addMethods(['getFormOptions'])
+            ->getMockForAbstractClass();
         $filter->expects(static::once())
             ->method('getName')
             ->willReturn('foo');
@@ -452,8 +487,8 @@ final class DatagridTest extends TestCase
             ->method('isActive')
             ->willReturn(false);
         $filter
-            ->method('getRenderSettings')
-            ->willReturn([DefaultType::class, ['operator_options' => ['help' => 'baz']]]);
+            ->method('getFormOptions')
+            ->willReturn(['operator_options' => ['help' => 'baz']]);
 
         $this->datagrid->addFilter($filter);
 
@@ -469,12 +504,11 @@ final class DatagridTest extends TestCase
     }
 
     /**
-     * @param int|array $perPage
      * @phpstan-param int|array{value: int} $perPage
      *
-     * @dataProvider getBuildPagerWithPageTests
+     * @dataProvider provideBuildPagerWithPageCases
      */
-    public function testBuildPagerWithPage(int $page, $perPage): void
+    public function testBuildPagerWithPage(int $page, int|array $perPage): void
     {
         $sortBy = $this->createMock(FieldDescriptionInterface::class);
         $sortBy->expects(static::once())
@@ -491,7 +525,9 @@ final class DatagridTest extends TestCase
 
         $this->datagrid = new Datagrid($this->query, $this->columns, $this->pager, $this->formBuilder, [DatagridInterface::SORT_BY => $sortBy, DatagridInterface::PAGE => $page, DatagridInterface::PER_PAGE => $perPage]);
 
-        $filter = $this->createMock(FilterInterface::class);
+        $filter = $this->getMockBuilder(FilterInterface::class)
+            ->addMethods(['getFormOptions'])
+            ->getMockForAbstractClass();
         $filter->expects(static::once())
             ->method('getName')
             ->willReturn('foo');
@@ -502,8 +538,8 @@ final class DatagridTest extends TestCase
             ->method('isActive')
             ->willReturn(false);
         $filter
-            ->method('getRenderSettings')
-            ->willReturn([DefaultType::class, ['operator_options' => ['help' => 'baz']]]);
+            ->method('getFormOptions')
+            ->willReturn(['operator_options' => ['help' => 'baz']]);
 
         $this->datagrid->addFilter($filter);
 
@@ -527,16 +563,14 @@ final class DatagridTest extends TestCase
     /**
      * @phpstan-return iterable<array-key, array{int, int|array{value: int}}>
      */
-    public function getBuildPagerWithPageTests(): iterable
+    public function provideBuildPagerWithPageCases(): iterable
     {
-        return [
-            [3, 50],
-            [3, ['type' => null, 'value' => 50]],
-        ];
+        yield [3, 50];
+        yield [3, ['value' => 50]];
     }
 
     /**
-     * @dataProvider getBuildPagerWithPage2Tests
+     * @dataProvider provideBuildPagerWithPage2Cases
      */
     public function testBuildPagerWithPage2(int $page, int $perPage): void
     {
@@ -567,11 +601,9 @@ final class DatagridTest extends TestCase
     /**
      * @phpstan-return iterable<array-key, array{int, int}>
      */
-    public function getBuildPagerWithPage2Tests(): iterable
+    public function provideBuildPagerWithPage2Cases(): iterable
     {
-        return [
-            [3, 50],
-        ];
+        yield [3, 50];
     }
 
     public function testSortParameters(): void

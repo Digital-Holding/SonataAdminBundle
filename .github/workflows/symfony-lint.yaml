@@ -9,10 +9,12 @@ on:
         - cron: '30 0 * * *'
     push:
         branches:
-            - 3.x
             - 4.x
             - 5.x
     pull_request:
+
+permissions:
+    contents: read
 
 jobs:
     container:
@@ -22,20 +24,19 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v2
+              uses: actions/checkout@v3
 
             - name: Install PHP with extensions
               uses: shivammathur/setup-php@v2
               with:
-                  php-version: '8.1'
+                  php-version: '8.2'
                   coverage: none
                   tools: composer:v2
 
             - name: Install Composer dependencies (highest)
-              uses: ramsey/composer-install@v1
+              uses: ramsey/composer-install@v2
               with:
                   dependency-versions: highest
-                  composer-options: --prefer-dist --prefer-stable
 
             - name: Lint container
               run: make lint-symfony-container
@@ -47,20 +48,19 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v2
+              uses: actions/checkout@v3
 
             - name: Install PHP with extensions
               uses: shivammathur/setup-php@v2
               with:
-                  php-version: '8.1'
+                  php-version: '8.2'
                   coverage: none
                   tools: composer:v2
 
             - name: Install Composer dependencies (highest)
-              uses: ramsey/composer-install@v1
+              uses: ramsey/composer-install@v2
               with:
                   dependency-versions: highest
-                  composer-options: --prefer-dist --prefer-stable
 
             - name: Lint twig files
               run: make lint-symfony-twig
@@ -72,20 +72,19 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v2
+              uses: actions/checkout@v3
 
             - name: Install PHP with extensions
               uses: shivammathur/setup-php@v2
               with:
-                  php-version: '8.1'
+                  php-version: '8.2'
                   coverage: none
                   tools: composer:v2
 
             - name: Install Composer dependencies (highest)
-              uses: ramsey/composer-install@v1
+              uses: ramsey/composer-install@v2
               with:
                   dependency-versions: highest
-                  composer-options: --prefer-dist --prefer-stable
 
             - name: Lint xliff files
               run: make lint-symfony-xliff
@@ -97,20 +96,19 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@v2
+              uses: actions/checkout@v3
 
             - name: Install PHP with extensions
               uses: shivammathur/setup-php@v2
               with:
-                  php-version: '8.1'
+                  php-version: '8.2'
                   coverage: none
                   tools: composer:v2
 
             - name: Install Composer dependencies (highest)
-              uses: ramsey/composer-install@v1
+              uses: ramsey/composer-install@v2
               with:
                   dependency-versions: highest
-                  composer-options: --prefer-dist --prefer-stable
 
             - name: Lint yaml files
               run: make lint-symfony-yaml

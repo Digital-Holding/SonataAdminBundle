@@ -26,12 +26,9 @@ final class ModelChoiceLoaderTest extends TestCase
     /**
      * @var MockObject&ModelManagerInterface<object>
      */
-    private $modelManager;
+    private ModelManagerInterface $modelManager;
 
-    /**
-     * @var PropertyAccessorInterface
-     */
-    private $propertyAccessor;
+    private PropertyAccessorInterface $propertyAccessor;
 
     protected function setUp(): void
     {
@@ -52,11 +49,11 @@ final class ModelChoiceLoaderTest extends TestCase
     public function testLoadFromEntityWithSamePropertyValues(): void
     {
         $fooA = new Foo();
-        $fooA->setBar(1);
+        $fooA->setBar('1');
         $fooA->setBaz('baz');
 
         $fooB = new Foo();
-        $fooB->setBar(2);
+        $fooB->setBar('2');
         $fooB->setBaz('baz');
 
         $this->modelManager->expects(static::once())
@@ -64,10 +61,8 @@ final class ModelChoiceLoaderTest extends TestCase
             ->willReturn([$fooA, $fooB]);
 
         $this->modelManager
-            ->method('getIdentifierValues')
-            ->willReturnCallback(static function (Foo $foo): array {
-                return [$foo->getBar()];
-            });
+            ->method('getNormalizedIdentifier')
+            ->willReturnCallback(static fn (Foo $foo): ?string => $foo->getBar());
 
         $modelChoiceLoader = new ModelChoiceLoader(
             $this->modelManager,

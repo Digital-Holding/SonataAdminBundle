@@ -15,20 +15,11 @@ namespace Sonata\AdminBundle\Tests\App\Model;
 
 final class Bar implements EntityInterface
 {
-    /**
-     * @var string
-     */
-    private $id;
-
-    /**
-     * @var Foo|null
-     */
-    private $foo;
-
-    public function __construct(string $id, ?Foo $foo = null)
-    {
-        $this->id = $id;
-        $this->foo = $foo;
+    public function __construct(
+        private string $id,
+        private ?Foo $foo = null,
+        private ?Baz $baz = null
+    ) {
     }
 
     public function getId(): string
@@ -39,5 +30,10 @@ final class Bar implements EntityInterface
     public function getFoo(): ?Foo
     {
         return $this->foo;
+    }
+
+    public function getBaz(): ?Baz
+    {
+        return $this->baz;
     }
 }

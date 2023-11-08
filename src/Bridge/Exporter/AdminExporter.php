@@ -14,24 +14,16 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Bridge\Exporter;
 
 use Sonata\AdminBundle\Admin\AdminInterface;
-use Sonata\Exporter\Exporter;
+use Sonata\Exporter\ExporterInterface;
 
 /**
  * @author Grégoire Paris <postmaster@greg0ire.fr>
  */
 final class AdminExporter
 {
-    /**
-     * @var Exporter service from the exporter bundle
-     */
-    private $exporter;
-
-    /**
-     * @param Exporter $exporter will be used to get global settings
-     */
-    public function __construct(Exporter $exporter)
-    {
-        $this->exporter = $exporter;
+    public function __construct(
+        private ExporterInterface $exporter
+    ) {
     }
 
     /**
@@ -70,7 +62,7 @@ final class AdminExporter
         return sprintf(
             'export_%s_%s.%s',
             strtolower(false !== $namespaceSeparatorPos ? substr($class, $namespaceSeparatorPos + 1) : $class),
-            date('Y_m_d_H_i_s', strtotime('now')),
+            date('Y_m_d_H_i_s', time()),
             $format
         );
     }

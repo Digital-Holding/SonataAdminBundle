@@ -35,14 +35,9 @@ class AdminHelper
      */
     private const FORM_FIELD_DELETE = '_delete';
 
-    /**
-     * @var PropertyAccessorInterface
-     */
-    private $propertyAccessor;
-
-    public function __construct(PropertyAccessorInterface $propertyAccessor)
-    {
-        $this->propertyAccessor = $propertyAccessor;
+    public function __construct(
+        private PropertyAccessorInterface $propertyAccessor
+    ) {
     }
 
     public function getChildFormBuilder(FormBuilderInterface $formBuilder, string $elementId): ?FormBuilderInterface
@@ -103,7 +98,10 @@ class AdminHelper
             $formData = $admin->getRequest()->get($formBuilder->getName(), []);
             \assert(\is_array($formData));
 
-            if (\array_key_exists($childFormBuilder->getName(), $formData)) {
+            if (
+                \array_key_exists($childFormBuilder->getName(), $formData)
+                && is_iterable($formData[$childFormBuilder->getName()])
+            ) {
                 $formData = $admin->getRequest()->get($formBuilder->getName(), []);
                 \assert(\is_array($formData));
 
@@ -124,19 +122,23 @@ class AdminHelper
         $form->setData($subject);
         $form->handleRequest($admin->getRequest());
 
+        $childFieldDescription = null !== $childFormBuilder
+            ? $childFormBuilder->getOption('sonata_field_description')
+            : null;
+
         if (
             null !== $childFormBuilder
-            && $childFormBuilder->getOption('sonata_field_description') instanceof FieldDescriptionInterface
-            && $admin->hasFormFieldDescription($childFormBuilder->getOption('sonata_field_description')->getName())
+            && $childFieldDescription instanceof FieldDescriptionInterface
+            && $childFieldDescription->hasAdmin()
+            && $childFieldDescription->getAdmin() === $admin
+            && $admin->hasFormFieldDescription($childFieldDescription->getName())
         ) {
             // retrieve the FieldDescription
-            $fieldDescription = $admin->getFormFieldDescription(
-                $childFormBuilder->getOption('sonata_field_description')->getName()
-            );
+            $fieldDescription = $admin->getFormFieldDescription($childFieldDescription->getName());
 
             try {
                 $value = $fieldDescription->getValue($form->getData());
-            } catch (NoValueException $e) {
+            } catch (NoValueException) {
                 $value = null;
             }
 
@@ -176,7 +178,7 @@ class AdminHelper
                 throw new \TypeError(sprintf(
                     'Collection must be an instance of %s or array, %s given.',
                     \ArrayAccess::class,
-                    \is_object($collection) ? 'instance of "'.\get_class($collection).'"' : '"'.\gettype($collection).'"'
+                    \is_object($collection) ? 'instance of "'.$collection::class.'"' : '"'.\gettype($collection).'"'
                 ));
             }
 

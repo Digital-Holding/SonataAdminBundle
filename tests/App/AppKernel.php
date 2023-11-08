@@ -15,6 +15,7 @@ namespace Sonata\AdminBundle\Tests\App;
 
 use Knp\Bundle\MenuBundle\KnpMenuBundle;
 use Sonata\AdminBundle\SonataAdminBundle;
+use Sonata\BlockBundle\Cache\HttpCacheHandler;
 use Sonata\BlockBundle\SonataBlockBundle;
 use Sonata\Doctrine\Bridge\Symfony\SonataDoctrineBundle;
 use Sonata\Form\Bridge\Symfony\SonataFormBundle;
@@ -25,19 +26,13 @@ use Symfony\Bundle\SecurityBundle\SecurityBundle;
 use Symfony\Bundle\TwigBundle\TwigBundle;
 use Symfony\Component\Config\Loader\LoaderInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\HttpFoundation\Session\Storage\NativeSessionStorageFactory;
 use Symfony\Component\HttpKernel\Kernel;
 use Symfony\Component\Routing\Loader\Configurator\RoutingConfigurator;
-use Symfony\Component\Security\Http\Authentication\AuthenticatorManager;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 final class AppKernel extends Kernel
 {
     use MicroKernelTrait;
-
-    public function __construct()
-    {
-        parent::__construct('test', false);
-    }
 
     public function registerBundles(): iterable
     {
@@ -69,19 +64,14 @@ final class AppKernel extends Kernel
         return __DIR__;
     }
 
-    /**
-     * TODO: add typehint when support for Symfony < 5.1 is dropped.
-     *
-     * @param RoutingConfigurator $routes
-     */
-    protected function configureRoutes($routes): void
+    protected function configureRoutes(RoutingConfigurator $routes): void
     {
         $routes->import(sprintf('%s/config/routes.yml', $this->getProjectDir()));
     }
 
     protected function configureContainer(ContainerBuilder $containerBuilder, LoaderInterface $loader): void
     {
-        $frameworkConfig = [
+        $containerBuilder->loadFromExtension('framework', [
             'secret' => 'MySecret',
             'fragments' => ['enabled' => true],
             'form' => ['enabled' => true],
@@ -91,39 +81,37 @@ final class AppKernel extends Kernel
             'translator' => [
                 'default_path' => '%kernel.project_dir%/translations',
             ],
-        ];
-
-        // TODO: Remove else case when dropping support of Symfony < 5.3
-        if (class_exists(NativeSessionStorageFactory::class)) {
-            $frameworkConfig['session'] = ['storage_factory_id' => 'session.storage.factory.mock_file'];
-        } else {
-            $frameworkConfig['session'] = ['storage_id' => 'session.storage.mock_file'];
-        }
-
-        $containerBuilder->loadFromExtension('framework', $frameworkConfig);
+            'http_method_override' => false,
+            'session' => [
+                'storage_factory_id' => 'session.storage.factory.mock_file',
+            ],
+        ]);
 
         $securityConfig = [
             'firewalls' => ['main' => []],
             'providers' => ['in_memory' => ['memory' => null]],
         ];
 
-        // TODO: Remove else case when dropping support of Symfony < 5.3
-        if (class_exists(AuthenticatorManager::class)) {
+        // TODO: Remove if when dropping support of Symfony 5.4
+        if (!class_exists(IsGranted::class)) {
             $securityConfig['enable_authenticator_manager'] = true;
-        } else {
-            $securityConfig['firewalls']['main']['anonymous'] = true;
         }
 
         $containerBuilder->loadFromExtension('security', $securityConfig);
 
         $containerBuilder->loadFromExtension('twig', [
             'default_path' => sprintf('%s/templates', $this->getProjectDir()),
-            'strict_variables' => '%kernel.debug%',
+            'strict_variables' => true,
             'exception_controller' => null,
             'form_themes' => ['@SonataAdmin/Form/form_admin_fields.html.twig'],
         ]);
 
         $loader->load(sprintf('%s/config/services.yml', $this->getProjectDir()));
+
+        /*
+         * TODO: Remove when support for SonataBlockBundle 4 is dropped.
+         */
+        $containerBuilder->loadFromExtension('sonata_block', class_exists(HttpCacheHandler::class) ? ['http_cache' => false] : []);
     }
 
     private function getBaseDir(): string

@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Util;
 
-use Sonata\AdminBundle\BCLayer\BCUserInterface;
 use Sonata\AdminBundle\Form\Type\AclMatrixType;
 use Symfony\Component\Form\Extension\Core\Type\FormType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -39,24 +38,12 @@ final class AdminObjectAclManipulator
     public const ACL_ROLES_FORM_NAME = 'acl_roles_form';
 
     /**
-     * @var FormFactoryInterface
-     */
-    private $formFactory;
-
-    /**
-     * @var string
-     *
-     * @phpstan-var class-string<MaskBuilderInterface>
-     */
-    private $maskBuilderClass;
-
-    /**
      * @phpstan-param class-string<MaskBuilderInterface> $maskBuilderClass
      */
-    public function __construct(FormFactoryInterface $formFactory, string $maskBuilderClass)
-    {
-        $this->formFactory = $formFactory;
-        $this->maskBuilderClass = $maskBuilderClass;
+    public function __construct(
+        private FormFactoryInterface $formFactory,
+        private string $maskBuilderClass
+    ) {
     }
 
     /**
@@ -126,7 +113,7 @@ final class AdminObjectAclManipulator
         foreach ($aclValues as $aclValue) {
             foreach ($matrices as $key => $matrix) {
                 if ($aclValue instanceof UserInterface) {
-                    if (\array_key_exists('user', $matrix) && BCUserInterface::getUsername($aclValue) === $matrix['user']) {
+                    if (\array_key_exists('user', $matrix) && $aclValue->getUserIdentifier() === $matrix['user']) {
                         $matrices[$key]['acl_value'] = $aclValue;
                     }
                 } elseif (\array_key_exists('role', $matrix) && $aclValue === $matrix['role']) {
@@ -205,7 +192,7 @@ final class AdminObjectAclManipulator
             foreach ($data->getUserPermissions() as $permission) {
                 try {
                     $checked = $acl->isGranted([$masks[$permission]], [$securityIdentity]);
-                } catch (NoAceFoundException $e) {
+                } catch (NoAceFoundException) {
                     $checked = false;
                 }
 
@@ -240,11 +227,9 @@ final class AdminObjectAclManipulator
     /**
      * Gets a user or a role security identity.
      *
-     * @param string|UserInterface $aclValue
-     *
      * @return RoleSecurityIdentity|UserSecurityIdentity
      */
-    private function getSecurityIdentity($aclValue): SecurityIdentityInterface
+    private function getSecurityIdentity(string|UserInterface $aclValue): SecurityIdentityInterface
     {
         return ($aclValue instanceof UserInterface)
             ? UserSecurityIdentity::fromAccount($aclValue)

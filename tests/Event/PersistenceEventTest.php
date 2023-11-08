@@ -23,21 +23,17 @@ final class PersistenceEventTest extends TestCase
     /**
      * @var PersistenceEvent<object>
      */
-    private $event;
+    private PersistenceEvent $event;
 
     /**
      * @var AdminInterface<object>&MockObject
      */
-    private $admin;
+    private AdminInterface $admin;
 
-    /**
-     * @var object
-     */
-    private $object;
+    private object $object;
 
     protected function setUp(): void
     {
-        /** @var object $object */
         $object = new \stdClass();
 
         $this->admin = $this->createMock(AdminInterface::class);

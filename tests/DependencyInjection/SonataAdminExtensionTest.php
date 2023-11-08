@@ -31,15 +31,16 @@ use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Definition\Processor;
 
 /**
- * @phpstan-import-type SonataAdminConfiguration from \Sonata\AdminBundle\DependencyInjection\Configuration
+ * @phpstan-import-type SonataAdminConfiguration from Configuration
  */
 final class SonataAdminExtensionTest extends AbstractExtensionTestCase
 {
     /**
      * @var array<string, mixed>
+     *
      * @phpstan-var SonataAdminConfiguration
      */
-    private $defaultConfiguration;
+    private array $defaultConfiguration;
 
     protected function setUp(): void
     {
@@ -169,7 +170,7 @@ final class SonataAdminExtensionTest extends AbstractExtensionTestCase
 
         $javascripts = $options['javascripts'];
         static::assertSame(
-            array_merge($this->defaultConfiguration['assets']['javascripts'], $extraJavascripts),
+            [...$this->defaultConfiguration['assets']['javascripts'], ...$extraJavascripts],
             $javascripts
         );
     }
@@ -224,19 +225,13 @@ final class SonataAdminExtensionTest extends AbstractExtensionTestCase
 
         $stylesheets = $options['stylesheets'];
         static::assertSame(
-            array_merge(
-                array_diff($this->defaultConfiguration['assets']['stylesheets'], $removeStylesheets),
-                $extraStylesheets
-            ),
+            [...array_diff($this->defaultConfiguration['assets']['stylesheets'], $removeStylesheets), ...$extraStylesheets],
             $stylesheets
         );
 
         $javascripts = $options['javascripts'];
         static::assertSame(
-            array_merge(
-                array_diff($this->defaultConfiguration['assets']['javascripts'], $removeJavascripts),
-                $extraJavascripts
-            ),
+            [...array_diff($this->defaultConfiguration['assets']['javascripts'], $removeJavascripts), ...$extraJavascripts],
             $javascripts
         );
     }

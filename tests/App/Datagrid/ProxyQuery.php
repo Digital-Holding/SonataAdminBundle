@@ -15,6 +15,10 @@ namespace Sonata\AdminBundle\Tests\App\Datagrid;
 
 use Sonata\AdminBundle\Datagrid\ProxyQueryInterface;
 
+/**
+ * @phpstan-template T of object
+ * @phpstan-implements ProxyQueryInterface<T>
+ */
 final class ProxyQuery implements ProxyQueryInterface
 {
     public function execute()
@@ -44,6 +48,10 @@ final class ProxyQuery implements ProxyQueryInterface
 
     public function setFirstResult(?int $firstResult): ProxyQueryInterface
     {
+        if (null === $firstResult) {
+            return $this;
+        }
+
         throw new \BadMethodCallException('Not implemented.');
     }
 
@@ -54,6 +62,10 @@ final class ProxyQuery implements ProxyQueryInterface
 
     public function setMaxResults(?int $maxResults): ProxyQueryInterface
     {
+        if (null === $maxResults) {
+            return $this;
+        }
+
         throw new \BadMethodCallException('Not implemented.');
     }
 

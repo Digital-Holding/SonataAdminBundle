@@ -26,6 +26,9 @@ use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormRegistryInterface;
 
+/**
+ * @psalm-suppress DeprecatedInterface
+ */
 abstract class AbstractFormContractor implements FormContractorInterface
 {
     /**
@@ -116,9 +119,7 @@ abstract class AbstractFormContractor implements FormContractorInterface
             $options['delete'] = false;
 
             $options['data_class'] = $fieldDescription->getAssociationAdmin()->getClass();
-            $options['empty_data'] = static function () use ($fieldDescription): object {
-                return $fieldDescription->getAssociationAdmin()->getNewInstance();
-            };
+            $options['empty_data'] = static fn (): object => $fieldDescription->getAssociationAdmin()->getNewInstance();
             $fieldDescription->setOption('edit', $fieldDescription->getOption('edit', 'admin'));
         } elseif ($this->isAnyInstanceOf($type, [
             CollectionType::class,
@@ -161,7 +162,7 @@ abstract class AbstractFormContractor implements FormContractorInterface
         $resolvedType = $this->formRegistry->getType($type);
         $parentType = $resolvedType->getParent();
         if (null !== $parentType) {
-            $parentType = \get_class($parentType->getInnerType());
+            $parentType = $parentType->getInnerType()::class;
 
             // all types have "Symfony\Component\Form\Extension\Core\Type\FormType" as parent
             // so we ignore it here for performance reasons
@@ -183,9 +184,7 @@ abstract class AbstractFormContractor implements FormContractorInterface
         $typeOptions = [
             'sonata_field_description' => $fieldDescription,
             'data_class' => $fieldDescription->getAssociationAdmin()->getClass(),
-            'empty_data' => static function () use ($fieldDescription): object {
-                return $fieldDescription->getAssociationAdmin()->getNewInstance();
-            },
+            'empty_data' => static fn (): object => $fieldDescription->getAssociationAdmin()->getNewInstance(),
         ];
 
         if (isset($formOptions['by_reference'])) {

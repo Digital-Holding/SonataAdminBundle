@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Controller;
 
-use Doctrine\Inflector\InflectorFactory;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Sonata\AdminBundle\Admin\AdminInterface;
@@ -24,32 +23,34 @@ use Sonata\AdminBundle\Exception\BadRequestParamHttpException;
 use Sonata\AdminBundle\Exception\LockException;
 use Sonata\AdminBundle\Exception\ModelManagerException;
 use Sonata\AdminBundle\Exception\ModelManagerThrowable;
+use Sonata\AdminBundle\Form\FormErrorIteratorToConstraintViolationList;
 use Sonata\AdminBundle\Model\AuditManagerInterface;
 use Sonata\AdminBundle\Request\AdminFetcherInterface;
 use Sonata\AdminBundle\Templating\TemplateRegistryInterface;
 use Sonata\AdminBundle\Util\AdminAclUserManagerInterface;
 use Sonata\AdminBundle\Util\AdminObjectAclData;
 use Sonata\AdminBundle\Util\AdminObjectAclManipulator;
-use Sonata\Exporter\Exporter;
+use Sonata\Exporter\ExporterInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormRenderer;
 use Symfony\Component\Form\FormView;
-use Symfony\Component\HttpFoundation\InputBag;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\PropertyAccess\PropertyAccess;
 use Symfony\Component\PropertyAccess\PropertyPath;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Csrf\CsrfToken;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
+use Symfony\Component\String\UnicodeString;
 use Symfony\Contracts\Translation\TranslatorInterface;
 use Twig\Environment;
 
@@ -68,6 +69,7 @@ class CRUDController extends AbstractController
      * The related Admin class.
      *
      * @var AdminInterface<object>
+     *
      * @phpstan-var AdminInterface<T>
      *
      * @psalm-suppress PropertyNotSetInConstructor
@@ -77,11 +79,10 @@ class CRUDController extends AbstractController
     /**
      * The template registry of the related Admin class.
      *
-     * @var TemplateRegistryInterface
-     *
      * @psalm-suppress PropertyNotSetInConstructor
+     * @phpstan-ignore-next-line
      */
-    private $templateRegistry;
+    private TemplateRegistryInterface $templateRegistry;
 
     public static function getSubscribedServices(): array
     {
@@ -90,10 +91,12 @@ class CRUDController extends AbstractController
             'sonata.admin.audit.manager' => AuditManagerInterface::class,
             'sonata.admin.object.manipulator.acl.admin' => AdminObjectAclManipulator::class,
             'sonata.admin.request.fetcher' => AdminFetcherInterface::class,
-            'sonata.exporter.exporter' => '?'.Exporter::class,
+            'sonata.exporter.exporter' => '?'.ExporterInterface::class,
             'sonata.admin.admin_exporter' => '?'.AdminExporter::class,
             'sonata.admin.security.acl_user_manager' => '?'.AdminAclUserManagerInterface::class,
 
+            'controller_resolver' => 'controller_resolver',
+            'http_kernel' => HttpKernelInterface::class,
             'logger' => '?'.LoggerInterface::class,
             'translator' => TranslatorInterface::class,
         ] + parent::getSubscribedServices();
@@ -132,6 +135,9 @@ class CRUDController extends AbstractController
             $exportFormats = $exporter->getAvailableFormats($this->admin);
         }
 
+        /**
+         * @psalm-suppress DeprecatedMethod
+         */
         return $this->renderWithExtraParams($template, [
             'action' => 'list',
             'form' => $formView,
@@ -147,6 +153,8 @@ class CRUDController extends AbstractController
      * Execute a batch delete.
      *
      * @throws AccessDeniedException If access is not granted
+     *
+     * @phpstan-param ProxyQueryInterface<T> $query
      */
     public function batchActionDelete(ProxyQueryInterface $query): Response
     {
@@ -257,6 +265,9 @@ class CRUDController extends AbstractController
 
         $template = $this->templateRegistry->getTemplate('delete');
 
+        /**
+         * @psalm-suppress DeprecatedMethod
+         */
         return $this->renderWithExtraParams($template, [
             'object' => $object,
             'action' => 'delete',
@@ -330,7 +341,7 @@ class CRUDController extends AbstractController
                     $errorMessage = $this->handleModelManagerThrowable($e);
 
                     $isFormValid = false;
-                } catch (LockException $e) {
+                } catch (LockException) {
                     $this->addFlash('sonata_flash_error', $this->trans('flash_lock_error', [
                         '%name%' => $this->escapeHtml($this->admin->toString($existingObject)),
                         '%link_start%' => sprintf('<a href="%s">', $this->admin->generateObjectUrl('edit', $existingObject)),
@@ -366,6 +377,9 @@ class CRUDController extends AbstractController
 
         $template = $this->templateRegistry->getTemplate($templateKey);
 
+        /**
+         * @psalm-suppress DeprecatedMethod
+         */
         return $this->renderWithExtraParams($template, [
             'action' => 'edit',
             'form' => $formView,
@@ -397,27 +411,12 @@ class CRUDController extends AbstractController
 
         $forwardedRequest = $request->duplicate();
 
-        $encodedData = $request->get('data', '');
-        if (!\is_string($encodedData)) {
-            throw new BadRequestParamHttpException('data', 'string', $encodedData);
-        }
+        $encodedData = $request->get('data');
 
-        $data = json_decode($encodedData, true);
-        if (\is_array($data)) {
-            $action = $data['action'];
-            $idx = (array) ($data['idx'] ?? []);
-            $allElements = (bool) ($data['all_elements'] ?? false);
-            $forwardedRequest->request->replace(array_merge($forwardedRequest->request->all(), $data));
-        } else {
+        if (null === $encodedData) {
             $action = $forwardedRequest->request->get('action');
-            /** @var InputBag|ParameterBag $bag */
             $bag = $request->request;
-            if ($bag instanceof InputBag) {
-                // symfony 5.1+
-                $idx = $bag->all('idx');
-            } else {
-                $idx = (array) $bag->get('idx', []);
-            }
+            $idx = $bag->all('idx');
             $allElements = $forwardedRequest->request->getBoolean('all_elements');
 
             $forwardedRequest->request->set('idx', $idx);
@@ -427,21 +426,47 @@ class CRUDController extends AbstractController
             $data['all_elements'] = $allElements;
 
             unset($data['_sonata_csrf_token']);
+        } else {
+            if (!\is_string($encodedData)) {
+                throw new BadRequestParamHttpException('data', 'string', $encodedData);
+            }
+
+            try {
+                $data = json_decode($encodedData, true, 512, \JSON_THROW_ON_ERROR);
+            } catch (\JsonException) {
+                throw new BadRequestHttpException('Unable to decode batch data');
+            }
+
+            $action = $data['action'];
+            $idx = (array) ($data['idx'] ?? []);
+            $allElements = (bool) ($data['all_elements'] ?? false);
+            $forwardedRequest->request->replace(array_merge($forwardedRequest->request->all(), $data));
         }
 
-        if (null === $action) {
+        if (!\is_string($action)) {
             throw new \RuntimeException('The action is not defined');
         }
 
-        $batchActions = $this->admin->getBatchActions();
-        if (!\array_key_exists($action, $batchActions)) {
-            throw new \RuntimeException(sprintf('The `%s` batch action is not defined', $action));
+        $camelizedAction = (new UnicodeString($action))->camel()->title(true)->toString();
+
+        try {
+            $batchActionExecutable = $this->getBatchActionExecutable($action);
+        } catch (\Throwable $error) {
+            $finalAction = sprintf('batchAction%s', $camelizedAction);
+            throw new \RuntimeException(sprintf('A `%s::%s` method must be callable or create a `controller` configuration for your batch action.', $this->admin->getBaseControllerName(), $finalAction), 0, $error);
         }
 
-        $camelizedAction = InflectorFactory::create()->build()->classify($action);
+        $batchAction = $this->admin->getBatchActions()[$action];
+
         $isRelevantAction = sprintf('batchAction%sIsRelevant', $camelizedAction);
 
         if (method_exists($this, $isRelevantAction)) {
+            // NEXT_MAJOR: Remove if above in sonata-project/admin-bundle 5.0
+            @trigger_error(sprintf(
+                'The is relevant hook via "%s()" is deprecated since sonata-project/admin-bundle 4.12'
+                .' and will not be call in 5.0. Move the logic to your controller.',
+                $isRelevantAction,
+            ), \E_USER_DEPRECATED);
             $nonRelevantMessage = $this->$isRelevantAction($idx, $allElements, $forwardedRequest);
         } else {
             $nonRelevantMessage = 0 !== \count($idx) || $allElements; // at least one item is selected
@@ -463,19 +488,21 @@ class CRUDController extends AbstractController
             return $this->redirectToList();
         }
 
-        $askConfirmation = $batchActions[$action]['ask_confirmation'] ?? true;
+        $askConfirmation = $batchAction['ask_confirmation'] ?? true;
 
         if (true === $askConfirmation && 'ok' !== $confirmation) {
-            $actionLabel = $batchActions[$action]['label'];
-            $batchTranslationDomain = $batchActions[$action]['translation_domain'] ??
+            $actionLabel = $batchAction['label'];
+            $batchTranslationDomain = $batchAction['translation_domain'] ??
                 $this->admin->getTranslationDomain();
 
             $formView = $datagrid->getForm()->createView();
             $this->setFormTheme($formView, $this->admin->getFilterTheme());
 
-            $template = $batchActions[$action]['template']
-                ?? $this->templateRegistry->getTemplate('batch_confirmation');
+            $template = $batchAction['template'] ?? $this->templateRegistry->getTemplate('batch_confirmation');
 
+            /**
+             * @psalm-suppress DeprecatedMethod
+             */
             return $this->renderWithExtraParams($template, [
                 'action' => 'list',
                 'action_label' => $actionLabel,
@@ -487,12 +514,6 @@ class CRUDController extends AbstractController
             ]);
         }
 
-        // execute the action, batchActionXxxxx
-        $finalAction = sprintf('batchAction%s', $camelizedAction);
-        if (!method_exists($this, $finalAction)) {
-            throw new \RuntimeException(sprintf('A `%s::%s` method must be callable', static::class, $finalAction));
-        }
-
         $query = $datagrid->getQuery();
 
         $query->setFirstResult(null);
@@ -501,7 +522,6 @@ class CRUDController extends AbstractController
         $this->admin->preBatchAction($action, $query, $idx, $allElements);
         foreach ($this->admin->getExtensions() as $extension) {
             // NEXT_MAJOR: Remove the if-statement around the call to `$extension->preBatchAction()`
-            // @phpstan-ignore-next-line
             if (method_exists($extension, 'preBatchAction')) {
                 $extension->preBatchAction($this->admin, $action, $query, $idx, $allElements);
             }
@@ -518,7 +538,7 @@ class CRUDController extends AbstractController
             return $this->redirectToList();
         }
 
-        return $this->$finalAction($query, $forwardedRequest);
+        return \call_user_func($batchActionExecutable, $query, $forwardedRequest);
     }
 
     /**
@@ -536,6 +556,9 @@ class CRUDController extends AbstractController
         $class = new \ReflectionClass($this->admin->hasActiveSubClass() ? $this->admin->getActiveSubClass() : $this->admin->getClass());
 
         if ($class->isAbstract()) {
+            /**
+             * @psalm-suppress DeprecatedMethod
+             */
             return $this->renderWithExtraParams(
                 '@SonataAdmin/CRUD/select_subclass.html.twig',
                 [
@@ -566,7 +589,6 @@ class CRUDController extends AbstractController
                 /** @phpstan-var T $submittedObject */
                 $submittedObject = $form->getData();
                 $this->admin->setSubject($submittedObject);
-                $this->admin->checkAccess('create', $submittedObject);
 
                 try {
                     $newObject = $this->admin->create($submittedObject);
@@ -625,6 +647,9 @@ class CRUDController extends AbstractController
 
         $template = $this->templateRegistry->getTemplate($templateKey);
 
+        /**
+         * @psalm-suppress DeprecatedMethod
+         */
         return $this->renderWithExtraParams($template, [
             'action' => 'create',
             'form' => $formView,
@@ -657,6 +682,9 @@ class CRUDController extends AbstractController
 
         $template = $this->templateRegistry->getTemplate('show');
 
+        /**
+         * @psalm-suppress DeprecatedMethod
+         */
         return $this->renderWithExtraParams($template, [
             'action' => 'show',
             'object' => $object,
@@ -674,10 +702,10 @@ class CRUDController extends AbstractController
     {
         $object = $this->assertObjectExists($request, true);
         \assert(null !== $object);
+        $this->admin->checkAccess('history', $object);
+
         $objectId = $this->admin->getNormalizedIdentifier($object);
         \assert(null !== $objectId);
-
-        $this->admin->checkAccess('history', $object);
 
         $manager = $this->container->get('sonata.admin.audit.manager');
         \assert($manager instanceof AuditManagerInterface);
@@ -695,6 +723,9 @@ class CRUDController extends AbstractController
 
         $template = $this->templateRegistry->getTemplate('history');
 
+        /**
+         * @psalm-suppress DeprecatedMethod
+         */
         return $this->renderWithExtraParams($template, [
             'action' => 'history',
             'object' => $object,
@@ -713,10 +744,10 @@ class CRUDController extends AbstractController
     {
         $object = $this->assertObjectExists($request, true);
         \assert(null !== $object);
+        $this->admin->checkAccess('historyViewRevision', $object);
+
         $objectId = $this->admin->getNormalizedIdentifier($object);
         \assert(null !== $objectId);
-
-        $this->admin->checkAccess('historyViewRevision', $object);
 
         $manager = $this->container->get('sonata.admin.audit.manager');
         \assert($manager instanceof AuditManagerInterface);
@@ -746,6 +777,9 @@ class CRUDController extends AbstractController
 
         $template = $this->templateRegistry->getTemplate('show');
 
+        /**
+         * @psalm-suppress DeprecatedMethod
+         */
         return $this->renderWithExtraParams($template, [
             'action' => 'show',
             'object' => $object,
@@ -806,6 +840,9 @@ class CRUDController extends AbstractController
 
         $template = $this->templateRegistry->getTemplate('show_compare');
 
+        /**
+         * @psalm-suppress DeprecatedMethod
+         */
         return $this->renderWithExtraParams($template, [
             'action' => 'show',
             'object' => $baseObject,
@@ -835,7 +872,7 @@ class CRUDController extends AbstractController
         $filename = $adminExporter->getExportFilename($this->admin, $format);
 
         $exporter = $this->container->get('sonata.exporter.exporter');
-        \assert($exporter instanceof Exporter);
+        \assert($exporter instanceof ExporterInterface);
 
         if (!\in_array($format, $allowedExportFormats, true)) {
             throw new \RuntimeException(sprintf(
@@ -914,6 +951,9 @@ class CRUDController extends AbstractController
 
         $template = $this->templateRegistry->getTemplate('acl');
 
+        /**
+         * @psalm-suppress DeprecatedMethod
+         */
         return $this->renderWithExtraParams($template, [
             'action' => 'acl',
             'permissions' => $adminObjectAclData->getUserPermissions(),
@@ -954,9 +994,16 @@ class CRUDController extends AbstractController
      *
      * @param string               $view       The view name
      * @param array<string, mixed> $parameters An array of parameters to pass to the view
+     *
+     * @deprecated since sonata-project/admin-bundle version 4.x
+     *
+     *  NEXT_MAJOR: Remove this method
      */
     final protected function renderWithExtraParams(string $view, array $parameters = [], ?Response $response = null): Response
     {
+        /**
+         * @psalm-suppress DeprecatedMethod
+         */
         return $this->render($view, $this->addRenderExtraParams($parameters), $response);
     }
 
@@ -964,20 +1011,26 @@ class CRUDController extends AbstractController
      * @param array<string, mixed> $parameters
      *
      * @return array<string, mixed>
+     *
+     * @deprecated since sonata-project/admin-bundle version 4.x
+     *
+     * NEXT_MAJOR: Remove this method
      */
     protected function addRenderExtraParams(array $parameters = []): array
     {
-        $parameters['admin'] = $parameters['admin'] ?? $this->admin;
-        $parameters['base_template'] = $parameters['base_template'] ?? $this->getBaseTemplate();
+        $parameters['admin'] ??= $this->admin;
+        /**
+         * @psalm-suppress DeprecatedMethod
+         */
+        $parameters['base_template'] ??= $this->getBaseTemplate();
 
         return $parameters;
     }
 
     /**
-     * @param mixed   $data
      * @param mixed[] $headers
      */
-    final protected function renderJson($data, int $status = Response::HTTP_OK, array $headers = []): JsonResponse
+    final protected function renderJson(mixed $data, int $status = Response::HTTP_OK, array $headers = []): JsonResponse
     {
         return new JsonResponse($data, $status, $headers);
     }
@@ -1014,6 +1067,10 @@ class CRUDController extends AbstractController
      * Returns the base template name.
      *
      * @return string The template name
+     *
+     * @deprecated since sonata-project/admin-bundle version 4.x
+     *
+     *  NEXT_MAJOR: Remove this method
      */
     protected function getBaseTemplate(): string
     {
@@ -1204,10 +1261,10 @@ class CRUDController extends AbstractController
         $pool = $this->container->get('sonata.admin.pool');
         \assert($pool instanceof Pool);
 
-        foreach ($pool->getAdminServiceIds() as $id) {
+        foreach ($pool->getAdminServiceCodes() as $code) {
             try {
-                $admin = $pool->getInstance($id);
-            } catch (\Exception $e) {
+                $admin = $pool->getInstance($code);
+            } catch (\Exception) {
                 continue;
             }
 
@@ -1331,7 +1388,7 @@ class CRUDController extends AbstractController
      */
     final protected function trans(string $id, array $parameters = [], ?string $domain = null, ?string $locale = null): string
     {
-        $domain = $domain ?? $this->admin->getTranslationDomain();
+        $domain ??= $this->admin->getTranslationDomain();
         $translator = $this->container->get('translator');
         \assert($translator instanceof TranslatorInterface);
 
@@ -1344,15 +1401,10 @@ class CRUDController extends AbstractController
             return $this->renderJson([], Response::HTTP_NOT_ACCEPTABLE);
         }
 
-        $errors = [];
-        foreach ($form->getErrors(true) as $error) {
-            $errors[] = $error->getMessage();
-        }
-
-        return $this->renderJson([
-            'result' => 'error',
-            'errors' => $errors,
-        ], Response::HTTP_BAD_REQUEST);
+        return $this->json(
+            FormErrorIteratorToConstraintViolationList::transform($form->getErrors(true)),
+            Response::HTTP_BAD_REQUEST
+        );
     }
 
     /**
@@ -1397,7 +1449,7 @@ class CRUDController extends AbstractController
                 throw $this->createNotFoundException(sprintf(
                     'Unable to find the %s object id of the admin "%s".',
                     $admin->getClassnameLabel(),
-                    \get_class($admin)
+                    $admin::class
                 ));
             }
 
@@ -1446,14 +1498,14 @@ class CRUDController extends AbstractController
         if (null === $parentAdminObject) {
             throw new \RuntimeException(sprintf(
                 'No object was found in the admin "%s" for the id "%s".',
-                \get_class($parentAdmin),
+                $parentAdmin::class,
                 $parentId
             ));
         }
 
         $parentAssociationMapping = $this->admin->getParentAssociationMapping();
         if (null === $parentAssociationMapping) {
-            throw new \RuntimeException('The admin has no parent association mapping.');
+            return;
         }
 
         $propertyAccessor = PropertyAccess::createPropertyAccessor();
@@ -1470,6 +1522,36 @@ class CRUDController extends AbstractController
                 $this->admin->toString($object)
             ));
         }
+    }
+
+    private function getBatchActionExecutable(string $action): callable
+    {
+        $batchActions = $this->admin->getBatchActions();
+        if (!\array_key_exists($action, $batchActions)) {
+            throw new \RuntimeException(sprintf('The `%s` batch action is not defined', $action));
+        }
+
+        $controller = $batchActions[$action]['controller'] ?? sprintf(
+            '%s::%s',
+            $this->admin->getBaseControllerName(),
+            sprintf('batchAction%s', (new UnicodeString($action))->camel()->title(true)->toString())
+        );
+
+        // This will throw an exception when called so we know if it's possible or not to call the controller.
+        $exists = false !== $this->container
+            ->get('controller_resolver')
+            ->getController(new Request([], [], ['_controller' => $controller]));
+
+        if (!$exists) {
+            throw new \RuntimeException(sprintf('Controller for action `%s` cannot be resolved', $action));
+        }
+
+        return function (ProxyQueryInterface $query, Request $request) use ($controller): Response {
+            $request->attributes->set('_controller', $controller);
+            $request->attributes->set('query', $query);
+
+            return $this->container->get('http_kernel')->handle($request, HttpKernelInterface::SUB_REQUEST);
+        };
     }
 
     /**

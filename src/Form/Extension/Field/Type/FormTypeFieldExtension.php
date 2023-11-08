@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Form\Extension\Field\Type;
 
+use Sonata\AdminBundle\Admin\AdminInterface;
 use Sonata\AdminBundle\Exception\NoValueException;
 use Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface;
 use Symfony\Component\Form\AbstractTypeExtension;
@@ -25,27 +26,19 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
+ *
+ * @psalm-suppress MissingTemplateParam https://github.com/phpstan/phpstan-symfony/issues/320
  */
 final class FormTypeFieldExtension extends AbstractTypeExtension
 {
     /**
-     * @var array<string, string>
-     */
-    private $defaultClasses = [];
-
-    /**
-     * @var array<string, mixed>
-     */
-    private $options = [];
-
-    /**
      * @param array<string, string> $defaultClasses
      * @param array<string, mixed>  $options
      */
-    public function __construct(array $defaultClasses, array $options)
-    {
-        $this->defaultClasses = $defaultClasses;
-        $this->options = $options;
+    public function __construct(
+        private array $defaultClasses,
+        private array $options
+    ) {
     }
 
     /**
@@ -99,11 +92,19 @@ final class FormTypeFieldExtension extends AbstractTypeExtension
             && \is_array($sonataAdmin)
             && false === $sonataAdmin['admin']
         ) {
-            $blockPrefixes = $view->vars['block_prefixes'];
-            $baseName = str_replace('.', '_', $view->parent->vars['sonata_admin_code']);
+            $blockPrefixes = $view->vars['block_prefixes'] ?? [];
+            \assert(\is_array($blockPrefixes));
+
+            $adminCode = $view->parent->vars['sonata_admin_code'] ?? '';
+            \assert(\is_string($adminCode));
+
+            $baseName = str_replace('.', '_', $adminCode);
 
             $baseType = $blockPrefixes[\count($blockPrefixes) - 2];
-            $blockSuffix = preg_replace('#^_([a-z0-9]{14})_(.++)$#', '$2', end($blockPrefixes));
+            $lastBlockPrefix = end($blockPrefixes);
+            \assert(\is_string($lastBlockPrefix));
+
+            $blockSuffix = preg_replace('#^_([a-z0-9]{14})_(.++)$#', '$2', $lastBlockPrefix);
 
             $blockPrefixes[] = sprintf('%s_%s', $baseName, $baseType);
             $blockPrefixes[] = sprintf('%s_%s_%s_%s', $baseName, $baseType, $view->parent->vars['name'], $view->vars['name']);
@@ -121,7 +122,7 @@ final class FormTypeFieldExtension extends AbstractTypeExtension
                 'class' => false,
                 'options' => $this->options,
             ];
-            $view->vars['sonata_admin_code'] = $view->parent->vars['sonata_admin_code'];
+            $view->vars['sonata_admin_code'] = $adminCode;
 
             return;
         }
@@ -131,10 +132,18 @@ final class FormTypeFieldExtension extends AbstractTypeExtension
             $sonataAdmin['value'] = $form->getData();
 
             // add a new block types, so the Admin Form element can be tweaked based on the admin code
-            $blockPrefixes = $view->vars['block_prefixes'];
-            $baseName = str_replace('.', '_', $sonataAdmin['admin']->getCode());
+            $blockPrefixes = $view->vars['block_prefixes'] ?? [];
+            \assert(\is_array($blockPrefixes));
+
+            $admin = $sonataAdmin['admin'];
+            \assert($admin instanceof AdminInterface);
+
+            $baseName = str_replace('.', '_', $admin->getCode());
             $baseType = $blockPrefixes[\count($blockPrefixes) - 2];
-            $blockSuffix = preg_replace('#^_([a-z0-9]{14})_(.++)$#', '$2', end($blockPrefixes));
+            $lastBlockPrefix = end($blockPrefixes);
+            \assert(\is_string($lastBlockPrefix));
+
+            $blockSuffix = preg_replace('#^_([a-z0-9]{14})_(.++)$#', '$2', $lastBlockPrefix);
 
             $blockPrefixes[] = sprintf('%s_%s', $baseName, $baseType);
             $blockPrefixes[] = sprintf('%s_%s_%s', $baseName, $sonataAdmin['name'], $baseType);
@@ -147,8 +156,8 @@ final class FormTypeFieldExtension extends AbstractTypeExtension
             $view->vars['block_prefixes'] = array_unique($blockPrefixes);
             $view->vars['sonata_admin_enabled'] = true;
             $view->vars['sonata_admin'] = $sonataAdmin;
-            $view->vars['sonata_admin_code'] = $sonataAdmin['admin']->getCode();
-            $view->vars['sonata_admin_translation_domain'] = $sonataAdmin['admin']->getTranslationDomain();
+            $view->vars['sonata_admin_code'] = $admin->getCode();
+            $view->vars['sonata_admin_translation_domain'] = $admin->getTranslationDomain();
 
             $attr = $view->vars['attr'];
 
@@ -210,7 +219,7 @@ final class FormTypeFieldExtension extends AbstractTypeExtension
 
         try {
             $value = $fieldDescription->getValue($object);
-        } catch (NoValueException $e) {
+        } catch (NoValueException) {
             if ($fieldDescription->hasAssociationAdmin()) {
                 $value = $fieldDescription->getAssociationAdmin()->getNewInstance();
             }
@@ -222,7 +231,7 @@ final class FormTypeFieldExtension extends AbstractTypeExtension
     private function getClass(FormBuilderInterface $formBuilder): string
     {
         foreach ($this->getTypes($formBuilder) as $type) {
-            $name = \get_class($type);
+            $name = $type::class;
 
             if (isset($this->defaultClasses[$name])) {
                 return $this->defaultClasses[$name];

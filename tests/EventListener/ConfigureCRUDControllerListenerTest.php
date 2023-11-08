@@ -25,10 +25,7 @@ use Symfony\Component\HttpKernel\HttpKernelInterface;
 
 final class ConfigureCRUDControllerListenerTest extends TestCase
 {
-    /**
-     * @var ConfigureCRUDControllerListener
-     */
-    private $listener;
+    private ConfigureCRUDControllerListener $listener;
 
     protected function setUp(): void
     {
@@ -58,7 +55,7 @@ final class ConfigureCRUDControllerListenerTest extends TestCase
             $this->createStub(HttpKernelInterface::class),
             [$controller, 'listAction'],
             $request,
-            HttpKernelInterface::MASTER_REQUEST
+            HttpKernelInterface::MAIN_REQUEST
         );
 
         $adminFetcher

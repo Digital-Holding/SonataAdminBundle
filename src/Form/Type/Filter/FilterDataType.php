@@ -15,9 +15,14 @@ namespace Sonata\AdminBundle\Form\Type\Filter;
 
 use Sonata\AdminBundle\Form\DataTransformer\FilterDataTransformer;
 use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\Extension\Core\Type\HiddenType;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
+/**
+ * @psalm-suppress MissingTemplateParam https://github.com/phpstan/phpstan-symfony/issues/320
+ */
 final class FilterDataType extends AbstractType
 {
     /**
@@ -42,11 +47,12 @@ final class FilterDataType extends AbstractType
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
+            'operator_type' => HiddenType::class,
             'operator_options' => [],
+            'field_type' => TextType::class,
             'field_options' => [],
         ]);
         $resolver
-            ->setRequired(['operator_type', 'field_type'])
             ->setAllowedTypes('operator_type', 'string')
             ->setAllowedTypes('field_type', 'string')
             ->setAllowedTypes('operator_options', 'array')

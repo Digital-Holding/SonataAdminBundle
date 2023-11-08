@@ -15,6 +15,7 @@ namespace Sonata\AdminBundle\Command;
 
 use Sonata\AdminBundle\Admin\Pool;
 use Sonata\AdminBundle\Util\ObjectAclManipulatorInterface;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -24,44 +25,26 @@ use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
 /**
  * @author Thomas Rabaix <thomas.rabaix@sonata-project.org>
  */
+#[AsCommand(name: 'sonata:admin:generate-object-acl', description: 'Install ACL for the objects of the Admin Classes.')]
 final class GenerateObjectAclCommand extends QuestionableCommand
 {
-    protected static $defaultName = 'sonata:admin:generate-object-acl';
+    private string $userModelClass = '';
 
     /**
-     * @var string
-     */
-    private $userModelClass = '';
-
-    /**
-     * @var Pool
-     */
-    private $pool;
-
-    /**
-     * An array of object ACL manipulators indexed by their service ids.
-     *
-     * @var ObjectAclManipulatorInterface[]
-     */
-    private $aclObjectManipulators = [];
-
-    /**
-     * @param ObjectAclManipulatorInterface[] $aclObjectManipulators
+     * @param ObjectAclManipulatorInterface[] $aclObjectManipulators an array of object ACL manipulators indexed by their service ids
      *
      * @internal This class should only be used through the console
      */
-    public function __construct(Pool $pool, array $aclObjectManipulators)
-    {
-        $this->pool = $pool;
-        $this->aclObjectManipulators = $aclObjectManipulators;
-
+    public function __construct(
+        private Pool $pool,
+        private array $aclObjectManipulators
+    ) {
         parent::__construct();
     }
 
     public function configure(): void
     {
         $this
-            ->setDescription('Install ACL for the objects of the Admin Classes.')
             ->addOption('object_owner', null, InputOption::VALUE_OPTIONAL, 'If set, the task will set the object owner for each admin.')
             ->addOption('user_model', null, InputOption::VALUE_OPTIONAL, 'Fully qualified class name <comment>App\Model\User</comment>. If not set, it will be asked the first time an object owner is set.')
             ->addOption('step', null, InputOption::VALUE_NONE, 'If set, the task will ask for each admin if the ACLs need to be generated and what object owner to set, if any.');
@@ -95,9 +78,9 @@ final class GenerateObjectAclCommand extends QuestionableCommand
             return 1;
         }
 
-        foreach ($this->pool->getAdminServiceIds() as $id) {
+        foreach ($this->pool->getAdminServiceCodes() as $code) {
             try {
-                $admin = $this->pool->getInstance($id);
+                $admin = $this->pool->getInstance($code);
             } catch (\Exception $e) {
                 $output->writeln('<error>Warning : The admin class cannot be initiated from the command line</error>');
                 $output->writeln(sprintf('<error>%s</error>', $e->getMessage()));
@@ -105,7 +88,7 @@ final class GenerateObjectAclCommand extends QuestionableCommand
                 continue;
             }
 
-            if ($input->getOption('step') && !$this->askConfirmation($input, $output, sprintf("<question>Generate ACLs for the object instances handled by \"%s\"?</question>\n", $id), 'no')) {
+            if ($input->getOption('step') && !$this->askConfirmation($input, $output, sprintf("<question>Generate ACLs for the object instances handled by \"%s\"?</question>\n", $code), 'no')) {
                 continue;
             }
 

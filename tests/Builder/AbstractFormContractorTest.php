@@ -38,17 +38,14 @@ final class AbstractFormContractorTest extends TestCase
     /**
      * @var FormFactoryInterface&MockObject
      */
-    private $formFactory;
+    private FormFactoryInterface $formFactory;
 
-    /**
-     * @var FormContractorInterface
-     */
-    private $formContractor;
+    private FormContractorInterface $formContractor;
 
     /**
      * @var MockObject&FieldDescriptionInterface
      */
-    private $fieldDescription;
+    private FieldDescriptionInterface $fieldDescription;
 
     protected function setUp(): void
     {
@@ -69,6 +66,9 @@ final class AbstractFormContractorTest extends TestCase
             return $resolvedType;
         });
 
+        /**
+         * @psalm-suppress DeprecatedInterface
+         */
         $this->formContractor = new class($this->formFactory, $formRegistry) extends AbstractFormContractor {
             protected function hasAssociation(FieldDescriptionInterface $fieldDescription): bool
             {
@@ -207,7 +207,7 @@ final class AbstractFormContractorTest extends TestCase
     /**
      * @phpstan-param class-string $formType
      *
-     * @dataProvider getFieldDescriptionValidationProvider
+     * @dataProvider provideThrowsExceptionWithInvalidFieldDescriptionInGetDefaultOptionsCases
      */
     public function testThrowsExceptionWithInvalidFieldDescriptionInGetDefaultOptions(string $formType): void
     {
@@ -225,7 +225,7 @@ final class AbstractFormContractorTest extends TestCase
     /**
      * @phpstan-return iterable<array-key, array{0: class-string}>
      */
-    public function getFieldDescriptionValidationProvider(): iterable
+    public function provideThrowsExceptionWithInvalidFieldDescriptionInGetDefaultOptionsCases(): iterable
     {
         yield 'ModelAutocompleteType, no target model' => [
             ModelAutocompleteType::class,

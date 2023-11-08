@@ -30,10 +30,7 @@ use Symfony\Component\DependencyInjection\Container;
  */
 final class TemplateRegistryExtensionTest extends TestCase
 {
-    /**
-     * @var TemplateRegistryExtension
-     */
-    private $extension;
+    private TemplateRegistryExtension $extension;
 
     protected function setUp(): void
     {
@@ -63,6 +60,9 @@ final class TemplateRegistryExtensionTest extends TestCase
         static::assertCount(2, $this->extension->getFunctions());
     }
 
+    /**
+     * @psalm-suppress DeprecatedMethod
+     */
     public function testGetAdminTemplate(): void
     {
         static::assertSame(
@@ -71,6 +71,9 @@ final class TemplateRegistryExtensionTest extends TestCase
         );
     }
 
+    /**
+     * @psalm-suppress DeprecatedMethod
+     */
     public function testGetAdminTemplateFailure(): void
     {
         $this->expectException(AdminCodeNotFoundException::class);
@@ -83,6 +86,9 @@ final class TemplateRegistryExtensionTest extends TestCase
         );
     }
 
+    /**
+     * @psalm-suppress DeprecatedMethod
+     */
     public function testGetGlobalTemplate(): void
     {
         static::assertSame(

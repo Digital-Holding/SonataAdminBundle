@@ -25,36 +25,21 @@ use Symfony\Component\Form\Extension\Core\Type\FormType;
 use Symfony\Component\Form\FormFactoryInterface;
 
 /**
- * @phpstan-implements DatagridBuilderInterface<\Sonata\AdminBundle\Datagrid\ProxyQueryInterface>
+ * @psalm-suppress DeprecatedInterface
+ *
+ * @phpstan-implements DatagridBuilderInterface<ProxyQueryInterface<object>>
  */
 final class DatagridBuilder implements DatagridBuilderInterface
 {
     /**
-     * @var FormFactoryInterface
-     */
-    private $formFactory;
-
-    /**
-     * @var PagerInterface<ProxyQueryInterface>
-     */
-    private $pager;
-
-    /**
-     * @var ProxyQueryInterface
-     */
-    private $proxyQuery;
-
-    /**
-     * @param PagerInterface<ProxyQueryInterface> $pager
+     * @param PagerInterface<ProxyQueryInterface<object>> $pager
+     * @param ProxyQueryInterface<object>                 $proxyQuery
      */
     public function __construct(
-        FormFactoryInterface $formFactory,
-        PagerInterface $pager,
-        ProxyQueryInterface $proxyQuery
+        private FormFactoryInterface $formFactory,
+        private PagerInterface $pager,
+        private ProxyQueryInterface $proxyQuery
     ) {
-        $this->formFactory = $formFactory;
-        $this->pager = $pager;
-        $this->proxyQuery = $proxyQuery;
     }
 
     public function fixFieldDescription(FieldDescriptionInterface $fieldDescription): void

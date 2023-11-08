@@ -24,26 +24,11 @@ use Twig\Environment;
 
 final class AppendFormFieldElementAction
 {
-    /**
-     * @var AdminHelper
-     */
-    private $helper;
-
-    /**
-     * @var Environment
-     */
-    private $twig;
-
-    /**
-     * @var AdminFetcherInterface
-     */
-    private $adminFetcher;
-
-    public function __construct(Environment $twig, AdminFetcherInterface $adminFetcher, AdminHelper $helper)
-    {
-        $this->helper = $helper;
-        $this->twig = $twig;
-        $this->adminFetcher = $adminFetcher;
+    public function __construct(
+        private Environment $twig,
+        private AdminFetcherInterface $adminFetcher,
+        private AdminHelper $helper
+    ) {
     }
 
     /**

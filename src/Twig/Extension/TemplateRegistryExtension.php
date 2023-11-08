@@ -22,18 +22,13 @@ use Twig\TwigFunction;
 final class TemplateRegistryExtension extends AbstractExtension
 {
     /**
-     * @var TemplateRegistryRuntime
-     */
-    private $templateRegistryRuntime;
-
-    /**
      * NEXT_MAJOR: Remove this constructor.
      *
      * @internal This class should only be used through Twig
      */
-    public function __construct(TemplateRegistryRuntime $templateRegistryRuntime)
-    {
-        $this->templateRegistryRuntime = $templateRegistryRuntime;
+    public function __construct(
+        private TemplateRegistryRuntime $templateRegistryRuntime
+    ) {
     }
 
     /**

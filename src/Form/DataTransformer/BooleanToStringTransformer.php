@@ -25,14 +25,9 @@ use Symfony\Component\Form\DataTransformerInterface;
  */
 final class BooleanToStringTransformer implements DataTransformerInterface
 {
-    /**
-     * @var string
-     */
-    private $trueValue;
-
-    public function __construct(string $trueValue)
-    {
-        $this->trueValue = $trueValue;
+    public function __construct(
+        private string $trueValue
+    ) {
     }
 
     /**

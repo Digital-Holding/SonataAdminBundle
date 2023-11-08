@@ -43,25 +43,21 @@ final class ChoiceFieldMaskTypeTest extends TypeTestCase
     }
 
     /**
-     * @phpstan-return array<array{mixed}>
+     * @phpstan-return iterable<array{mixed}>
      */
-    public function setAllowedTypesProvider(): array
+    public function provideSetAllowedTypesCases(): iterable
     {
-        return [
-            'null' => [null],
-            'integer' => [1],
-            'boolean' => [false],
-            'string' => ['string'],
-            'class' => [new \stdClass()],
-        ];
+        yield 'null' => [null];
+        yield 'integer' => [1];
+        yield 'boolean' => [false];
+        yield 'string' => ['string'];
+        yield 'class' => [new \stdClass()];
     }
 
     /**
-     * @param mixed $map
-     *
-     * @dataProvider setAllowedTypesProvider
+     * @dataProvider provideSetAllowedTypesCases
      */
-    public function testSetAllowedTypes($map): void
+    public function testSetAllowedTypes(mixed $map): void
     {
         $this->expectException(InvalidOptionsException::class);
         $this->expectExceptionMessageMatches('/The option "map" with value .* is expected to be of type "array", but is of type ".*"/');

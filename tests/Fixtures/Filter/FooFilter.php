@@ -35,8 +35,11 @@ final class FooFilter extends Filter
         ];
     }
 
-    public function getRenderSettings(): array
+    /**
+     * @return array<string, mixed>
+     */
+    public function getFormOptions(): array
     {
-        return ['string', []];
+        return [];
     }
 }

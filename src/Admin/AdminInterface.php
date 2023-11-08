@@ -33,7 +33,7 @@ use Symfony\Component\HttpFoundation\Request;
  * @method bool showInDashboard()
  * @method void removeExtension(AdminExtensionInterface $extension)
  *
- * @phpstan-import-type FieldDescriptionOptions from \Sonata\AdminBundle\FieldDescription\FieldDescriptionInterface
+ * @phpstan-import-type FieldDescriptionOptions from FieldDescriptionInterface
  *
  * @phpstan-template T of object
  * @phpstan-extends AccessRegistryInterface<T>
@@ -56,7 +56,7 @@ interface AdminInterface extends TaggedAdminInterface, AccessRegistryInterface, 
     public function attachAdminClass(FieldDescriptionInterface $fieldDescription): void;
 
     /**
-     * @return DatagridInterface<ProxyQueryInterface>
+     * @return DatagridInterface<ProxyQueryInterface<T>>
      */
     public function getDatagrid(): DatagridInterface;
 
@@ -70,6 +70,9 @@ interface AdminInterface extends TaggedAdminInterface, AccessRegistryInterface, 
      */
     public function getBaseControllerName(): string;
 
+    /**
+     * @return ProxyQueryInterface<T>
+     */
     public function createQuery(): ProxyQueryInterface;
 
     public function getFormBuilder(): FormBuilderInterface;
@@ -255,6 +258,8 @@ interface AdminInterface extends TaggedAdminInterface, AccessRegistryInterface, 
      * Call before the batch action, allow you to alter the query and the idx.
      *
      * @param mixed[] $idx
+     *
+     * @phpstan-param ProxyQueryInterface<T> $query
      */
     public function preBatchAction(string $actionName, ProxyQueryInterface $query, array &$idx, bool $allElements = false): void;
 
@@ -295,12 +300,14 @@ interface AdminInterface extends TaggedAdminInterface, AccessRegistryInterface, 
     public function getParent(): self;
 
     /**
+     * NEXT_MAJOR: Change to ?string $parentAssociationMapping = null.
+     *
      * @param AdminInterface<object> $parent
      */
     public function setParent(self $parent, string $parentAssociationMapping): void;
 
     /**
-     * Returns true if the Admin class has an Parent Admin defined.
+     * Returns true if the Admin class has a Parent Admin defined.
      */
     public function isChild(): bool;
 
@@ -464,9 +471,9 @@ interface AdminInterface extends TaggedAdminInterface, AccessRegistryInterface, 
     /**
      * Configure buttons for an action.
      *
-     * @phpstan-param T|null $object
-     *
      * @return array<string, array<string, mixed>>
+     *
+     * @phpstan-param T|null $object
      */
     public function getActionButtons(string $action, ?object $object = null): array;
 
@@ -497,14 +504,14 @@ interface AdminInterface extends TaggedAdminInterface, AccessRegistryInterface, 
     /**
      * Returns the baseRoutePattern used to generate the routing information.
      *
-     * @throws \RuntimeException if a default baseRoutePattern is required for the admin class
+     * @throws \LogicException if a default baseRoutePattern is required for the admin class
      */
     public function getBaseRoutePattern(): string;
 
     /**
      * Returns the baseRouteName used to generate the routing information.
      *
-     * @throws \RuntimeException if a default baseRouteName is required for the admin class
+     * @throws \LogicException if a default baseRouteName is required for the admin class
      */
     public function getBaseRouteName(): string;
 

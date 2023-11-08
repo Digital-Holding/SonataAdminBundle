@@ -16,12 +16,9 @@ namespace Sonata\AdminBundle\Tests\Fixtures\Entity;
 /**
  * @phpstan-implements \ArrayAccess<string, string|null>
  */
-final class FooArrayAccess implements \ArrayAccess
+final class FooArrayAccess implements \ArrayAccess, \Stringable
 {
-    /**
-     * @var string|null
-     */
-    private $bar;
+    private ?string $bar = null;
 
     public function __toString(): string
     {
@@ -49,12 +46,12 @@ final class FooArrayAccess implements \ArrayAccess
 
     public function offsetSet($offset, $value): void
     {
-        throw new \BadMethodCallException(sprintf('Array access of class %s is read-only!', static::class));
+        throw new \BadMethodCallException(sprintf('Array access of class %s is read-only!', self::class));
     }
 
     public function offsetUnset($offset): void
     {
-        throw new \BadMethodCallException(sprintf('Array access of class %s is read-only!', static::class));
+        throw new \BadMethodCallException(sprintf('Array access of class %s is read-only!', self::class));
     }
 
     public function getBar(): ?string

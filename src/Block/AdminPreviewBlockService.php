@@ -29,22 +29,16 @@ use Twig\Environment;
  */
 final class AdminPreviewBlockService extends AbstractBlockService
 {
-    /**
-     * @var Pool
-     */
-    private $pool;
-
-    public function __construct(Environment $twig, Pool $pool)
-    {
+    public function __construct(
+        Environment $twig,
+        private Pool $pool
+    ) {
         parent::__construct($twig);
-
-        $this->pool = $pool;
     }
 
     public function execute(BlockContextInterface $blockContext, ?Response $response = null): Response
     {
         $template = $blockContext->getTemplate();
-        \assert(\is_string($template));
 
         $admin = $this->getAdmin($blockContext->getSetting('code'));
         $this->handleFilters($admin, $blockContext);
@@ -55,7 +49,7 @@ final class AdminPreviewBlockService extends AbstractBlockService
 
         $datagrid = $admin->getDatagrid();
 
-        return $this->renderPrivateResponse($template, [
+        return $this->renderResponse($template, [
             'block' => $blockContext->getBlock(),
             'settings' => $blockContext->getSettings(),
             'admin' => $admin,

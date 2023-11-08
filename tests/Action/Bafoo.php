@@ -15,22 +15,16 @@ namespace Sonata\AdminBundle\Tests\Action;
 
 final class Bafoo
 {
-    /**
-     * @var \DateTime|null
-     */
-    private $dateProp;
+    private ?\DateTime $dateProp = null;
 
-    /**
-     * @var \DateTime|null
-     */
-    private $datetimeProp;
+    private ?\DateTime $datetimeProp = null;
 
     public function getDateProp(): ?\DateTime
     {
         return $this->dateProp;
     }
 
-    public function setDateProp(\DateTime $dateProp): self
+    public function setDateProp(\DateTime $dateProp): static
     {
         $this->dateProp = $dateProp;
 
@@ -42,7 +36,7 @@ final class Bafoo
         return $this->datetimeProp;
     }
 
-    public function setDatetimeProp(\DateTime $datetimeProp): self
+    public function setDatetimeProp(\DateTime $datetimeProp): static
     {
         $this->datetimeProp = $datetimeProp;
 

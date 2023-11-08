@@ -33,17 +33,17 @@ final class ListMapperTest extends TestCase
     /**
      * @var ListMapper<object>
      */
-    private $listMapper;
+    private ListMapper $listMapper;
 
     /**
      * @var FieldDescriptionCollection<FieldDescriptionInterface>
      */
-    private $fieldDescriptionCollection;
+    private FieldDescriptionCollection $fieldDescriptionCollection;
 
     /**
      * @var AdminInterface<object>&MockObject
      */
-    private $admin;
+    private AdminInterface $admin;
 
     protected function setUp(): void
     {
@@ -77,9 +77,7 @@ final class ListMapperTest extends TestCase
 
         $this->admin
             ->method('isGranted')
-            ->willReturnCallback(static function (string $name, ?object $object = null): bool {
-                return self::DEFAULT_GRANTED_ROLE === $name;
-            });
+            ->willReturnCallback(static fn (string $name, ?object $object = null): bool => self::DEFAULT_GRANTED_ROLE === $name);
 
         $this->listMapper = new ListMapper($listBuilder, $this->fieldDescriptionCollection, $this->admin);
     }
@@ -259,9 +257,7 @@ final class ListMapperTest extends TestCase
             'fooNameNotSortable',
             null,
             [
-                'associated_property' => static function ($value): string {
-                    return (string) $value;
-                },
+                'associated_property' => static fn (object $value): string => $value instanceof \Stringable ? (string) $value : '',
             ]
         );
         $this->listMapper->add(

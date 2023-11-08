@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Sonata\AdminBundle\Security\Handler;
 
 use Sonata\AdminBundle\Admin\AdminInterface;
+use Symfony\Component\ExpressionLanguage\Expression;
 use Symfony\Component\Security\Acl\Domain\ObjectIdentity;
 use Symfony\Component\Security\Acl\Domain\RoleSecurityIdentity;
 use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
@@ -34,57 +35,32 @@ use Symfony\Component\Security\Core\User\UserInterface;
 final class AclSecurityHandler implements AclSecurityHandlerInterface
 {
     /**
-     * @var TokenStorageInterface
+     * @var string[]
      */
-    private $tokenStorage;
-
-    /**
-     * @var AuthorizationCheckerInterface
-     */
-    private $authorizationChecker;
-
-    /**
-     * @var MutableAclProviderInterface
-     */
-    private $aclProvider;
+    private array $superAdminRoles = [];
 
     /**
      * @var string[]
      */
-    private $superAdminRoles = [];
+    private array $adminPermissions = [];
 
     /**
      * @var string[]
      */
-    private $adminPermissions = [];
-
-    /**
-     * @var string[]
-     */
-    private $objectPermissions = [];
-
-    /**
-     * @var string
-     * @phpstan-var class-string<MaskBuilderInterface>
-     */
-    private $maskBuilderClass;
+    private array $objectPermissions = [];
 
     /**
      * @param string|string[] $superAdminRoles
+     *
      * @phpstan-param class-string<MaskBuilderInterface> $maskBuilderClass
      */
     public function __construct(
-        TokenStorageInterface $tokenStorage,
-        AuthorizationCheckerInterface $authorizationChecker,
-        MutableAclProviderInterface $aclProvider,
-        string $maskBuilderClass,
+        private TokenStorageInterface $tokenStorage,
+        private AuthorizationCheckerInterface $authorizationChecker,
+        private MutableAclProviderInterface $aclProvider,
+        private string $maskBuilderClass,
         $superAdminRoles
     ) {
-        $this->tokenStorage = $tokenStorage;
-        $this->authorizationChecker = $authorizationChecker;
-        $this->aclProvider = $aclProvider;
-        $this->maskBuilderClass = $maskBuilderClass;
-
         // NEXT_MAJOR: Keep only the elseif part and add typehint.
         if (\is_array($superAdminRoles)) {
             @trigger_error(sprintf(
@@ -100,7 +76,7 @@ final class AclSecurityHandler implements AclSecurityHandlerInterface
             throw new \TypeError(sprintf(
                 'Argument 1 passed to "%s()" must be of type "array" or "string", %s given.',
                 __METHOD__,
-                \is_object($superAdminRoles) ? 'instance of "'.\get_class($superAdminRoles).'"' : '"'.\gettype($superAdminRoles).'"'
+                \is_object($superAdminRoles) ? 'instance of "'.$superAdminRoles::class.'"' : '"'.\gettype($superAdminRoles).'"'
             ));
         }
     }
@@ -143,9 +119,9 @@ final class AclSecurityHandler implements AclSecurityHandlerInterface
 
         try {
             // NEXT_MAJOR: Remove the method isAnyGranted and use $this->authorizationChecker->isGranted instead.
-            return $this->isAnyGranted($this->superAdminRoles) ||
-                $this->isAnyGranted($attributes, $object);
-        } catch (AuthenticationCredentialsNotFoundException $e) {
+            return $this->isAnyGranted($this->superAdminRoles)
+                || $this->isAnyGranted($attributes, $object);
+        } catch (AuthenticationCredentialsNotFoundException) {
             return false;
         }
     }
@@ -198,7 +174,7 @@ final class AclSecurityHandler implements AclSecurityHandlerInterface
     {
         try {
             $acl = $this->aclProvider->findAcl($objectIdentity);
-        } catch (AclNotFoundException $e) {
+        } catch (AclNotFoundException) {
             return null;
         }
 
@@ -211,9 +187,13 @@ final class AclSecurityHandler implements AclSecurityHandlerInterface
             /** @var \SplObjectStorage<ObjectIdentityInterface, MutableAclInterface> $acls */
             $acls = $this->aclProvider->findAcls(iterator_to_array($oids), $sids);
         } catch (NotAllAclsFoundException $e) {
-            /** @var \SplObjectStorage<ObjectIdentityInterface, MutableAclInterface> $acls */
+            /**
+             * @phpstan-ignore-next-line https://github.com/phpstan/phpstan/discussions/8996
+             *
+             * @var \SplObjectStorage<ObjectIdentityInterface, MutableAclInterface> $acls
+             */
             $acls = $e->getPartialResult();
-        } catch (AclNotFoundException $e) { // if only one oid, this error is thrown
+        } catch (AclNotFoundException) { // if only one oid, this error is thrown
             /** @var \SplObjectStorage<ObjectIdentityInterface, MutableAclInterface> $acls */
             $acls = new \SplObjectStorage();
         }
@@ -301,7 +281,7 @@ final class AclSecurityHandler implements AclSecurityHandlerInterface
     }
 
     /**
-     * @param string[] $attributes
+     * @param array<string|Expression> $attributes
      */
     private function isAnyGranted(array $attributes, ?object $subject = null): bool
     {

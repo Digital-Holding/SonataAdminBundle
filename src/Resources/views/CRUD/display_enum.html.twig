@@ -10,5 +10,16 @@ file that was distributed with this source code.
 #}
 
 {%- apply spaceless %}
-    {{ value.name }}
+    {% if value is null %}
+        &nbsp;
+    {% else %}
+        {% set value = use_value|default(false) ? value.value : value.name %}
+
+        {% if translation_domain|default(null) is null %}
+            {% set value = value %}
+        {% else %}
+            {% set value = value|trans({}, translation_domain) %}
+        {% endif %}
+        {{ value }}
+    {% endif %}
 {% endapply -%}

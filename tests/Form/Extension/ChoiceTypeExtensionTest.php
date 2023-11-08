@@ -21,10 +21,7 @@ use Symfony\Component\Form\Forms;
 
 final class ChoiceTypeExtensionTest extends TestCase
 {
-    /**
-     * @var FormFactoryInterface
-     */
-    private $factory;
+    private FormFactoryInterface $factory;
 
     protected function setUp(): void
     {
@@ -49,7 +46,7 @@ final class ChoiceTypeExtensionTest extends TestCase
             ])
             ->createView();
 
-        static::assertTrue(isset($view->vars['sortable']));
+        static::assertArrayHasKey('sortable', $view->vars);
         static::assertTrue($view->vars['sortable']);
     }
 
@@ -59,7 +56,7 @@ final class ChoiceTypeExtensionTest extends TestCase
             ->create(ChoiceType::class, null, [])
             ->createView();
 
-        static::assertTrue(isset($view->vars['sortable']));
+        static::assertArrayHasKey('sortable', $view->vars);
         static::assertFalse($view->vars['sortable']);
     }
 }

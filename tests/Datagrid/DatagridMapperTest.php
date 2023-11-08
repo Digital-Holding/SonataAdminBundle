@@ -40,29 +40,28 @@ final class DatagridMapperTest extends TestCase
     /**
      * @var DatagridMapper<object>
      */
-    private $datagridMapper;
+    private DatagridMapper $datagridMapper;
 
     /**
-     * @var Datagrid<ProxyQueryInterface>
+     * @var Datagrid<ProxyQueryInterface<object>>
      */
-    private $datagrid;
+    private Datagrid $datagrid;
 
     /**
      * @var AdminInterface<object>&MockObject
      */
-    private $admin;
+    private AdminInterface $admin;
 
     protected function setUp(): void
     {
         $datagridBuilder = $this->createMock(DatagridBuilderInterface::class);
 
-        /** @var ProxyQueryInterface $proxyQuery */
+        /** @var ProxyQueryInterface<object>&MockObject $proxyQuery */
         $proxyQuery = $this->createMock(ProxyQueryInterface::class);
+        /** @var PagerInterface<ProxyQueryInterface<object>>&MockObject $pager */
         $pager = $this->createMock(PagerInterface::class);
         $fieldDescriptionCollection = new FieldDescriptionCollection();
-        $formBuilder = $this->getMockBuilder(FormBuilder::class)
-                     ->disableOriginalConstructor()
-                     ->getMock();
+        $formBuilder = $this->createMock(FormBuilder::class);
 
         $this->datagrid = new Datagrid($proxyQuery, $fieldDescriptionCollection, $pager, $formBuilder, []);
 
@@ -98,15 +97,11 @@ final class DatagridMapperTest extends TestCase
 
         $this->admin
             ->method('isGranted')
-            ->willReturnCallback(static function (string $name, ?object $object = null): bool {
-                return self::DEFAULT_GRANTED_ROLE === $name;
-            });
+            ->willReturnCallback(static fn (string $name, ?object $object = null): bool => self::DEFAULT_GRANTED_ROLE === $name);
 
         $labelTranslatorStrategy = $this->createStub(LabelTranslatorStrategyInterface::class);
         $labelTranslatorStrategy->method('getLabel')->willReturnCallback(
-            static function (string $label, string $context = '', string $type = ''): string {
-                return sprintf('%s.%s_%s', $context, $type, $label);
-            }
+            static fn (string $label, string $context = '', string $type = ''): string => sprintf('%s.%s_%s', $context, $type, $label)
         );
 
         $this->admin

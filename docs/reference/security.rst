@@ -5,15 +5,14 @@ User management
 ---------------
 
 By default, the SonataAdminBundle does not come with any user management,
-however it is most likely the application requires such a feature. The Sonata
-Project includes a ``SonataUserBundle`` which integrates the ``FOSUserBundle``.
+however it is most likely the application requires such a feature. For this
+you can try the ``SonataUserBundle``.
 
-The ``FOSUserBundle`` adds support for a database-backed user system in Symfony.
+The ``SonataUserBundle`` adds support for a database-backed user system in Symfony.
 It provides a flexible framework for user management that aims to handle common
 tasks such as user login, registration and password retrieval.
 
-The ``SonataUserBundle`` is a thin wrapper to include the ``FOSUserBundle`` into
-the ``SonataAdminBundle``. The ``SonataUserBundle`` includes:
+The ``SonataUserBundle`` includes:
 
 * A default login area
 * A default ``user_block`` template which is used to display the current user
@@ -51,57 +50,53 @@ Configuration
 ^^^^^^^^^^^^^
 
 The security handler is required to determine which type of security to use.
-In case of using ACL you MUST set ``acl_user_manager`` parameter, the other other ones
+In case of using ACL you MUST set ``acl_user_manager`` parameter, the other ones
 are set as default, change them if needed.
 
 Using roles:
 
-.. configuration-block::
+.. code-block:: yaml
 
-    .. code-block:: yaml
+    # config/packages/sonata_admin.yaml
 
-        # config/packages/sonata_admin.yaml
+    sonata_admin:
+        security:
+            handler: sonata.admin.security.handler.role
 
-        sonata_admin:
-            security:
-                handler: sonata.admin.security.handler.role
-
-                role_admin: ROLE_ADMIN
-                role_super_admin: ROLE_SUPER_ADMIN
+            role_admin: ROLE_ADMIN
+            role_super_admin: ROLE_SUPER_ADMIN
 
 Using ACL:
 
-.. configuration-block::
+.. code-block:: yaml
 
-    .. code-block:: yaml
+    # config/packages/sonata_admin.yaml
 
-        # config/packages/sonata_admin.yaml
+    sonata_admin:
+        security:
+            handler: sonata.admin.security.handler.acl
 
-        sonata_admin:
-            security:
-                handler: sonata.admin.security.handler.acl
+            # this service MUST implement ``Sonata\AdminBundle\Util\AdminAclUserManagerInterface``.
+            acl_user_manager: App\Manager\AclUserManager
 
-                # this service MUST implement ``Sonata\AdminBundle\Util\AdminAclUserManagerInterface``.
-                acl_user_manager: App\Manager\AclUserManager
+            role_admin: ROLE_ADMIN
+            role_super_admin: ROLE_SUPER_ADMIN
 
-                role_admin: ROLE_ADMIN
-                role_super_admin: ROLE_SUPER_ADMIN
+            # acl security information
+            information:
+                GUEST:    [VIEW, LIST]
+                STAFF:    [EDIT, HISTORY, LIST, CREATE]
+                EDITOR:   [OPERATOR, EXPORT]
+                ADMIN:    [MASTER]
 
-                # acl security information
-                information:
-                    GUEST:    [VIEW, LIST]
-                    STAFF:    [EDIT, HISTORY, LIST, CREATE]
-                    EDITOR:   [OPERATOR, EXPORT]
-                    ADMIN:    [MASTER]
+            # permissions not related to an object instance and also to be available when objects do not exist
+            # the DELETE admin permission means the user is allowed to batch delete objects
+            admin_permissions: [CREATE, LIST, DELETE, UNDELETE, EXPORT, OPERATOR, MASTER]
 
-                # permissions not related to an object instance and also to be available when objects do not exist
-                # the DELETE admin permission means the user is allowed to batch delete objects
-                admin_permissions: [CREATE, LIST, DELETE, UNDELETE, EXPORT, OPERATOR, MASTER]
+            # permission related to the objects
+            object_permissions: [VIEW, EDIT, HISTORY, DELETE, UNDELETE, OPERATOR, MASTER, OWNER]
 
-                # permission related to the objects
-                object_permissions: [VIEW, EDIT, HISTORY, DELETE, UNDELETE, OPERATOR, MASTER, OWNER]
-
-Later, we will explain how to set up ACL with the ``FriendsOfSymfony/UserBundle``.
+Later, we will explain how to set up ACL with the ``SonataUserBundle``.
 
 Role handler
 ------------
@@ -156,38 +151,36 @@ App\\Admin\\FooAdmin       ``ROLE_APP\\ADMIN\\FOOADMIN_{PERMISSION}``
 
 So our ``security.yaml`` file may look something like this:
 
-.. configuration-block::
+.. code-block:: yaml
 
-    .. code-block:: yaml
+    # config/packages/security.yaml
 
-        # config/packages/security.yaml
+    security:
+        # ...
+        role_hierarchy:
 
-        security:
-            # ...
-            role_hierarchy:
+            # for convenience, I decided to gather Sonata roles here
+            ROLE_SONATA_FOO_READER:
+                - ROLE_SONATA_ADMIN_DEMO_FOO_LIST
+                - ROLE_SONATA_ADMIN_DEMO_FOO_VIEW
+            ROLE_SONATA_FOO_EDITOR:
+                - ROLE_SONATA_ADMIN_DEMO_FOO_CREATE
+                - ROLE_SONATA_ADMIN_DEMO_FOO_EDIT
+            ROLE_SONATA_FOO_ADMIN:
+                - ROLE_SONATA_ADMIN_DEMO_FOO_DELETE
+                - ROLE_SONATA_ADMIN_DEMO_FOO_EXPORT
 
-                # for convenience, I decided to gather Sonata roles here
-                ROLE_SONATA_FOO_READER:
-                    - ROLE_SONATA_ADMIN_DEMO_FOO_LIST
-                    - ROLE_SONATA_ADMIN_DEMO_FOO_VIEW
-                ROLE_SONATA_FOO_EDITOR:
-                    - ROLE_SONATA_ADMIN_DEMO_FOO_CREATE
-                    - ROLE_SONATA_ADMIN_DEMO_FOO_EDIT
-                ROLE_SONATA_FOO_ADMIN:
-                    - ROLE_SONATA_ADMIN_DEMO_FOO_DELETE
-                    - ROLE_SONATA_ADMIN_DEMO_FOO_EXPORT
+            # those are the roles I will use (less verbose)
+            ROLE_STAFF:             [ROLE_USER, ROLE_SONATA_FOO_READER]
+            ROLE_ADMIN:             [ROLE_STAFF, ROLE_SONATA_FOO_EDITOR, ROLE_SONATA_FOO_ADMIN]
+            ROLE_SUPER_ADMIN:       [ROLE_ADMIN, ROLE_ALLOWED_TO_SWITCH]
 
-                # those are the roles I will use (less verbose)
-                ROLE_STAFF:             [ROLE_USER, ROLE_SONATA_FOO_READER]
-                ROLE_ADMIN:             [ROLE_STAFF, ROLE_SONATA_FOO_EDITOR, ROLE_SONATA_FOO_ADMIN]
-                ROLE_SUPER_ADMIN:       [ROLE_ADMIN, ROLE_ALLOWED_TO_SWITCH]
+            # you could alternatively use for an admin who has all rights
+            ROLE_ALL_ADMIN:         [ROLE_STAFF, ROLE_SONATA_FOO_ALL]
 
-                # you could alternatively use for an admin who has all rights
-                ROLE_ALL_ADMIN:         [ROLE_STAFF, ROLE_SONATA_FOO_ALL]
-
-            # set access_strategy to unanimous, else you may have unexpected behaviors
-            access_decision_manager:
-                strategy: unanimous
+        # set access_strategy to unanimous, else you may have unexpected behaviors
+        access_decision_manager:
+            strategy: unanimous
 
 Note that we also set ``access_strategy`` to unanimous.
 It means that if one voter (for example Sonata) refuses access, access will be denied.
@@ -211,7 +204,7 @@ From a controller extending ``Sonata\AdminBundle\Controller\CRUDController``::
 
 Or from a Twig template:
 
-.. code-block:: jinja
+.. code-block:: html+twig
 
     {% if admin.hasAccess('list') %}
         {# ... #}
@@ -239,25 +232,22 @@ If you want to change the handler behavior, create your own handler implementing
 
 And specify it as Sonata security handler on your configuration:
 
-.. configuration-block::
+.. code-block:: yaml
 
-    .. code-block:: yaml
+    # config/packages/sonata_admin.yaml
 
-        # config/packages/sonata_admin.yaml
+    sonata_admin:
+        default_admin_services:
+            security_handler: App\Security\Handler\MySecurityHandler
 
-        sonata_admin:
-            default_admin_services:
-                security_handler: App\Security\Handler\MySecurityHandler
+ACL and SonataUserBundle
+------------------------
 
-ACL and FriendsOfSymfony/UserBundle
------------------------------------
 
 If you want a straightforward way to handle users, please use:
 
-- `FOSUserBundle <https://github.com/FriendsOfSymfony/FOSUserBundle>`_: handles
-  users and groups stored in RDBMS or MongoDB
-- `SonataUserBundle <https://github.com/sonata-project/SonataUserBundle>`_: integrates the
-  ``FriendsOfSymfony/UserBundle`` with the ``AdminBundle``
+- `SonataUserBundle <https://github.com/sonata-project/SonataUserBundle>`_: handles
+  users and groups stored in RDBMS or MongoDB.
 
 The security integration is a work in progress and has some known issues:
 
@@ -268,43 +258,17 @@ The security integration is a work in progress and has some known issues:
 Configuration
 ^^^^^^^^^^^^^
 
-Before you can use ``FriendsOfSymfony/FOSUserBundle`` you need to set it up as
-described in the documentation of the bundle. In step 4 you need to create a
-User class (in a custom UserBundle). Do it as follows::
+Before you can use ``sonata-project/SonataUserBundle`` you need to set
+it up as described in the `documentation of the bundle
+<https://docs.sonata-project.org/projects/SonataUserBundle/en/5.x/>`_.
 
-    // src/Entity/User.php
-
-    namespace App\Entity;
-
-    use Sonata\UserBundle\Entity\BaseUser as BaseUser;
-    use Doctrine\ORM\Mapping as ORM;
-
-    /**
-     * @ORM\Entity
-     * @ORM\Table(name="fos_user")
-     */
-    class User extends BaseUser
-    {
-        /**
-         * @ORM\Id
-         * @ORM\Column(type="integer")
-         * @ORM\GeneratedValue(strategy="AUTO")
-         */
-        protected $id;
-
-        public function __construct()
-        {
-            parent::__construct();
-            // your own logic
-        }
-    }
 
 If you are going to use ACL, you must create a service implementing
 `Sonata\AdminBundle\Util\AdminAclUserManagerInterface`::
 
     namespace App\Manager;
 
-    use FOS\UserBundle\Model\UserManagerInterface;
+    use Sonata\UserBundle\Model\UserManagerInterface;
     use Sonata\AdminBundle\Util\AdminAclUserManagerInterface;
 
     final class AclUserManager implements AdminAclUserManagerInterface
@@ -327,114 +291,95 @@ If you are going to use ACL, you must create a service implementing
 
 and then configure SonataAdminBundle:
 
-.. configuration-block::
+.. code-block:: yaml
 
-    .. code-block:: yaml
+    # config/packages/sonata_admin.yaml
 
-        # config/packages/sonata_admin.yaml
-
-        sonata_admin:
-            security:
-                handler: sonata.admin.security.handler.acl
-                acl_user_manager: App\Manager\AclUserManager
-                # ...
-
-In your ``config/packages/fos_user.yaml`` you then need to put the following:
-
-.. configuration-block::
-
-    .. code-block:: yaml
-
-        # config/packages/fos_user.yaml
-
-        fos_user:
-            db_driver: orm
-            firewall_name: main
-            user_class: App\Entity\User
+    sonata_admin:
+        security:
+            handler: sonata.admin.security.handler.acl
+            acl_user_manager: App\Manager\AclUserManager
+            # ...
 
 The following configuration for the SonataUserBundle defines:
 
-- the ``FriendsOfSymfony/FOSUserBundle`` as a security provider
+- the ``sonata-project/SonataUserBundle`` as a security provider
 - the login form for authentication
 - the access control: resources with related required roles, the important
   part is the admin configuration
 - the ``acl`` option to enable the ACL
 - the ``AdminPermissionMap`` defines the permissions of the Admin class
 
-.. configuration-block::
+.. code-block:: yaml
 
-    .. code-block:: yaml
+    # config/services.yaml
 
-        # config/services.yaml
+    services:
+        security.acl.permission.map:
+            class: Sonata\AdminBundle\Security\Acl\Permission\AdminPermissionMap
 
-        services:
-            security.acl.permission.map:
-              class: Sonata\AdminBundle\Security\Acl\Permission\AdminPermissionMap
-
-        # optionally use a custom MaskBuilder
-        parameters:
-            sonata.admin.security.mask.builder.class: Sonata\AdminBundle\Security\Acl\Permission\MaskBuilder
+    # optionally use a custom MaskBuilder
+    parameters:
+        sonata.admin.security.mask.builder.class: Sonata\AdminBundle\Security\Acl\Permission\MaskBuilder
 
 In ``config/packages/security.yaml``:
 
-.. configuration-block::
+.. code-block:: yaml
 
-    .. code-block:: yaml
+    # config/packages/security.yaml
 
-        # config/packages/security.yaml
+    security:
+        providers:
+            sonata_user_bundle:
+                id: sonata.user.security.user_provider
 
-        security:
-            providers:
-                fos_userbundle:
-                    id: fos_user.user_manager
+        firewalls:
+            admin:
+                pattern:      .*
+                form-login:
+                    provider:       sonata_user_bundle
+                    login_path:     /login
+                    use_forward:    false
+                    check_path:     /login_check
+                    failure_path:   null
+                logout:       true
+                anonymous:    true
 
-            firewalls:
-                main:
-                    pattern:      .*
-                    form-login:
-                        provider:       fos_userbundle
-                        login_path:     /login
-                        use_forward:    false
-                        check_path:     /login_check
-                        failure_path:   null
-                    logout:       true
-                    anonymous:    true
+        access_control:
 
-            access_control:
+            # The WDT has to be allowed to anonymous users to avoid requiring the login with the AJAX request
+            - { path: ^/wdt/, role: IS_AUTHENTICATED_ANONYMOUSLY }
+            - { path: ^/profiler/, role: IS_AUTHENTICATED_ANONYMOUSLY }
 
-                # The WDT has to be allowed to anonymous users to avoid requiring the login with the AJAX request
-                - { path: ^/wdt/, role: IS_AUTHENTICATED_ANONYMOUSLY }
-                - { path: ^/profiler/, role: IS_AUTHENTICATED_ANONYMOUSLY }
+            # AsseticBundle paths used when using the controller for assets
+            - { path: ^/js/, role: IS_AUTHENTICATED_ANONYMOUSLY }
+            - { path: ^/css/, role: IS_AUTHENTICATED_ANONYMOUSLY }
 
-                # AsseticBundle paths used when using the controller for assets
-                - { path: ^/js/, role: IS_AUTHENTICATED_ANONYMOUSLY }
-                - { path: ^/css/, role: IS_AUTHENTICATED_ANONYMOUSLY }
+            # URL of SonataUserBundle which need to be available to anonymous users
+            - { path: ^/login$, role: IS_AUTHENTICATED_ANONYMOUSLY }
+            - { path: ^/login_check$, role: IS_AUTHENTICATED_ANONYMOUSLY } # for the case of a failed login
+            - { path: ^/user/new$, role: IS_AUTHENTICATED_ANONYMOUSLY }
+            - { path: ^/user/check-confirmation-email$, role: IS_AUTHENTICATED_ANONYMOUSLY }
+            - { path: ^/user/confirm/, role: IS_AUTHENTICATED_ANONYMOUSLY }
+            - { path: ^/user/confirmed$, role: IS_AUTHENTICATED_ANONYMOUSLY }
+            - { path: ^/user/request-reset-password$, role: IS_AUTHENTICATED_ANONYMOUSLY }
+            - { path: ^/user/send-resetting-email$, role: IS_AUTHENTICATED_ANONYMOUSLY }
+            - { path: ^/user/check-resetting-email$, role: IS_AUTHENTICATED_ANONYMOUSLY }
+            - { path: ^/user/reset-password/, role: IS_AUTHENTICATED_ANONYMOUSLY }
 
-                # URL of FOSUserBundle which need to be available to anonymous users
-                - { path: ^/login$, role: IS_AUTHENTICATED_ANONYMOUSLY }
-                - { path: ^/login_check$, role: IS_AUTHENTICATED_ANONYMOUSLY } # for the case of a failed login
-                - { path: ^/user/new$, role: IS_AUTHENTICATED_ANONYMOUSLY }
-                - { path: ^/user/check-confirmation-email$, role: IS_AUTHENTICATED_ANONYMOUSLY }
-                - { path: ^/user/confirm/, role: IS_AUTHENTICATED_ANONYMOUSLY }
-                - { path: ^/user/confirmed$, role: IS_AUTHENTICATED_ANONYMOUSLY }
-                - { path: ^/user/request-reset-password$, role: IS_AUTHENTICATED_ANONYMOUSLY }
-                - { path: ^/user/send-resetting-email$, role: IS_AUTHENTICATED_ANONYMOUSLY }
-                - { path: ^/user/check-resetting-email$, role: IS_AUTHENTICATED_ANONYMOUSLY }
-                - { path: ^/user/reset-password/, role: IS_AUTHENTICATED_ANONYMOUSLY }
+            # Secured part of the site
+            # This config requires being logged for the whole site and having the admin role for the admin part.
+            # Change these rules to adapt them to your needs
+            - { path: ^/admin/, role: ROLE_ADMIN }
+            - { path: ^/.*, role: IS_AUTHENTICATED_ANONYMOUSLY }
 
-                # Secured part of the site
-                # This config requires being logged for the whole site and having the admin role for the admin part.
-                # Change these rules to adapt them to your needs
-                - { path: ^/admin/, role: ROLE_ADMIN }
-                - { path: ^/.*, role: IS_AUTHENTICATED_ANONYMOUSLY }
+        # Sonata "special" roles (ROLE_SONATA_ADMIN and ROLE_SUPER_ADMIN) are configurable
+        role_hierarchy:
+            ROLE_ADMIN:       [ROLE_USER, ROLE_SONATA_ADMIN]
+            ROLE_SUPER_ADMIN: [ROLE_ADMIN, ROLE_ALLOWED_TO_SWITCH]
 
-            # Sonata "special" roles (ROLE_SONATA_ADMIN and ROLE_SUPER_ADMIN) are configurable
-            role_hierarchy:
-                ROLE_ADMIN:       [ROLE_USER, ROLE_SONATA_ADMIN]
-                ROLE_SUPER_ADMIN: [ROLE_ADMIN, ROLE_ALLOWED_TO_SWITCH]
-
-            acl:
-                connection: default
+        acl:
+            connection: default
 
 - Install the ACL tables ``bin/console init:acl``
 
@@ -442,7 +387,7 @@ In ``config/packages/security.yaml``:
 
 .. code-block:: bash
 
-    bin/console fos:user:create --super-admin
+    bin/console sonata:user:create --super-admin
         Please choose a username:root
         Please choose an email:root@domain.com
         Please choose a password:root
@@ -574,7 +519,7 @@ because for example you want to restrict access using extra rules:
 
     namespace App\Security\Authorization\Voter;
 
-    use FOS\UserBundle\Model\UserInterface;
+    use Sonata\UserBundle\Model\UserInterface;
     use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
     use Symfony\Component\Security\Acl\Voter\AclVoter;
 
@@ -583,10 +528,10 @@ because for example you want to restrict access using extra rules:
         public function supportsClass($class)
         {
             // support the Class-Scope ACL for votes with the custom permission map
-            // return $class === 'Sonata\UserBundle\Admin\Entity\UserAdmin' || is_subclass_of($class, 'FOS\UserBundle\Model\UserInterface');
+            // return $class === 'Sonata\UserBundle\Admin\Entity\UserAdmin' || is_subclass_of($class, 'Sonata\UserBundle\Model\UserInterface');
             // if you use php >=5.3.7 you can check the inheritance with is_a($class, 'Sonata\UserBundle\Admin\Entity\UserAdmin');
             // support the Object-Scope ACL
-            return is_subclass_of($class, 'FOS\UserBundle\Model\UserInterface');
+            return is_subclass_of($class, 'Sonata\UserBundle\Model\UserInterface');
         }
 
         public function supportsAttribute($attribute)
@@ -622,43 +567,39 @@ because for example you want to restrict access using extra rules:
 
 - declare the voter and permission map as a service
 
-.. configuration-block::
+.. code-block:: xml
 
-    .. code-block:: xml
+    <!-- config/services.xml -->
 
-        <!-- config/services.xml -->
+    <!-- <service id="security.acl.user_permission.map" class="App\Security\Acl\Permission\UserAdminPermissionMap" public="false"></service> -->
 
-        <!-- <service id="security.acl.user_permission.map" class="App\Security\Acl\Permission\UserAdminPermissionMap" public="false"></service> -->
-
-        <service id="security.acl.voter.user_permissions" class="App\Security\Authorization\Voter\UserAclVoter" public="false">
-            <tag name="monolog.logger" channel="security"/>
-            <argument type="service" id="security.acl.provider"/>
-            <argument type="service" id="security.acl.object_identity_retrieval_strategy"/>
-            <argument type="service" id="security.acl.security_identity_retrieval_strategy"/>
-            <argument type="service" id="security.acl.permission.map"/>
-            <argument type="service" id="logger" on-invalid="null"/>
-            <tag name="security.voter" priority="255"/>
-        </service>
+    <service id="security.acl.voter.user_permissions" class="App\Security\Authorization\Voter\UserAclVoter" public="false">
+        <tag name="monolog.logger" channel="security"/>
+        <argument type="service" id="security.acl.provider"/>
+        <argument type="service" id="security.acl.object_identity_retrieval_strategy"/>
+        <argument type="service" id="security.acl.security_identity_retrieval_strategy"/>
+        <argument type="service" id="security.acl.permission.map"/>
+        <argument type="service" id="logger" on-invalid="null"/>
+        <tag name="security.voter" priority="255"/>
+    </service>
 
 - change the access decision strategy to ``unanimous``
 
-.. configuration-block::
+.. code-block:: yaml
 
-    .. code-block:: yaml
+    # config/packages/security.yaml
 
-        # config/packages/security.yaml
+    security:
+        access_decision_manager:
 
-        security:
-            access_decision_manager:
-
-                # strategy value can be: affirmative, unanimous or consensus
-                strategy: unanimous
+            # strategy value can be: affirmative, unanimous or consensus
+            strategy: unanimous
 
 - to make this work the permission needs to be checked using the Object ACL
 
   - modify the template (or code) where applicable:
 
-.. code-block:: html+jinja
+.. code-block:: html+twig
 
     {% if admin.hasAccess('edit', user_object) %}
         {# ... #}
@@ -682,7 +623,7 @@ In the templates, or in your code, you can use the Admin method ``hasAccess()``:
 
 - check for an admin that the user is allowed to ``EDIT``:
 
-.. code-block:: html+jinja
+.. code-block:: html+twig
 
     {# use the admin security method  #}
     {% if admin.hasAccess('edit') %}
@@ -697,7 +638,7 @@ In the templates, or in your code, you can use the Admin method ``hasAccess()``:
 - check for an admin that the user is allowed to ``DELETE``, the object is added
   to also check if the object owner is allowed to ``DELETE``:
 
-.. code-block:: html+jinja
+.. code-block:: html+twig
 
     {# use the admin security method  #}
     {% if admin.hasAccess('delete', object) %}
@@ -738,7 +679,7 @@ User list customization
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 By default, the ACL editor allows to set permissions for all users managed by
-``FOSUserBundle``.
+``SonataUserBundle``.
 
 To customize displayed user override
 ``Sonata\AdminBundle\Controller\CRUDController::getAclUsers()``. This method must
@@ -746,7 +687,7 @@ return an iterable collection of users::
 
     protected function getAclUsers(): \Traversable
     {
-        $userManager = $container->get('fos_user.user_manager');
+        $userManager = $container->get('sonata.user.manager.user');
 
         // Display only kevin and anne
         $users[] = $userManager->findUserByUsername('kevin');

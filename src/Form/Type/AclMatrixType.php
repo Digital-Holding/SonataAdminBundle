@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Form\Type;
 
-use Sonata\AdminBundle\BCLayer\BCUserInterface;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\HiddenType;
@@ -26,6 +25,8 @@ use Symfony\Component\Security\Core\User\UserInterface;
  *
  * @author Samuel Roze <samuel@sroze.io>
  * @author Baptiste Meyer <baptiste@les-tilleuls.coop>
+ *
+ * @psalm-suppress MissingTemplateParam https://github.com/phpstan/phpstan-symfony/issues/320
  */
 final class AclMatrixType extends AbstractType
 {
@@ -35,7 +36,7 @@ final class AclMatrixType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $aclValueType = $options['acl_value'] instanceof UserInterface ? 'user' : 'role';
-        $aclValueData = $options['acl_value'] instanceof UserInterface ? BCUserInterface::getUsername($options['acl_value']) : $options['acl_value'];
+        $aclValueData = $options['acl_value'] instanceof UserInterface ? $options['acl_value']->getUserIdentifier() : $options['acl_value'];
 
         $builder->add($aclValueType, HiddenType::class, [
             'data' => $aclValueData,

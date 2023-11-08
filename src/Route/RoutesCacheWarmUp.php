@@ -21,20 +21,10 @@ use Symfony\Component\HttpKernel\CacheWarmer\CacheWarmerInterface;
  */
 final class RoutesCacheWarmUp implements CacheWarmerInterface
 {
-    /**
-     * @var RoutesCache
-     */
-    private $cache;
-
-    /**
-     * @var Pool
-     */
-    private $pool;
-
-    public function __construct(RoutesCache $cache, Pool $pool)
-    {
-        $this->cache = $cache;
-        $this->pool = $pool;
+    public function __construct(
+        private RoutesCache $cache,
+        private Pool $pool
+    ) {
     }
 
     public function isOptional(): bool
@@ -43,16 +33,12 @@ final class RoutesCacheWarmUp implements CacheWarmerInterface
     }
 
     /**
-     * NEXT_MAJOR: Add the string param typehint when Symfony 4 support is dropped.
-     *
-     * @param string $cacheDir
-     *
      * @return string[]
      */
-    public function warmUp($cacheDir): array
+    public function warmUp(string $cacheDir): array
     {
-        foreach ($this->pool->getAdminServiceIds() as $id) {
-            $this->cache->load($this->pool->getInstance($id));
+        foreach ($this->pool->getAdminServiceCodes() as $code) {
+            $this->cache->load($this->pool->getInstance($code));
         }
 
         return [];

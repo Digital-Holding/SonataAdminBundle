@@ -15,10 +15,12 @@ namespace Sonata\AdminBundle\Tests\DependencyInjection\Compiler;
 
 use Matthias\SymfonyDependencyInjectionTest\PhpUnit\AbstractCompilerPassTestCase;
 use Sonata\AdminBundle\Admin\AbstractAdmin;
+use Sonata\AdminBundle\Admin\Pool;
 use Sonata\AdminBundle\DependencyInjection\Admin\TaggedAdminInterface;
 use Sonata\AdminBundle\DependencyInjection\Compiler\AddDependencyCallsCompilerPass;
 use Sonata\AdminBundle\DependencyInjection\SonataAdminExtension;
 use Sonata\AdminBundle\Tests\Fixtures\Controller\FooAdminController;
+use Sonata\BlockBundle\Cache\HttpCacheHandler;
 use Sonata\BlockBundle\DependencyInjection\SonataBlockExtension;
 use Symfony\Bundle\FrameworkBundle\Translation\Translator;
 use Symfony\Component\DependencyInjection\ChildDefinition;
@@ -33,10 +35,7 @@ use Symfony\Component\DependencyInjection\Reference;
  */
 final class AddDependencyCallsCompilerPassTest extends AbstractCompilerPassTestCase
 {
-    /**
-     * @var SonataAdminExtension
-     */
-    private $extension;
+    private SonataAdminExtension $extension;
 
     protected function setUp(): void
     {
@@ -90,9 +89,11 @@ final class AddDependencyCallsCompilerPassTest extends AbstractCompilerPassTestC
         static::assertFalse($dashboardGroupsSettings['sonata_group_one']['on_top']);
         static::assertTrue($dashboardGroupsSettings['sonata_group_three']['on_top']);
         static::assertFalse($dashboardGroupsSettings['sonata_group_one']['keep_open']);
+        static::assertIsArray($dashboardGroupsSettings['sonata_group_one']['items'][0]);
         static::assertArrayHasKey('admin', $dashboardGroupsSettings['sonata_group_one']['items'][0]);
         static::assertArrayHasKey('route_params', $dashboardGroupsSettings['sonata_group_one']['items'][0]);
         static::assertContains('sonata_post_admin', $dashboardGroupsSettings['sonata_group_one']['items'][0]);
+        static::assertIsArray($dashboardGroupsSettings['sonata_group_one']['items'][1]);
         static::assertArrayHasKey('route', $dashboardGroupsSettings['sonata_group_one']['items'][1]);
         static::assertArrayHasKey('label', $dashboardGroupsSettings['sonata_group_one']['items'][1]);
         static::assertArrayHasKey('route_params', $dashboardGroupsSettings['sonata_group_one']['items'][1]);
@@ -101,6 +102,7 @@ final class AddDependencyCallsCompilerPassTest extends AbstractCompilerPassTestC
         static::assertSame('blog_name', $dashboardGroupsSettings['sonata_group_one']['items'][1]['route']);
         static::assertSame('Blog', $dashboardGroupsSettings['sonata_group_one']['items'][1]['label']);
         static::assertSame([], $dashboardGroupsSettings['sonata_group_one']['items'][1]['route_params']);
+        static::assertIsArray($dashboardGroupsSettings['sonata_group_one']['items'][2]);
         static::assertArrayHasKey('route', $dashboardGroupsSettings['sonata_group_one']['items'][2]);
         static::assertArrayHasKey('label', $dashboardGroupsSettings['sonata_group_one']['items'][2]);
         static::assertArrayHasKey('route_params', $dashboardGroupsSettings['sonata_group_one']['items'][2]);
@@ -261,9 +263,10 @@ final class AddDependencyCallsCompilerPassTest extends AbstractCompilerPassTestC
 
         // use array_values to check groups position
         $adminGroups = array_values($adminGroups);
+        $firstGroup = $adminGroups[0];
 
-        static::assertSame('sonata_group_one', $adminGroups['0']['label'], 'second group in configuration, first in list');
-        static::assertSame('1 Entry', $adminGroups[0]['items'][0]['label'], 'second entry for group in configuration, first in list');
+        static::assertSame('sonata_group_one', $firstGroup['label'], 'second group in configuration, first in list');
+        static::assertSame('1 Entry', $firstGroup['items'][0]['label'], 'second entry for group in configuration, first in list');
     }
 
     public function testProcessGroupNameAsParameter(): void
@@ -459,7 +462,7 @@ final class AddDependencyCallsCompilerPassTest extends AbstractCompilerPassTestC
 
         try {
             $this->compile();
-        } catch (\RuntimeException $e) {
+        } catch (\RuntimeException) {
             static::fail('An expected exception has been raised.');
         }
     }
@@ -570,6 +573,154 @@ final class AddDependencyCallsCompilerPassTest extends AbstractCompilerPassTestC
 
         $this->compile();
     }
+
+    public function testProcessAdminItemPriorityDefinition(): void
+    {
+        $this->setUpContainer();
+
+        foreach ($this->container->findTaggedServiceIds('sonata.admin') as $id => $_) {
+            $this->container->removeDefinition($id);
+        }
+
+        $config = $this->getConfig();
+        $config['dashboard']['groups'] = [];
+
+        $this->extension->load([$config], $this->container);
+
+        $priorities = [200, 100, 450, 3000, 620, 330];
+        foreach ($priorities as $priority) {
+            $this->container
+                ->register('sonata_admin_'.$priority)
+                ->setPublic(true)
+                ->setClass(CustomAdmin::class)
+                ->addTag('sonata.admin', ['model_class' => NewsEntity::class, 'controller' => 'sonata.admin.controller.crud', 'group' => 'sonata_group_priority_1', 'label' => 'Entry', 'manager_type' => 'orm', 'priority' => $priority]);
+        }
+
+        $this->compile();
+
+        rsort($priorities);
+        $adminGroups = $this->container->findDefinition('sonata.admin.pool')->getArgument(2);
+        static::assertCount(\count($priorities), $adminGroups['sonata_group_priority_1']['items']);
+        foreach ($adminGroups['sonata_group_priority_1']['items'] as $item) {
+            $priority = array_shift($priorities);
+            static::assertSame('sonata_admin_'.$priority, $item['admin']);
+        }
+    }
+
+    public function testGroupOrderingWithAdminItemPriorityDefinition(): void
+    {
+        $this->setUpContainer();
+
+        foreach ($this->container->findTaggedServiceIds('sonata.admin') as $id => $_) {
+            $this->container->removeDefinition($id);
+        }
+
+        $config = $this->getConfig();
+        $config['dashboard']['groups'] = [];
+
+        $this->extension->load([$config], $this->container);
+
+        $this->container
+            ->register('sonata_admin_1')
+            ->setPublic(true)
+            ->setClass(CustomAdmin::class)
+            ->addTag('sonata.admin', ['model_class' => NewsEntity::class, 'controller' => 'sonata.admin.controller.crud', 'group' => 'sonata_group_priority_1', 'label' => 'Entry', 'manager_type' => 'orm', 'priority' => 1000]);
+
+        $this->container
+            ->register('sonata_admin_2')
+            ->setPublic(true)
+            ->setClass(CustomAdmin::class)
+            ->addTag('sonata.admin', ['model_class' => NewsEntity::class, 'controller' => 'sonata.admin.controller.crud', 'group' => 'sonata_group_priority_3', 'label' => 'Entry', 'manager_type' => 'orm', 'priority' => 3000]);
+
+        $this->container
+            ->register('sonata_admin_3')
+            ->setPublic(true)
+            ->setClass(CustomAdmin::class)
+            ->addTag('sonata.admin', ['model_class' => NewsEntity::class, 'controller' => 'sonata.admin.controller.crud', 'group' => 'sonata_group_priority_2', 'label' => 'Entry', 'manager_type' => 'orm', 'priority' => 4000]);
+
+        $this->compile();
+
+        $adminGroups = $this->container->findDefinition('sonata.admin.pool')->getArgument(2);
+        static::assertCount(3, $adminGroups);
+        static::assertSame(['sonata_group_priority_2', 'sonata_group_priority_3', 'sonata_group_priority_1'], array_keys($adminGroups));
+    }
+
+    public function testAdminCodeShouldBeInjectedToPool(): void
+    {
+        $this->setUpContainer();
+
+        $this->container
+            ->register('sonata_foo_admin')
+            ->setClass(CustomAdmin::class)
+            ->setPublic(true)
+            ->addTag('sonata.admin', ['model_class' => FooEntity::class, 'code' => 'sonata_bar_admin', 'controller' => 'sonata.admin.controller.crud', 'group' => 'sonata_group_one', 'manager_type' => 'test']);
+
+        $this->container
+            ->register('sonata_baz_admin')
+            ->setClass(CustomAdmin::class)
+            ->setPublic(true)
+            ->addTag('sonata.admin', ['model_class' => BazEntity::class, 'default' => true, 'code' => 'sonata_qux_admin', 'controller' => 'sonata.admin.controller.crud', 'group' => 'sonata_group_one', 'manager_type' => 'test']);
+
+        $config = $this->getConfig();
+        $config['options']['sort_admins'] = true;
+        unset($config['dashboard']['groups']);
+
+        $this->extension->load([$config], $this->container);
+        $this->container->getDefinition('sonata.admin.pool')->setPublic(true);
+
+        $this->compile();
+
+        self::assertContainerBuilderHasService('sonata.admin.pool');
+
+        $pool = $this->container->get('sonata.admin.pool');
+        static::assertInstanceOf(Pool::class, $pool);
+
+        $serviceCodes = $pool->getAdminServiceCodes();
+
+        static::assertContains('sonata_bar_admin', $serviceCodes);
+        static::assertNotContains('sonata_foo_admin', $serviceCodes);
+
+        static::assertContains('sonata_qux_admin', $serviceCodes);
+        static::assertNotContains('sonata_baz_admin', $serviceCodes);
+
+        $classes = $pool->getAdminClasses();
+
+        static::assertArrayHasKey(FooEntity::class, $classes);
+        static::assertCount(1, $classes[FooEntity::class]);
+        static::assertArrayHasKey(0, $classes[FooEntity::class]);
+        static::assertSame('sonata_bar_admin', $classes[FooEntity::class][0]);
+
+        static::assertArrayHasKey(BazEntity::class, $classes);
+        static::assertCount(1, $classes[BazEntity::class]);
+        static::assertArrayHasKey(Pool::DEFAULT_ADMIN_KEY, $classes[BazEntity::class]);
+        static::assertSame('sonata_qux_admin', $classes[BazEntity::class][Pool::DEFAULT_ADMIN_KEY]);
+    }
+
+    /**
+     * NEXT_MAJOR: Enable this test.
+     */
+    // public function testTaggingAdminClassMoreThanOnce(): void
+    // {
+    //    $this->setUpContainer();
+    //
+    //    $this->container
+    //        ->register('sonata_foo_admin')
+    //        ->setClass(CustomAdmin::class)
+    //        ->setPublic(true)
+    //        ->addTag('sonata.admin', ['model_class' => PostEntity::class, 'code' => 'sonata_post_admin', 'controller' => 'sonata.admin.controller.crud', 'group' => 'sonata_group_one', 'manager_type' => 'test'])
+    //        ->addTag('sonata.admin', ['model_class' => ArticleEntity::class, 'code' => 'sonata_article_admin', 'controller' => 'sonata.admin.controller.crud', 'group' => 'sonata_group_two', 'manager_type' => 'test']);
+    //
+    //    $this->extension->load([$this->getConfig()], $this->container);
+    //
+    //    $this->expectException(\RuntimeException::class);
+    //    $this->expectExceptionMessage(
+    //        'Found multiple sonata.admin tags in service sonata_foo_admin. Tagging a service with sonata.admin more
+    //                than once is not supported. Consider defining multiple services with different sonata.admin tag
+    //                parameters if this is really needed.'
+    //    );
+    //
+    //    $this->compile();
+    // }
 
     /**
      * @return array<string, mixed>
@@ -684,7 +835,15 @@ final class AddDependencyCallsCompilerPassTest extends AbstractCompilerPassTestC
         $this->container->setAlias('translator', 'translator.default');
 
         $blockExtension = new SonataBlockExtension();
-        $blockExtension->load([], $this->container);
+        /*
+         * TODO: remove "http_cache" parameter when support for SonataBlockBundle 4 is dropped.
+         */
+        $blockExtension->load(
+            [
+                'sonata_block' => class_exists(HttpCacheHandler::class) ? ['http_cache' => false] : [],
+            ],
+            $this->container
+        );
     }
 
     private function allowToResolveChildren(): void
@@ -720,5 +879,11 @@ class PostEntity
 {
 }
 class ArticleEntity
+{
+}
+class FooEntity
+{
+}
+class BazEntity
 {
 }

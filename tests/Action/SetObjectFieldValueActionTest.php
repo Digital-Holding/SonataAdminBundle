@@ -39,42 +39,33 @@ final class SetObjectFieldValueActionTest extends TestCase
     /**
      * @var Stub&AdminFetcherInterface
      */
-    private $adminFetcher;
+    private AdminFetcherInterface $adminFetcher;
 
-    /**
-     * @var Environment
-     */
-    private $twig;
+    private Environment $twig;
 
-    /**
-     * @var SetObjectFieldValueAction
-     */
-    private $action;
+    private SetObjectFieldValueAction $action;
 
     /**
      * @var AdminInterface<object>&MockObject
      */
-    private $admin;
+    private AdminInterface $admin;
 
     /**
      * @var ValidatorInterface&MockObject
      */
-    private $validator;
+    private ValidatorInterface $validator;
 
     /**
      * @var ModelManagerInterface<object>&MockObject
      */
-    private $modelManager;
+    private ModelManagerInterface $modelManager;
 
-    /**
-     * @var DataTransformerResolver
-     */
-    private $resolver;
+    private DataTransformerResolver $resolver;
 
     /**
      * @var MockObject&MutableTemplateRegistryInterface
      */
-    private $templateRegistry;
+    private MutableTemplateRegistryInterface $templateRegistry;
 
     protected function setUp(): void
     {
@@ -143,28 +134,25 @@ final class SetObjectFieldValueActionTest extends TestCase
     /**
      * @phpstan-return iterable<array-key, array{\DateTimeZone|string|false|null, \DateTimeZone}>
      */
-    public function getTimeZones(): iterable
+    public function provideSetObjectFieldValueActionWithDateCases(): iterable
     {
         $default = new \DateTimeZone(date_default_timezone_get());
         $custom = new \DateTimeZone('Europe/Rome');
-
-        return [
-            'empty timezone' => [null, $default],
-            'disabled timezone' => [false, $default],
-            'default timezone by name' => [$default->getName(), $default],
-            'default timezone by object' => [$default, $default],
-            'custom timezone by name' => [$custom->getName(), $custom],
-            'custom timezone by object' => [$custom, $custom],
-        ];
+        yield 'empty timezone' => [null, $default];
+        yield 'disabled timezone' => [false, $default];
+        yield 'default timezone by name' => [$default->getName(), $default];
+        yield 'default timezone by object' => [$default, $default];
+        yield 'custom timezone by name' => [$custom->getName(), $custom];
+        yield 'custom timezone by object' => [$custom, $custom];
     }
 
     /**
-     * @param \DateTimeZone|string|false|null $timezone
-     *
-     * @dataProvider getTimeZones
+     * @dataProvider provideSetObjectFieldValueActionWithDateCases
      */
-    public function testSetObjectFieldValueActionWithDate($timezone, \DateTimeZone $expectedTimezone): void
-    {
+    public function testSetObjectFieldValueActionWithDate(
+        \DateTimeZone|string|false|null $timezone,
+        \DateTimeZone $expectedTimezone
+    ): void {
         $object = new Bafoo();
         $request = new Request([
             '_sonata_admin' => 'sonata.post.admin',
@@ -228,7 +216,7 @@ final class SetObjectFieldValueActionTest extends TestCase
         $this->admin->method('hasAccess')->with('edit', $object)->willReturn(true);
         $this->admin->method('hasListFieldDescription')->with('bar')->willReturn(true);
         $this->admin->method('getListFieldDescription')->with('bar')->willReturn($fieldDescription);
-        $this->admin->method('getClass')->willReturn(\get_class($object));
+        $this->admin->method('getClass')->willReturn($object::class);
         $this->admin->expects(static::once())->method('update')->with($object);
         $this->templateRegistry->method('getTemplate')->with('base_list_field')->willReturn('admin_template');
         $fieldDescription->method('getType')->willReturn('choice');
@@ -241,7 +229,7 @@ final class SetObjectFieldValueActionTest extends TestCase
         $fieldDescription->method('getAdmin')->willReturn($this->admin);
         $fieldDescription->method('getTemplate')->willReturn('field_template');
         $fieldDescription->method('getValue')->willReturn('some value');
-        $this->modelManager->method('find')->with(\get_class($associationObject), 1)->willReturn($associationObject);
+        $this->modelManager->method('find')->with($associationObject::class, 1)->willReturn($associationObject);
 
         $this->validator->method('validate')->with($object)->willReturn(new ConstraintViolationList([]));
 
@@ -335,11 +323,10 @@ final class SetObjectFieldValueActionTest extends TestCase
             'context' => 'list',
         ], [], [], [], [], ['REQUEST_METHOD' => Request::METHOD_POST, 'HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest']);
 
-        $dataTransformer = new CallbackTransformer(static function ($value): string {
-            return (string) (int) $value;
-        }, static function ($value): bool {
-            return filter_var($value, \FILTER_VALIDATE_BOOLEAN);
-        });
+        $dataTransformer = new CallbackTransformer(
+            static fn (mixed $value): string => (string) (int) $value,
+            static fn (mixed $value): bool => filter_var($value, \FILTER_VALIDATE_BOOLEAN)
+        );
 
         $fieldDescription = $this->createStub(FieldDescriptionInterface::class);
 
@@ -379,13 +366,14 @@ final class SetObjectFieldValueActionTest extends TestCase
         ], [], [], [], [], ['REQUEST_METHOD' => Request::METHOD_POST, 'HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest']);
 
         $isOverridden = false;
-        $dataTransformer = new CallbackTransformer(static function ($value): string {
-            return (string) (int) $value;
-        }, static function ($value) use (&$isOverridden): bool {
-            $isOverridden = true;
+        $dataTransformer = new CallbackTransformer(
+            static fn (mixed $value): string => (string) (int) $value,
+            static function (mixed $value) use (&$isOverridden): bool {
+                $isOverridden = true;
 
-            return filter_var($value, \FILTER_VALIDATE_BOOLEAN);
-        });
+                return filter_var($value, \FILTER_VALIDATE_BOOLEAN);
+            }
+        );
 
         $fieldDescription = $this->createStub(FieldDescriptionInterface::class);
 

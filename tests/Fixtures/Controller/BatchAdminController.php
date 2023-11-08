@@ -32,10 +32,8 @@ final class BatchAdminController extends CRUDController
      * Returns true if $idx contains 123 and 456.
      *
      * @param string[] $idx
-     *
-     * @return bool|string
      */
-    public function batchActionFooIsRelevant(array $idx, bool $allElements)
+    public function batchActionFooIsRelevant(array $idx, bool $allElements): bool|string
     {
         if (isset($idx[0], $idx[1]) && '123' === $idx[0] && '456' === $idx[1]) {
             return true;
@@ -48,6 +46,9 @@ final class BatchAdminController extends CRUDController
         return false;
     }
 
+    /**
+     * @param ProxyQueryInterface<object> $query
+     */
     public function batchActionFoo(ProxyQueryInterface $query): Response
     {
         return new Response();
@@ -61,6 +62,9 @@ final class BatchAdminController extends CRUDController
         return true;
     }
 
+    /**
+     * @param ProxyQueryInterface<object>|null $query
+     */
     public function batchActionBar(?ProxyQueryInterface $query = null): Response
     {
         return new Response();

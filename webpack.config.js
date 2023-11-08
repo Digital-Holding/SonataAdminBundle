@@ -23,6 +23,8 @@ Encore.setOutputPath('./src/Resources/public')
   .autoProvidejQuery()
   .disableSingleRuntimeChunk()
 
+  .enableStimulusBridge('./assets/js/controllers.json')
+
   .configureCssMinimizerPlugin((options) => {
     options.minimizerOptions = {
       preset: ['default', { discardComments: { removeAll: true } }],
@@ -58,7 +60,6 @@ Encore.setOutputPath('./src/Resources/public')
       pattern: /\.js/,
       to: 'select2-locale/[name].[ext]',
     },
-    { from: './node_modules/moment/locale/', to: 'moment-locale/[name].[ext]' },
   ])
 
   .addEntry('app', './assets/js/app.js');

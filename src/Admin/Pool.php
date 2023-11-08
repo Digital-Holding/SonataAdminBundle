@@ -52,49 +52,26 @@ final class Pool
     public const DEFAULT_ADMIN_KEY = 'default';
 
     /**
-     * @var ContainerInterface
-     */
-    private $container;
-
-    /**
-     * @var string[]
-     */
-    private $adminServiceIds = [];
-
-    /**
-     * @var array<string, array<string, mixed>>
-     * @phpstan-var array<string, Group>
-     */
-    private $adminGroups = [];
-
-    /**
-     * @var array<string, string[]>
-     * @phpstan-var array<class-string, string[]>
-     */
-    private $adminClasses = [];
-
-    /**
-     * @param string[]                            $adminServices
+     * @param string[]                            $adminServiceCodes
      * @param array<string, array<string, mixed>> $adminGroups
      * @param array<class-string, string[]>       $adminClasses
      *
      * @phpstan-param array<string, Group> $adminGroups
      */
     public function __construct(
-        ContainerInterface $container,
-        array $adminServices = [],
-        array $adminGroups = [],
-        array $adminClasses = []
+        private ContainerInterface $container,
+        private array $adminServiceCodes = [],
+        private array $adminGroups = [],
+        private array $adminClasses = []
     ) {
-        $this->container = $container;
-        $this->adminServiceIds = $adminServices;
-        $this->adminGroups = $adminGroups;
-        $this->adminClasses = $adminClasses;
     }
 
     /**
+     * NEXT_MAJOR: Remove the label_catalogue key.
+     *
      * @phpstan-return array<string, array{
      *  label: string,
+     *  label_catalogue?: string,
      *  translation_domain: string,
      *  icon: string,
      *  items: list<AdminInterface<object>>,
@@ -130,6 +107,9 @@ final class Pool
                         AdminInterface::class
                     ), \E_USER_DEPRECATED);
 
+                    /**
+                     * @psalm-suppress DeprecatedMethod, DeprecatedConstant
+                     */
                     if (!$admin->showIn(AbstractAdmin::CONTEXT_DASHBOARD)) {
                         return null;
                     }
@@ -200,7 +180,7 @@ final class Pool
         $admin = $this->getInstance($rootCode);
 
         foreach ($codes as $code) {
-            if (!\in_array($code, $this->adminServiceIds, true)) {
+            if (!\in_array($code, $this->adminServiceCodes, true)) {
                 throw new AdminCodeNotFoundException(sprintf(
                     'Argument 1 passed to %s() must contain a valid admin reference, "%s" found at "%s".',
                     __METHOD__,
@@ -232,7 +212,7 @@ final class Pool
     {
         try {
             $this->getAdminByAdminCode($adminCode);
-        } catch (\InvalidArgumentException $e) {
+        } catch (\InvalidArgumentException) {
             return false;
         }
 
@@ -269,28 +249,28 @@ final class Pool
      *
      * @return AdminInterface<object>
      */
-    public function getInstance(string $id): AdminInterface
+    public function getInstance(string $code): AdminInterface
     {
-        if ('' === $id) {
+        if ('' === $code) {
             throw new \InvalidArgumentException(
                 'Admin code must contain a valid admin reference, empty string given.'
             );
         }
 
-        if (!\in_array($id, $this->adminServiceIds, true)) {
-            $msg = sprintf('Admin service "%s" not found in admin pool.', $id);
+        if (!\in_array($code, $this->adminServiceCodes, true)) {
+            $msg = sprintf('Admin service "%s" not found in admin pool.', $code);
             $shortest = -1;
             $closest = null;
             $alternatives = [];
 
-            foreach ($this->adminServiceIds as $adminServiceId) {
-                $lev = levenshtein($id, $adminServiceId);
+            foreach ($this->adminServiceCodes as $adminServiceCode) {
+                $lev = levenshtein($code, $adminServiceCode);
                 if ($lev <= $shortest || $shortest < 0) {
-                    $closest = $adminServiceId;
+                    $closest = $adminServiceCode;
                     $shortest = $lev;
                 }
-                if ($lev <= \strlen($adminServiceId) / 3 || false !== strpos($adminServiceId, $id)) {
-                    $alternatives[$adminServiceId] = $lev;
+                if ($lev <= \strlen($adminServiceCode) / 3 || str_contains($adminServiceCode, $code)) {
+                    $alternatives[$adminServiceCode] = $lev;
                 }
             }
 
@@ -299,7 +279,7 @@ final class Pool
                 unset($alternatives[$closest]);
                 $msg = sprintf(
                     'Admin service "%s" not found in admin pool. Did you mean "%s" or one of those: [%s]?',
-                    $id,
+                    $code,
                     $closest,
                     implode(', ', array_keys($alternatives))
                 );
@@ -308,10 +288,10 @@ final class Pool
             throw new AdminCodeNotFoundException($msg);
         }
 
-        $admin = $this->container->get($id);
+        $admin = $this->container->get($code);
 
         if (!$admin instanceof AdminInterface) {
-            throw new \InvalidArgumentException(sprintf('Found service "%s" is not a valid admin service', $id));
+            throw new \InvalidArgumentException(sprintf('Found service "%s" is not a valid admin service', $code));
         }
 
         return $admin;
@@ -330,9 +310,21 @@ final class Pool
     /**
      * @return string[]
      */
+    public function getAdminServiceCodes(): array
+    {
+        return $this->adminServiceCodes;
+    }
+
+    /**
+     * NEXT_MAJOR: Remove this method.
+     *
+     * @deprecated since sonata-project/admin-bundle 4.20 will be removed in 5.0 use getAdminServiceCodes() instead.
+     *
+     * @return string[]
+     */
     public function getAdminServiceIds(): array
     {
-        return $this->adminServiceIds;
+        return $this->adminServiceCodes;
     }
 
     /**

@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Sonata\AdminBundle\Translator\Extractor;
 
+use Sonata\AdminBundle\Admin\AdminInterface;
 use Sonata\AdminBundle\Admin\BreadcrumbsBuilderInterface;
 use Sonata\AdminBundle\Admin\Pool;
 use Sonata\AdminBundle\Translator\LabelTranslatorStrategyInterface;
@@ -40,40 +41,18 @@ final class AdminExtractor implements ExtractorInterface, LabelTranslatorStrateg
         'delete',
     ];
 
-    /**
-     * @var string
-     */
-    private $prefix = '';
+    private string $prefix = '';
 
-    /**
-     * @var MessageCatalogue|null
-     */
-    private $catalogue;
+    private ?MessageCatalogue $catalogue = null;
 
-    /**
-     * @var Pool
-     */
-    private $adminPool;
+    private ?LabelTranslatorStrategyInterface $labelStrategy = null;
 
-    /**
-     * @var LabelTranslatorStrategyInterface|null
-     */
-    private $labelStrategy;
+    private ?string $domain = null;
 
-    /**
-     * @var string|null
-     */
-    private $domain;
-
-    /**
-     * @var BreadcrumbsBuilderInterface
-     */
-    private $breadcrumbsBuilder;
-
-    public function __construct(Pool $adminPool, BreadcrumbsBuilderInterface $breadcrumbsBuilder)
-    {
-        $this->adminPool = $adminPool;
-        $this->breadcrumbsBuilder = $breadcrumbsBuilder;
+    public function __construct(
+        private Pool $adminPool,
+        private BreadcrumbsBuilderInterface $breadcrumbsBuilder
+    ) {
     }
 
     /**
@@ -89,8 +68,12 @@ final class AdminExtractor implements ExtractorInterface, LabelTranslatorStrateg
             $catalogue->set($name, $this->prefix.$name, $group['translation_domain']);
         }
 
-        foreach ($this->adminPool->getAdminServiceIds() as $id) {
-            $admin = $this->adminPool->getInstance($id);
+        foreach ($this->adminPool->getAdminServiceCodes() as $code) {
+            $admin = $this->adminPool->getInstance($code);
+
+            if (!$this->isValidAdmin($admin)) {
+                continue;
+            }
 
             $this->labelStrategy = $admin->getLabelTranslatorStrategy();
             $this->domain = $admin->getTranslationDomain();
@@ -101,6 +84,7 @@ final class AdminExtractor implements ExtractorInterface, LabelTranslatorStrateg
             }
 
             $admin->setLabelTranslatorStrategy($this);
+
             $admin->setSubject($admin->getNewInstance());
 
             foreach (self::PUBLIC_ADMIN_METHODS as $method) {
@@ -114,13 +98,9 @@ final class AdminExtractor implements ExtractorInterface, LabelTranslatorStrateg
     }
 
     /**
-     * NEXT_MAJOR: Add string type hint when support for Symfony 4 is dropped.
-     *
      * Sets the prefix that should be used for new found messages.
-     *
-     * @param string $prefix The prefix
      */
-    public function setPrefix($prefix): void
+    public function setPrefix(string $prefix): void
     {
         $this->prefix = $prefix;
     }
@@ -142,5 +122,19 @@ final class AdminExtractor implements ExtractorInterface, LabelTranslatorStrateg
         $this->catalogue->set($label, $this->prefix.$label, $this->domain);
 
         return $label;
+    }
+
+    /**
+     * @param AdminInterface<object> $admin
+     */
+    private function isValidAdmin(AdminInterface $admin): bool
+    {
+        $class = $admin->getClass();
+
+        if (!class_exists($class)) {
+            return false;
+        }
+
+        return !(new \ReflectionClass($class))->isAbstract();
     }
 }

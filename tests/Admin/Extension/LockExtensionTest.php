@@ -33,35 +33,23 @@ use Symfony\Component\HttpFoundation\Request;
 
 final class LockExtensionTest extends TestCase
 {
-    /**
-     * @var LockExtension
-     */
-    private $lockExtension;
+    private LockExtension $lockExtension;
 
-    /**
-     * @var EventDispatcher
-     */
-    private $eventDispatcher;
+    private EventDispatcher $eventDispatcher;
 
     /**
      * @var AdminInterface<object>&Stub
      */
-    private $admin;
+    private AdminInterface $admin;
 
     /**
      * @var LockInterface<object>&MockObject
      */
-    private $modelManager;
+    private LockInterface $modelManager;
 
-    /**
-     * @var \stdClass
-     */
-    private $object;
+    private \stdClass $object;
 
-    /**
-     * @var Request
-     */
-    private $request;
+    private Request $request;
 
     protected function setUp(): void
     {

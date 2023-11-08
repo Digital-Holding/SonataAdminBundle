@@ -16,7 +16,6 @@ namespace Sonata\AdminBundle\Tests\Fixtures\Filter;
 use Sonata\AdminBundle\Datagrid\ProxyQueryInterface;
 use Sonata\AdminBundle\Filter\Filter;
 use Sonata\AdminBundle\Filter\Model\FilterData;
-use Sonata\AdminBundle\Form\Type\Filter\DefaultType;
 
 final class BarFilter extends Filter
 {
@@ -29,10 +28,11 @@ final class BarFilter extends Filter
         return ['bar' => 'bar'];
     }
 
-    public function getRenderSettings(): array
+    /**
+     * @return array<string, mixed>
+     */
+    public function getFormOptions(): array
     {
-        return [DefaultType::class, [
-            'label' => 'label',
-        ]];
+        return ['label' => 'label'];
     }
 }

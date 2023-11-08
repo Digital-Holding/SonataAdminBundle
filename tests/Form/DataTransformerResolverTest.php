@@ -30,20 +30,17 @@ use Symfony\Component\Form\Extension\Core\DataTransformer\DateTimeToStringTransf
  */
 final class DataTransformerResolverTest extends TestCase
 {
-    /**
-     * @var DataTransformerResolver
-     */
-    private $resolver;
+    private DataTransformerResolver $resolver;
 
     /**
      * @var FieldDescriptionInterface&MockObject
      */
-    private $fieldDescription;
+    private FieldDescriptionInterface $fieldDescription;
 
     /**
      * @var ModelManagerInterface<object>&MockObject
      */
-    private $modelManager;
+    private ModelManagerInterface $modelManager;
 
     protected function setUp(): void
     {
@@ -58,17 +55,15 @@ final class DataTransformerResolverTest extends TestCase
     }
 
     /**
-     * @phpstan-return array<array{string}>
+     * @phpstan-return iterable<array{string}>
      */
-    public function provideFieldTypes(): array
+    public function provideFieldTypes(): iterable
     {
-        return [
-            ['foo'],
-            // override predefined transformers
-            ['date'],
-            ['boolean'],
-            ['choice'],
-        ];
+        yield ['foo'];
+        // override predefined transformers
+        yield ['date'];
+        yield ['boolean'];
+        yield ['choice'];
     }
 
     /**
@@ -76,11 +71,10 @@ final class DataTransformerResolverTest extends TestCase
      */
     public function testResolveCustomDataTransformer(string $fieldType): void
     {
-        $customDataTransformer = new CallbackTransformer(static function ($value): string {
-            return (string) (int) $value;
-        }, static function ($value): bool {
-            return filter_var($value, \FILTER_VALIDATE_BOOLEAN);
-        });
+        $customDataTransformer = new CallbackTransformer(
+            static fn (mixed $value): string => (string) (int) $value,
+            static fn (mixed $value): bool => filter_var($value, \FILTER_VALIDATE_BOOLEAN)
+        );
         $this->fieldDescription->method('getOption')->with('data_transformer')->willReturn($customDataTransformer);
         $this->fieldDescription->method('getType')->willReturn($fieldType);
 
@@ -93,27 +87,22 @@ final class DataTransformerResolverTest extends TestCase
     /**
      * @phpstan-return iterable<array-key, array{mixed, \DateTimeZone}>
      */
-    public function getTimeZones(): iterable
+    public function provideResolveDateDataTransformerCases(): iterable
     {
         $default = new \DateTimeZone(date_default_timezone_get());
         $custom = new \DateTimeZone('Europe/Rome');
-
-        return [
-            'empty timezone' => [null, $default],
-            'disabled timezone' => [false, $default],
-            'default timezone by name' => [$default->getName(), $default],
-            'default timezone by object' => [$default, $default],
-            'custom timezone by name' => [$custom->getName(), $custom],
-            'custom timezone by object' => [$custom, $custom],
-        ];
+        yield 'empty timezone' => [null, $default];
+        yield 'disabled timezone' => [false, $default];
+        yield 'default timezone by name' => [$default->getName(), $default];
+        yield 'default timezone by object' => [$default, $default];
+        yield 'custom timezone by name' => [$custom->getName(), $custom];
+        yield 'custom timezone by object' => [$custom, $custom];
     }
 
     /**
-     * @param mixed $timezone
-     *
-     * @dataProvider getTimeZones
+     * @dataProvider provideResolveDateDataTransformerCases
      */
-    public function testResolveDateDataTransformer($timezone, \DateTimeZone $expectedTimezone): void
+    public function testResolveDateDataTransformer(mixed $timezone, \DateTimeZone $expectedTimezone): void
     {
         $this->fieldDescription->method('getOption')->willReturnMap([
             ['data_transformer', null, null],
@@ -207,11 +196,10 @@ final class DataTransformerResolverTest extends TestCase
      */
     public function testCustomGlobalTransformers(string $fieldType): void
     {
-        $customDataTransformer = new CallbackTransformer(static function ($value): string {
-            return (string) (int) $value;
-        }, static function ($value): bool {
-            return filter_var($value, \FILTER_VALIDATE_BOOLEAN);
-        });
+        $customDataTransformer = new CallbackTransformer(
+            static fn (mixed $value): string => (string) (int) $value,
+            static fn (mixed $value): bool => filter_var($value, \FILTER_VALIDATE_BOOLEAN)
+        );
 
         $this->fieldDescription->method('getType')->willReturn($fieldType);
 
@@ -230,11 +218,10 @@ final class DataTransformerResolverTest extends TestCase
      */
     public function testAddCustomGlobalTransformer(string $fieldType): void
     {
-        $customDataTransformer = new CallbackTransformer(static function ($value): string {
-            return (string) (int) $value;
-        }, static function ($value): bool {
-            return filter_var($value, \FILTER_VALIDATE_BOOLEAN);
-        });
+        $customDataTransformer = new CallbackTransformer(
+            static fn (mixed $value): string => (string) (int) $value,
+            static fn (mixed $value): bool => filter_var($value, \FILTER_VALIDATE_BOOLEAN)
+        );
 
         $this->fieldDescription->method('getType')->willReturn($fieldType);
 
