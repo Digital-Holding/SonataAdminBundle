@@ -20,7 +20,11 @@ Encore.setOutputPath('./src/Resources/public')
   .enableVersioning(false)
   .enableSourceMaps(false)
   .enableEslintPlugin()
+  .enableStimulusBridge("./assets/controllers.json")
   .autoProvidejQuery()
+  .autoProvideVariables({
+    stimulus: "stimulus",
+  })
   .disableSingleRuntimeChunk()
 
   .configureCssMinimizerPlugin((options) => {
