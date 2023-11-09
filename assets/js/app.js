@@ -51,9 +51,15 @@ import './treeview';
 import './sidebar';
 import './base';
 
+import * as stimulus from '@hotwired/stimulus';
+
+import { sonataApplication } from './stimulus';
+
 // Create global $ and jQuery variables to be used outside this script
 global.$ = $;
 global.jQuery = $;
+global.stimulus = stimulus;
+global.sonataApplication = sonataApplication;
 
 // Create global moment variable to be used by the locale script.
 // It expects moment to be available on the global scope
