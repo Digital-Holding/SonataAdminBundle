@@ -2,6 +2,8 @@
   "dependencies": {
     "@fontsource/source-sans-pro": "^4.5",
     "@fortawesome/fontawesome-free": "^6.0",
+    "@hotwired/stimulus": "^3.2",
+    "@symfony/stimulus-bridge": "^3.2",
     "admin-lte": "^3.2",
     "bootstrap": "^4.6",
     "icheck": "^1.0",
