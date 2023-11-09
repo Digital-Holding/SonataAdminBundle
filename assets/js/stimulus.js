@@ -10,7 +10,7 @@
 import { startStimulusApp } from '@symfony/stimulus-bridge';
 
 // eslint-disable-next-line import/prefer-default-export
-export const sonataApplication = startStimulusApp(
+export let sonataApplication = startStimulusApp(
   require.context(
     '@symfony/stimulus-bridge/lazy-controller-loader!./controllers',
     true,
